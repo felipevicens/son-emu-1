@@ -3,7 +3,7 @@
 import logging
 import compute
 import network
-import YAMLReader
+import yaml_reader
 
 class RestApiEndpoint(object):
 
@@ -13,8 +13,7 @@ class RestApiEndpoint(object):
 
     def connectDatacenter(self, dc):
         compute.dcs[dc.label] = dc
-        logging.info(
-            "Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
+        logging.info("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
 
     def connectDCNetwork(self, DCnetwork):
@@ -32,5 +31,5 @@ class RestApiEndpoint(object):
     def read_heat_file(self):
         inputFile = open('yamlTest1', 'r')
         inp = inputFile.read()
-        reader = YAMLReader.YAMLReader()
+        reader = yaml_reader.YAMLReader()
         reader.parse_input(inp)
