@@ -10,27 +10,27 @@ router_list = []
 
 def add_port(name, network):
     port = Port(name, network)
-    port_list.__add__(port)
+    port_list.append(port)
 
 def add_subnet(cidr, gateway_ip, name, network):
     subnet = Subnet(cidr, gateway_ip, name, network)
-    subnet_list.__add__(subnet)
+    subnet_list.append(subnet)
 
 def add_net(name):
     net = Net(name)
-    net_list.__add__(net)
+    net_list.append(net)
 
 def add_floating_ip(network_id, port_id):
     floating_ip = FloatingIP(network_id, port_id)
-    floating_ip_list.__add__(floating_ip)
+    floating_ip_list.append(floating_ip)
 
 def add_router_interface(router, subnet):
     router_interface = RouterInterface(router, subnet) #TODO use existing router/subnet ???
-    router_interface_list.__add__(router_interface)
+    router_interface_list.append(router_interface)
 
 def add_router(name):
     router = Router(name)
-    router_list.__add__(router)
+    router_list.append(router)
 
 
 
