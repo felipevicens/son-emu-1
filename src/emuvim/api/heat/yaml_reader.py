@@ -55,9 +55,9 @@ class YAMLReader:
 
         for resource in self.resources:
             try:
-                self.handle_recource(self.resources[resource])
+                self.handle_resource(self.resources[resource])
             except Exception as e:
-                print('Some error occured: ' + e.message)
+                print('Some error in handle_resources: ' + e.message)
 
 
 
@@ -71,48 +71,69 @@ class YAMLReader:
             pass
 
 
-    def handle_recource(self, resource): #TODO are all resource references complete?
+    def handle_resource(self, resource): #TODO are all resource references complete?
         if "Net" in resource['type']:
-            #print('Net')
-            network.add_net(resource['properties']['name'])
+            try:
+                network.add_net(resource['properties']['name'])
+            except Exception as e:
+                print('Could not create Net: ' + e.message)
             return
 
-        if 'Subnet' in resource['type']:
-            #print('Subnet')
+        if 'Subnet' in resource['type'] and "Net" not in resource['type']:
             cidr = resource['properties']['cidr']
             gateway_ip = resource['properties']['gateway_ip']
             name = resource['properties']['name']
             network_dict = resource['properties']['network']
-            network.add_subnet(cidr, gateway_ip, name, network_dict)
+            try:
+                network.add_subnet(cidr, gateway_ip, name, network_dict)
+            except Exception as e:
+                print('Could not create Subnet: ' + e.message)
             return
 
         if 'Port' in resource['type']:
-            #print('Port')
-            network.add_port(resource['properties']['name'], resource['properties']['network'])
+            try:
+                network.add_port(resource['properties']['name'], resource['properties']['network'])
+            except Exception as e:
+                print('Could not create Port: ' + e.message)
             return
 
         if 'Server' in resource['type']:
-            print('Server')
             compute_name = resource['properties']['name']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
             command = 'dockerCommand' #TODO findout what the command does!!!!!!
-            compute.add_server(compute_name, nw_list, image, command)
+            try:
+                compute.parse_server_network(nw_list)
+                compute.add_server(compute_name, nw_list, image, command)
+            except Exception as e:
+                print('Could not create Server: ' + e.message)
             return
 
         if 'RouterInterface' in resource['type']:
-            #print('RouterInterface')
-            network.add_router_interface(resource['properties']['router']['get_resource'], resource['properties']['subnet']['get_resource'])
+            try:
+                if 'get_resource' in resource['properties']['router']:
+                    network.add_router_interface(resource['properties']['router']['get_resource'],
+                                                 resource['properties']['subnet']['get_resource'])
+                else:
+                    network.add_router_interface(resource['properties']['router'],
+                                                 resource['properties']['subnet']['get_resource'])
+            except Exception as e:
+                print('Could not create RouterInterface: ' + e.message)
             return
 
         if 'FloatingIP' in resource['type']:
-            #print('FloatingIP')
-            network.add_floating_ip(resource['properties']['floating_network_id'], resource['properties']['port_id']['get_resource'])
+            try:
+                network.add_floating_ip(resource['properties']['floating_network_id'],
+                                        resource['properties']['port_id']['get_resource'])
+            except Exception as e:
+                print('Could not create FloatingIP: ' + e.message)
             return
 
         if 'Router' in resource['type'] and 'RouterInterface' not in resource['type']: #TODO find a better way to isolate Router from RouterInterface
-            #print('Router')
-            network.add_router(resource['properties']['name'])
+            try:
+                network.add_router(resource['properties']['name'])
+            except Exception as e:
+                print('Could not create Router: ' + e.message)
             return
 
 

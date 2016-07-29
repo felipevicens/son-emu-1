@@ -27,9 +27,14 @@ class RestApiEndpoint(object):
     def start(self):
         # TODO Start a thread for the REST API listener
         self.read_heat_file()
+        #self.deploy_simulation() #TODO start a simulation
 
     def read_heat_file(self):
-        inputFile = open('yamlTest1', 'r')
+        inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = yaml_reader.YAMLReader()
         reader.parse_input(inp)
+
+    def deploy_simulation(self):
+        for server in compute.server_list:
+            server.start_compute("datacenter1")
