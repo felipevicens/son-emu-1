@@ -2,7 +2,8 @@ import time
 import logging
 import compute
 import network
-import yaml_reader
+import heat_parser
+from resources import Stack
 import threading
 from flask import Flask
 from flask_restful import Api
@@ -14,6 +15,8 @@ class HeatApiEndpoint(object):
     def __init__(self, listenip, port):
         self.ip = listenip
         self.port = port
+        self.heat_net = network.HeatNet()
+        self.heat_compute = compute.HeatCompute()
 
         # setup Flask
         self.app = Flask(__name__)
@@ -51,10 +54,12 @@ class HeatApiEndpoint(object):
         # self.deploy_simulation() #TODO start a simulation
 
     def read_heat_file(self):
+        stack = Stack()
+        self.heat_compute.add_stack(stack)
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
-        reader = yaml_reader.YAMLReader()
-        reader.parse_input(inp)
+        reader = heat_parser.HeatParser()
+        reader.parse_input(inp, stack)
 
     def deploy_simulation(self):
         for server in compute.server_list:
