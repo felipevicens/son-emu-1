@@ -94,7 +94,7 @@ class HeatParser:
             return
 
         if 'OS::Neutron::Port' in resource['type']:
-            network = resource['properties']['network']['get_resource']  # TODO network resource is not stored anywhere
+            network = resource['properties']['network']['get_resource']
             name = resource['properties']['name']
             try:
                 if name not in stack.ports:
