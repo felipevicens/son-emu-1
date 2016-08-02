@@ -5,5 +5,5 @@ class Server:
         self.id = id          # not set
         self.flavor = flavor
         self.image = image
-        self.nw_list = nw_list
         self.command = command
+        self.ports = list()

@@ -60,7 +60,7 @@ def create_topology1():
     1b. add a monitoring agent to the DCNetwork
     """
     sonata_api = RestApiEndpoint("127.0.0.1", 5001)
-    sonata_api.connectDCNetwork(net)
+    sonata_api.connect_dc_network(net)
     sonata_api.start()
 
 
@@ -105,10 +105,10 @@ def create_topology1():
     # create a new instance of a endpoint implementation
     sonata_api = RestApiEndpoint("127.0.0.1", 5005)
     # connect data centers to this endpoint
-    sonata_api.connectDatacenter(dc1)
-    sonata_api.connectDatacenter(dc2)
-    sonata_api.connectDatacenter(dc3)
-    sonata_api.connectDatacenter(dc4)
+    sonata_api.connect_datacenter(dc1)
+    sonata_api.connect_datacenter(dc2)
+    sonata_api.connect_datacenter(dc3)
+    sonata_api.connect_datacenter(dc4)
     # run API endpoint server (in another thread, don't block)
     sonata_api.start()
 
