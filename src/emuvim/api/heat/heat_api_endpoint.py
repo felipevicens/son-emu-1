@@ -25,7 +25,7 @@ class HeatApiEndpoint(object):
         self.api.add_resource(ReceiveConfiguration, "/heatapi/receive/<identifyer>")
 
     def connectDatacenter(self, dc):
-        compute.dcs[dc.label] = dc
+        self.heat_compute.dc = dc
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
@@ -38,28 +38,25 @@ class HeatApiEndpoint(object):
             self.__class__.__name__, self.ip, self.port))
 
     def start(self):
-
-
         thread = threading.Thread(target=self._start_flask, args=())
         thread.daemon = True
         thread.start()
         logging.info("Started API endpoint @ http://%s:%d" % (self.ip, self.port))
 
     def _start_flask(self):
-        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
-
-
-        # TODO Start a thread for the REST API listener
         self.read_heat_file()
+        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
         # self.deploy_simulation() #TODO start a simulation
 
     def read_heat_file(self):
         stack = Stack()
-        self.heat_compute.add_stack(stack)
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
         reader.parse_input(inp, stack)
+        logging.debug(stack)
+        self.heat_compute.add_stack(stack)
+        self.heat_compute.deploy_stack(stack.id)
 
     def deploy_simulation(self):
         for server in compute.server_list:
