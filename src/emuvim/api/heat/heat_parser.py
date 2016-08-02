@@ -105,6 +105,9 @@ class HeatParser:
                     stack.servers[compute_name] = Server(compute_name)
 
                 tmp_server = stack.servers[compute_name]
+                tmp_server.nw_list = nw_list
+                tmp_server.command = command
+                tmp_server.image = image
                 tmp_server.flavor = flavor
             except Exception as e:
                 print('Could not create Server: ' + e.message)
