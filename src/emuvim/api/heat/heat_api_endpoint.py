@@ -52,7 +52,7 @@ class HeatApiEndpoint(object):
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
-        reader.parse_input(inp, stack)
+        reader.parse_input(inp, stack, self.heat_compute.dc.label)
         logging.debug(stack)
         self.heat_compute.add_stack(stack)
         self.heat_compute.deploy_stack(stack.id)

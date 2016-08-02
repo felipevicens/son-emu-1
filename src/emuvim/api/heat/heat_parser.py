@@ -13,7 +13,7 @@ class HeatParser:
         self.outputs = None
         self.bufferResource = list()
 
-    def parse_input(self, input_string, stack):
+    def parse_input(self, input_string, stack, dc_label):
         yaml_dict = yaml.load(input_string)
 
         if not (str(yaml_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
@@ -51,7 +51,7 @@ class HeatParser:
             #print('No ' + e.message + ' found.')
 
         for resource in self.resources.values():
-            self.handle_resource(resource, stack)
+            self.handle_resource(resource, stack, dc_label)
 
         # This loop tries to create all classes which had unresolved dependencies.
         number_of_iterations = 5
@@ -59,14 +59,14 @@ class HeatParser:
             number_of_iterations -= 1
             number_of_items = len(self.bufferResource)
             while number_of_items > 0:
-                self.handle_resource(self.bufferResource.pop(0), stack)
+                self.handle_resource(self.bufferResource.pop(0), stack, dc_label)
                 number_of_items -= 1
 
         if len(self.bufferResource) > 0:
             print(str(len(self.bufferResource)) +
                   ' classes could not be created, because the dependencies could not be found.')
 
-    def handle_resource(self, resource, stack):   # TODO are all resource references complete?
+    def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
             name = resource['properties']['name']
             try:
@@ -110,11 +110,12 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = resource['properties']['name']
+            compute_name = str(dc_label) + '_' + str(resource['properties']['name'])
+            compute_name = compute_name.replace(":","_")
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
-            command = 'dockerCommand'   # some parameter for Containernet-Hosts TODO which command should be used?
+            command = ''   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
                 if compute_name not in stack.servers:
                     stack.servers[compute_name] = Server(compute_name)

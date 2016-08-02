@@ -36,7 +36,7 @@ class HeatCompute:
         #Create the networks first
         id = 0
         for net in stack.nets.values():
-            net.id = id       # just added ids TODO maybe change the id to something else
+            net.id = str(id)       # just added ids TODO maybe change the id to something else
             id += 1
 
         for server in stack.servers.values():
