@@ -25,7 +25,7 @@ class HeatApiEndpoint(object):
         self.api.add_resource(ReceiveConfiguration, "/heatapi/receive/<identifyer>")
 
     def connectDatacenter(self, dc):
-        compute.dcs[dc.label] = dc
+        self.heat_compute.dc = dc
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
@@ -38,8 +38,6 @@ class HeatApiEndpoint(object):
             self.__class__.__name__, self.ip, self.port))
 
     def start(self):
-
-
         thread = threading.Thread(target=self._start_flask, args=())
         thread.daemon = True
         thread.start()
