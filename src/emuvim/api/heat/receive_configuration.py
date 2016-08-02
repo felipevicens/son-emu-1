@@ -2,7 +2,7 @@
 from flask_restful import Resource
 from flask import request
 import logging
-import yaml_reader
+import heat_parser
 
 class ReceiveConfiguration(Resource):
 
@@ -16,5 +16,5 @@ class ReceiveConfiguration(Resource):
         print input
 
 
-        reader = yaml_reader.YAMLReader()
+        reader = heat_parser.YAMLReader()
         reader.parse_input(input)
