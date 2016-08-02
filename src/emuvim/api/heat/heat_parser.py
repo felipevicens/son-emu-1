@@ -22,40 +22,45 @@ class HeatParser:
 
         try:
             self.description = yaml_dict['description']
-        except Exception as e:
+        except KeyError as e:
             self.description = None
             print('No ' + e.message + ' found.')
 
         try:
             self.parameter_groups = yaml_dict['parameter_groups']
-        except Exception as e:
+        except KeyError as e:
             self.parameter_groups = None
             print('No ' + e.message + ' found.')
 
         try:
             self.parameters = yaml_dict['parameters']
-        except Exception as e:
+        except KeyError as e:
             self.parameters = None
             print('No ' + e.message + ' found.')
 
         try:
             self.resources = yaml_dict['resources']
-        except Exception as e:
+        except KeyError as e:
             self.resources = None
             print('No ' + e.message + ' found.')
 
         try:
             self.outputs = yaml_dict['outputs']
-        except Exception as e:
+        except KeyError as e:
             self.outputs = None
             print('No ' + e.message + ' found.')
 
-        for resource in self.resources:
-            self.handle_resource(self.resources[resource], stack)
-
-        # The second for loop tries to create all classes which had unresolved dependencies.
-        for resource in self.bufferResource:  # TODO it could be possible that more than one retry is needed (how many?)
+        for resource in self.resources.values():
             self.handle_resource(resource, stack)
+
+        # This loop tries to create all classes which had unresolved dependencies.
+        number_of_iterations = 5
+        while len(self.bufferResource) > 0 and number_of_iterations > 0:
+            number_of_iterations -= 1
+            number_of_items = len(self.bufferResource)
+            while number_of_items > 0:
+                self.handle_resource(self.bufferResource.pop(0), stack)
+                number_of_items -= 1
 
     def handle_resource(self, resource, stack):   # TODO are all resource references complete?
         if "Net" in resource['type']:
@@ -127,13 +132,13 @@ class HeatParser:
                     stack.routers[router_name] = Router(router_name)
 
                 tmp_router = stack.routers[router_name]
-                for tmp_net in stack.nets.itervalues():
+                for tmp_net in stack.nets.values():
                     if tmp_net.subnet_name == subnet_name:
                         tmp_router.add_subnet(tmp_net)
                         return
             except Exception as e:
                 print('Could not create RouterInterface: ' + e.__repr__())
-            print('Could not create RouterInterface, because Net-Class was not found. Maybe it does not exist now.')
+            print('Could not create RouterInterface, because Net-Class was not found. Maybe it does not exist jet.')
             self.bufferResource.append(resource)
             return
 
