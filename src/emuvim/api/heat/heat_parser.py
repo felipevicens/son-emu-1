@@ -24,31 +24,31 @@ class HeatParser:
             self.description = yaml_dict['description']
         except KeyError as e:
             self.description = None
-            print('No ' + e.message + ' found.')
+            #print('No ' + e.message + ' found.')
 
         try:
             self.parameter_groups = yaml_dict['parameter_groups']
         except KeyError as e:
             self.parameter_groups = None
-            print('No ' + e.message + ' found.')
+            #print('No ' + e.message + ' found.')
 
         try:
             self.parameters = yaml_dict['parameters']
         except KeyError as e:
             self.parameters = None
-            print('No ' + e.message + ' found.')
+            #print('No ' + e.message + ' found.')
 
         try:
             self.resources = yaml_dict['resources']
         except KeyError as e:
             self.resources = None
-            print('No ' + e.message + ' found.')
+            #print('No ' + e.message + ' found.')
 
         try:
             self.outputs = yaml_dict['outputs']
         except KeyError as e:
             self.outputs = None
-            print('No ' + e.message + ' found.')
+            #print('No ' + e.message + ' found.')
 
         for resource in self.resources.values():
             self.handle_resource(resource, stack)
@@ -61,6 +61,10 @@ class HeatParser:
             while number_of_items > 0:
                 self.handle_resource(self.bufferResource.pop(0), stack)
                 number_of_items -= 1
+
+        if len(self.bufferResource) > 0:
+            print(str(len(self.bufferResource)) +
+                  ' classes could not be created, because the dependencies could not be found.')
 
     def handle_resource(self, resource, stack):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
@@ -94,9 +98,15 @@ class HeatParser:
             name = resource['properties']['name']
             try:
                 if name not in stack.ports:
-                    stack.ports[name] = Port(resource['properties']['name'])
+                    stack.ports[name] = Port(name)
+
+                for tmp_net in stack.nets.values():
+                    if tmp_net.name == network:
+                        stack.ports[name].net = tmp_net
+                        return
             except Exception as e:
                 print('Could not create Port: ' + e.message)
+            self.bufferResource.append(resource)
             return
 
         if 'OS::Nova::Server' in resource['type']:
@@ -142,7 +152,6 @@ class HeatParser:
                         return
             except Exception as e:
                 print('Could not create RouterInterface: ' + e.__repr__())
-            print('Could not create RouterInterface, because Net-Class was not found. Maybe it does not exist yet.')
             self.bufferResource.append(resource)
             return
 

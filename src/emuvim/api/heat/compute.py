@@ -34,14 +34,21 @@ class HeatCompute:
         stack = self.stacks[stackid]
 
         #Create the networks first
+        id = 0
+        for net in stack.nets.values():
+            net.id = id       # just added ids TODO maybe change the id to something else
+            id += 1
 
-        for net in stack.nets:
-
-
-        for server in stack.servers:
+        for server in stack.servers.values():
             logging.debug("Starting new compute resources %s" % server.name)
-            c = self.dc.startCompute(
-                server.name, image=server.image, command=server.command, network=server.nw_list.first())
+            network = list()
+            for port in server.ports:
+                network_dict = dict()
+                network_dict['id'] = port.net.id
+                network_dict['ip'] = port.net.cidr
+                network.append(network_dict)
+
+            c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
         logging.info(stack.servers)
 
