@@ -111,16 +111,17 @@ class HeatParser:
 
         if 'OS::Nova::Server' in resource['type']:
             compute_name = str(dc_label) + '_' + str(resource['properties']['name'])
-            compute_name = compute_name.replace(":","_")
+            shortened_name = self.shorten_server_name(compute_name, stack)
+            stack.server_names[shortened_name] = compute_name
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
             command = ''   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
-                if compute_name not in stack.servers:
-                    stack.servers[compute_name] = Server(compute_name)
+                if shortened_name not in stack.servers:
+                    stack.servers[shortened_name] = Server(shortened_name)
 
-                tmp_server = stack.servers[compute_name]
+                tmp_server = stack.servers[shortened_name]
                 tmp_server.command = command
                 tmp_server.image = image
                 tmp_server.flavor = flavor
@@ -178,6 +179,16 @@ class HeatParser:
                 print('Could not create Router: ' + e.message)
             return
 
+    # TODO find a better way to shorten the name (e.g. dc_stacknr_shortName)
+    def shorten_server_name(self, server_name, stack):
+        shortened_name = server_name.split(':',1)[0]
+        shortened_name = shortened_name.replace("-", "_")
+        shortened_name = shortened_name[0:24]
+        iterator = 0
+        while shortened_name in stack.server_names:
+            shortened_name = shortened_name[0:24] + str(iterator)
+            iterator += 1
+        return shortened_name
 
 if __name__ == '__main__':
     inputFile = open('yamlTest2', 'r')
