@@ -3,6 +3,7 @@ import uuid
 class Stack:
     def __init__(self, id=None):
         self.servers = dict()
+        self.server_names = dict()
         self.nets = dict()
         self.ports = dict()
         self.routers = dict()
