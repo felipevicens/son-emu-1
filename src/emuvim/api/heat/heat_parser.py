@@ -13,7 +13,7 @@ class HeatParser:
         self.outputs = None
         self.bufferResource = list()
 
-    def parse_input(self, input_string, stack):
+    def parse_input(self, input_string, stack, dc_label):
         yaml_dict = yaml.load(input_string)
 
         if not (str(yaml_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
@@ -51,7 +51,7 @@ class HeatParser:
             #print('No ' + e.message + ' found.')
 
         for resource in self.resources.values():
-            self.handle_resource(resource, stack)
+            self.handle_resource(resource, stack, dc_label)
 
         # This loop tries to create all classes which had unresolved dependencies.
         number_of_iterations = 5
@@ -59,14 +59,14 @@ class HeatParser:
             number_of_iterations -= 1
             number_of_items = len(self.bufferResource)
             while number_of_items > 0:
-                self.handle_resource(self.bufferResource.pop(0), stack)
+                self.handle_resource(self.bufferResource.pop(0), stack, dc_label)
                 number_of_items -= 1
 
         if len(self.bufferResource) > 0:
             print(str(len(self.bufferResource)) +
                   ' classes could not be created, because the dependencies could not be found.')
 
-    def handle_resource(self, resource, stack):   # TODO are all resource references complete?
+    def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
             name = resource['properties']['name']
             try:
@@ -110,16 +110,18 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = resource['properties']['name']
+            compute_name = str(dc_label) + '_' + str(resource['properties']['name'])
+            shortened_name = self.shorten_server_name(compute_name, stack)
+            stack.server_names[shortened_name] = compute_name
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
-            command = 'dockerCommand'   # some parameter for Containernet-Hosts TODO which command should be used?
+            command = ''   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
-                if compute_name not in stack.servers:
-                    stack.servers[compute_name] = Server(compute_name)
+                if shortened_name not in stack.servers:
+                    stack.servers[shortened_name] = Server(shortened_name)
 
-                tmp_server = stack.servers[compute_name]
+                tmp_server = stack.servers[shortened_name]
                 tmp_server.command = command
                 tmp_server.image = image
                 tmp_server.flavor = flavor
@@ -177,6 +179,16 @@ class HeatParser:
                 print('Could not create Router: ' + e.message)
             return
 
+    # TODO find a better way to shorten the name (e.g. dc_stacknr_shortName)
+    def shorten_server_name(self, server_name, stack):
+        shortened_name = server_name.split(':',1)[0]
+        shortened_name = shortened_name.replace("-", "_")
+        shortened_name = shortened_name[0:24]
+        iterator = 0
+        while shortened_name in stack.server_names:
+            shortened_name = shortened_name[0:24] + str(iterator)
+            iterator += 1
+        return shortened_name
 
 if __name__ == '__main__':
     inputFile = open('yamlTest2', 'r')
