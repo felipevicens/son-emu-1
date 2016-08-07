@@ -1,20 +1,25 @@
+# -*- coding: UTF-8 -*-
 
 from flask_restful import Resource
 from flask import request
+from flask import jsonify
 import logging
-import yaml_reader
+import json
+from heat_parser import HeatParser
+from resources import Stack
 
 class ReceiveConfiguration(Resource):
 
 
-    def post(self, identifyer):
+    def post(self, field_identifyer):
         logging.debug("REST CALL: receive file")
         #in request.args  .form .value steht der inhalt der per POST ubergeben wird
-        print "bereitt"
-        print request.values
-        input = request.values[identifyer]
-        print input
 
+        print "Here arrived the following:"
+        print json.dumps(request.get_json())
 
-        reader = yaml_reader.YAMLReader()
-        reader.parse_input(input)
+        stack = Stack()
+        x = HeatParser()
+        x.parse_input(json.dumps(request.get_json()), stack)
+
+        return jsonify(success=True, data={"aaa":"bbb"})
