@@ -5,10 +5,10 @@ from flask import request
 from flask import jsonify
 import logging
 import json
-from heat_parser import HeatParser
-from resources import Stack
+from emuvim.api.heat.heat_parser import HeatParser
+from emuvim.api.heat.resources import Stack
 
-class ReceiveConfiguration(Resource):
+class HeatDummyApi(Resource):
 
 
     def post(self, field_identifyer):
