@@ -17,7 +17,6 @@ class OpenstackApiEndpoint():
     def __init__(self, listenip, port):
         self.ip = listenip
         self.port = port
-        self.net = network.OpenstackNet()
         self.compute = compute.OpenstackCompute()
         self.openstack_endpoints = dict()
         self.openstack_endpoints['keystone'] = list()
@@ -38,7 +37,8 @@ class OpenstackApiEndpoint():
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
     def connect_dc_network(self, dc_network):
-        network.net = dc_network
+        tmp_network = network.OpenenStackNet(dc_network)
+        self.compute.add_network(tmp_network)
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (

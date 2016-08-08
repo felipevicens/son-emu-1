@@ -116,7 +116,7 @@ class HeatParser:
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
-            command = ''   # some parameter for Containernet-Hosts TODO which command should be used?
+            command = '/bin/bash'   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
                 if shortened_name not in stack.servers:
                     stack.servers[shortened_name] = Server(shortened_name)

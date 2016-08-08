@@ -16,10 +16,14 @@ class OpenstackCompute:
         self.stacks = dict()
         self.computeUnits = dict()
         self.routers = dict()
+        self.networks = list()
 
     def add_stack(self, stack):
         self.check_stack(stack)
         self.stacks[stack.id] = stack
+
+    def add_network(self, network):
+        self.networks.append(network)
 
 
     #TODO check the stack
