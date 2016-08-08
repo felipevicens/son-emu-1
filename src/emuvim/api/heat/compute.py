@@ -10,7 +10,7 @@ class HeatApiStackInvalidException(BaseException):
     def __str__(self):
         return repr(self.value)
 
-class HeatCompute:
+class OpenstackCompute:
     def __init__(self):
         self.dc = None
         self.stacks = dict()

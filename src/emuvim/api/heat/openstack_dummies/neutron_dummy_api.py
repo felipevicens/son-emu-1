@@ -7,20 +7,12 @@ import logging
 import json
 from emuvim.api.heat.heat_parser import HeatParser
 from emuvim.api.heat.resources import Stack
+from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 
-class NeutronDummyApi(Resource):
+compute = None
+class NeutronDummyApi(BaseOpenstackDummy):
 
-
-    def post(self, field_identifyer):
-        logging.debug("REST CALL: receive file")
-        #in request.args  .form .value steht der inhalt der per POST ubergeben wird
-
-        print "Here arrived the following:"
-        print json.dumps(request.get_json())
-
-
-        stack = Stack()
-        x = HeatParser()
-        x.parse_input(json.dumps(request.get_json()), stack)
-
-        return jsonify(success=True, data={"aaa":"bbb"})
+    def __init__(self,ip,port):
+        global compute
+        super(NeutronDummyApi, self).__init__(ip, port)
+        compute = self.compute

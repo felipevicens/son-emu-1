@@ -8,9 +8,9 @@ import json
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 
 compute = None
-class NovaDummyApi(BaseOpenstackDummy):
+class KeystoneDummyApi(BaseOpenstackDummy):
 
     def __init__(self,ip,port):
         global compute
-        super(NovaDummyApi, self).__init__(ip, port)
+        super(KeystoneDummyApi, self).__init__(ip,port)
         compute = self.compute

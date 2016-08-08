@@ -1,26 +1,23 @@
 # -*- coding: UTF-8 -*-
 
-from flask_restful import Resource
-from flask import request
-from flask import jsonify
+from flask import Flask,jsonify
+from flask_restful import Api,Resource
 import logging
 import json
-from emuvim.api.heat.heat_parser import HeatParser
-from emuvim.api.heat.resources import Stack
+from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 
-class HeatDummyApi(Resource):
+compute = None
+class HeatDummyApi(BaseOpenstackDummy):
 
-
-    def post(self, field_identifyer):
-        logging.debug("REST CALL: receive file")
-        #in request.args  .form .value steht der inhalt der per POST ubergeben wird
-
-        print "Here arrived the following:"
-        print json.dumps(request.get_json())
+    def __init__(self,ip,port):
+        global compute
+        super(HeatDummyApi, self).__init__(ip, port)
+        compute = self.compute
 
 
-        stack = Stack()
-        x = HeatParser()
-        x.parse_input(json.dumps(request.get_json()), stack)
+class HeatList(Resource):
+    global compute
 
-        return jsonify(success=True, data={"aaa":"bbb"})
+    def get(self):
+        logging.debug("Call to HeatList")
+        return jsonify(success=True, data={"aaa": "bbb"})
