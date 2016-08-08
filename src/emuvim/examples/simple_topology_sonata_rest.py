@@ -45,7 +45,7 @@ from emuvim.dcemulator.net import DCNetwork
 #from emuvim.api.zerorpc.compute import ZeroRpcApiEndpoint
 #from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
 #from emuvim.api.zerorpc.network import ZeroRpcApiEndpointDCNetwork
-from emuvim.api.heat.heat_api_endpoint import RestApiEndpoint
+from emuvim.api.heat.openstack_api_endpoint import RestApiEndpoint
 
 logging.basicConfig(level=logging.INFO)
 
