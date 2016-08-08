@@ -1,13 +1,16 @@
-import time
 import logging
-import compute
-import network
-import heat_parser
-from resources import Stack
 import threading
+import time
+
 from flask import Flask
 from flask_restful import Api
-from receive_configuration import ReceiveConfiguration
+from nova_dummy_api import NovaDummyApi
+from neutron_dummy_api import NeutronDummyApi
+import compute
+import heat_parser
+import network
+
+from resources import Stack
 
 
 class HeatApiEndpoint(object):
@@ -22,7 +25,11 @@ class HeatApiEndpoint(object):
         self.app = Flask(__name__)
         self.api = Api(self.app)
 
-        self.api.add_resource(ReceiveConfiguration, "/<field_identifyer>")
+        self.api.add_resource(NovaDummyApi, "/compute/v2.1/<component>/")
+        self.api.add_resource(NeutronDummyApi, "/v2.0/<component>")
+        self.api.add_resource(HeatDummyAPI, "/compute/<field_identifyer>")
+        #self.api.add_resource(NovaDummyAPI, "/<field_identifyer>")
+        #self.api.add_resource(ReceiveConfiguration, "/<field_identifyer>")
 
     def connect_datacenter(self, dc):
         self.heat_compute.dc = dc
@@ -44,8 +51,6 @@ class HeatApiEndpoint(object):
         print "gestartet"
 
     def _start_flask(self):
-        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
-        # TODO Start a thread for the REST API listener
         self.read_heat_file()
         self.app.run(self.ip, self.port, debug=True, use_reloader=False)
         # self.deploy_simulation() #TODO start a simulation
@@ -55,7 +60,7 @@ class HeatApiEndpoint(object):
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
-        reader.parse_input(inp, stack)
+        reader.parse_input(inp, stack, self.heat_compute.dc.label)
         logging.debug(stack)
         self.heat_compute.add_stack(stack)
         self.heat_compute.deploy_stack(stack.id)
