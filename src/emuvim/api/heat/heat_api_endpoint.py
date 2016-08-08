@@ -22,7 +22,7 @@ class HeatApiEndpoint(object):
         self.app = Flask(__name__)
         self.api = Api(self.app)
 
-        self.api.add_resource(ReceiveConfiguration, "/heatapi/receive/<identifyer>")
+        self.api.add_resource(ReceiveConfiguration, "/<field_identifyer>")
 
     def connect_datacenter(self, dc):
         self.heat_compute.dc = dc
@@ -41,8 +41,11 @@ class HeatApiEndpoint(object):
         thread.daemon = True
         thread.start()
         logging.info("Started API endpoint @ http://%s:%d" % (self.ip, self.port))
+        print "gestartet"
 
     def _start_flask(self):
+        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+        # TODO Start a thread for the REST API listener
         self.read_heat_file()
         self.app.run(self.ip, self.port, debug=True, use_reloader=False)
         # self.deploy_simulation() #TODO start a simulation
@@ -65,4 +68,4 @@ if __name__ == "__main__":
     ha = HeatApiEndpoint("localhost", 5000)
     ha.start()
     while True:
-        time.sleep(0.2)
+        time.sleep(0.5)
