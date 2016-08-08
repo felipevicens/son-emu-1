@@ -3,7 +3,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-class HeatNet:
+class OpenstackNet:
     def __init__(self):
         self.net = None
 
