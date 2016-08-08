@@ -5,3 +5,4 @@ class Port:
         self.ip_address = ip_address    # not set
         self.mac_address = mac_address  # not set
         self.floating_ip = floating_ip
+        self.net = None

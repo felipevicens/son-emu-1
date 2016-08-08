@@ -18,6 +18,7 @@ class ReceiveConfiguration(Resource):
         print "Here arrived the following:"
         print json.dumps(request.get_json())
 
+
         stack = Stack()
         x = HeatParser()
         x.parse_input(json.dumps(request.get_json()), stack)

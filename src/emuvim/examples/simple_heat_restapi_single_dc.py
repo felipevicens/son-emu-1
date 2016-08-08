@@ -41,30 +41,17 @@ logging.basicConfig(level=logging.INFO)
 def create_topology1():
     net = DCNetwork(monitor=True, enable_learning=True)
     dc1 = net.addDatacenter("datacenter1")
-    dc2 = net.addDatacenter("datacenter2")
-    dc3 = net.addDatacenter("datacenter3")
-    dc4 = net.addDatacenter("datacenter4")
 
     heatapi1 = HeatApiEndpoint("0.0.0.0", 5001)
-    heatapi2 = HeatApiEndpoint("0.0.0.0", 5002)
-    heatapi3 = HeatApiEndpoint("0.0.0.0", 5003)
-    heatapi4 = HeatApiEndpoint("0.0.0.0", 5004)
-    # connect data centers to this endpoint
+
+    # connect data center to this endpoint
     heatapi1.connect_datacenter(dc1)
-    heatapi2.connect_datacenter(dc2)
-    heatapi3.connect_datacenter(dc3)
-    heatapi4.connect_datacenter(dc4)
+
     # heatapirun API endpoint server (in another thread, don't block)
     heatapi1.start()
-    heatapi2.start()
-    heatapi3.start()
-    heatapi4.start()
 
-    # connect data centers to this endpoint
+    # connect data center to this endpoint
     heatapi1.connect_datacenter(dc1)
-    heatapi2.connect_datacenter(dc2)
-    heatapi3.connect_datacenter(dc3)
-    heatapi4.connect_datacenter(dc4)
 
     heatapi1.connect_dc_network(net)
 

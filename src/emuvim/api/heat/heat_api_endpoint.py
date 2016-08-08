@@ -9,8 +9,8 @@ from flask import Flask
 from flask_restful import Api
 from receive_configuration import ReceiveConfiguration
 
-class HeatApiEndpoint(object):
 
+class HeatApiEndpoint(object):
 
     def __init__(self, listenip, port):
         self.ip = listenip
@@ -24,14 +24,13 @@ class HeatApiEndpoint(object):
 
         self.api.add_resource(ReceiveConfiguration, "/<field_identifyer>")
 
-    def connectDatacenter(self, dc):
-        compute.dcs[dc.label] = dc
+    def connect_datacenter(self, dc):
+        self.heat_compute.dc = dc
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
-    def connectDCNetwork(self, DCnetwork):
-
-        network.net = DCnetwork
+    def connect_dc_network(self, dc_network):
+        network.net = dc_network
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
@@ -45,18 +44,19 @@ class HeatApiEndpoint(object):
         print "gestartet"
 
     def _start_flask(self):
-        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
-        # TODO Start a thread for the REST API listener
         self.read_heat_file()
+        self.app.run(self.ip, self.port, debug=True, use_reloader=False)
         # self.deploy_simulation() #TODO start a simulation
 
     def read_heat_file(self):
         stack = Stack()
-        self.heat_compute.add_stack(stack)
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
-        reader.parse_input(inp, stack)
+        reader.parse_input(inp, stack, self.heat_compute.dc.label)
+        logging.debug(stack)
+        self.heat_compute.add_stack(stack)
+        self.heat_compute.deploy_stack(stack.id)
 
     def deploy_simulation(self):
         for server in compute.server_list:
