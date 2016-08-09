@@ -72,6 +72,8 @@ class HeatParser:
             try:
                 if name not in stack.nets:
                     stack.nets[name] = Net(name)
+                    stack.nets[name].id = str(len(stack.nets)-1)
+
             except Exception as e:
                 print('Could not create Net: ' + e.message)
             return
@@ -84,6 +86,7 @@ class HeatParser:
             try:
                 if net_name not in stack.nets:
                     stack.nets[net_name] = Net(net_name)
+                    stack.nets[net_name].id = str(len(stack.nets)-1)
 
                 tmp_net = stack.nets[net_name]
                 tmp_net.subnet_name = name
@@ -100,7 +103,7 @@ class HeatParser:
             try:
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
-                    stack.ports[name].id = len(stack.ports)
+                    stack.ports[name].id = str(len(stack.ports)-1)
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == network:
@@ -131,6 +134,8 @@ class HeatParser:
                     port_name = port['port']['get_resource']
                     if port_name not in stack.ports:
                         stack.ports[port_name] = Port(port_name)
+                        stack.ports[port_name].id = str(len(stack.ports)-1)
+
                     tmp_server.ports.append(stack.ports[port_name])
             except Exception as e:
                 print('Could not create Server: ' + e.message)
@@ -165,7 +170,7 @@ class HeatParser:
                 floating_network_id = resource['properties']['floating_network_id']
                 if port_id not in stack.ports:
                     stack.ports[port_id] = Port(port_id)
-                    stack.ports[port_id].id = len(stack.ports)
+                    stack.ports[port_id].id = str(len(stack.ports)-1)
 
                 tmp_port = stack.ports[port_id]
                 tmp_port.floating_ip = floating_network_id

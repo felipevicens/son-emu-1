@@ -50,7 +50,6 @@ class NeutronListNetworks(Resource):
 
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
-                    print('Found some network')
                     tmp_network_dict = create_network_dict(net)
                     network_list.append(tmp_network_dict)
 
@@ -73,7 +72,7 @@ class NeutornShowNetwork(Resource):
 
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
-                    if net.id is network_id:
+                    if net.id == network_id:
                         tmp_network_dict = create_network_dict(net)
                         tmp_dict = dict()
                         tmp_dict["network"] = tmp_network_dict
@@ -99,8 +98,10 @@ class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be ch
 
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
-                    if net.id is network_id:
-                        tmp_network_dict = request._get_current_object()  # TODO is it really a dict?
+                    if net.id == network_id:
+                        print("hey ho")
+                        tmp_network_dict = request.json  # TODO is it really a dict?
+                        print(tmp_network_dict)
                         if "status" in tmp_network_dict["network"]:
                             pass  # tmp_network_dict["status"] = "ACTIVE"
                         if "subnets" in tmp_network_dict["network"]:
@@ -163,7 +164,7 @@ class NeutronShowSubnet(Resource):
         try:
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
-                    if net.subnet_id is subnet_id:
+                    if net.subnet_id == subnet_id:
                         tmp_subnet_dict = create_subnet_dict(net)
                         tmp_dict = dict()
                         tmp_dict["subnet"] = tmp_subnet_dict
@@ -189,7 +190,7 @@ class NeutronUpdateSubnet(Resource):
 
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
-                    if net.id is subnet_id:
+                    if net.id == subnet_id:
                         subnet_dict = request._get_current_object()  # TODO is it really a dict?
                         if "name" in subnet_dict["subnet"]:
                             net.subnet_name = subnet_dict["subnet"]["name"]
@@ -257,7 +258,7 @@ class NeutronShowPort(Resource):
 
             for stack in compute.stacks.values():
                 for port in stack.ports.values():
-                    if port.id is port_id:
+                    if port.id == port_id:
                         tmp_subnet_dict = create_port_dict(port)
                         tmp_dict = dict()
                         tmp_dict["port"] = tmp_subnet_dict
@@ -282,7 +283,7 @@ class NeutronUpdatePort(Resource):
         try:
             for stack in compute.stacks.values():
                 for port in stack.ports.values():
-                    if port.id is port_id:
+                    if port.id == port_id:
                         port_dict = request._get_current_object()  # TODO is it really a dict?
                         if "admin_state_up" in port_dict["port"]:
                             pass
