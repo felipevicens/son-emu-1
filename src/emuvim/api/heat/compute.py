@@ -3,6 +3,7 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 class HeatApiStackInvalidException(BaseException):
     def __init__(self, value):
         self.value = value
@@ -21,10 +22,9 @@ class OpenstackCompute:
         self.check_stack(stack)
         self.stacks[stack.id] = stack
 
-
-    #TODO check the stack
+    # TODO check the stack
     def check_stack(self, stack):
-        #raise HeatApiStackInvalidException("Stack did not pass validity checks")
+        # raise HeatApiStackInvalidException("Stack did not pass validity checks")
         return True
 
     def deploy_stack(self, stackid):
@@ -33,12 +33,7 @@ class OpenstackCompute:
 
         stack = self.stacks[stackid]
 
-        #Create the networks first
-        id = 0
-        for net in stack.nets.values():
-            net.id = str(id)       # just added ids TODO maybe change the id to something else
-            id += 1
-
+        # Create the networks first
         for server in stack.servers.values():
             logging.debug("Starting new compute resources %s" % server.name)
             network = list()

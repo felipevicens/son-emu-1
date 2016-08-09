@@ -4,8 +4,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class OpenstackNet:
-    def __init__(self):
-        self.net = None
+    def __init__(self, dc_network=None):
+        self.net = dc_network
 
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
         try:
