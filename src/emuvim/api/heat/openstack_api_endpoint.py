@@ -24,6 +24,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['neutron'] = list()
         self.openstack_endpoints['heat'] = list()
         self.rest_threads = list()
+        self.openstack_networks = list()
 
 
     def connect_datacenter(self, dc):
@@ -37,8 +38,8 @@ class OpenstackApiEndpoint():
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
     def connect_dc_network(self, dc_network):
-        tmp_network = network.OpenenStackNet(dc_network)
-        self.compute.add_network(tmp_network)
+        tmp_network = network.OpenstackNet(dc_network)
+        self.openstack_networks.append(tmp_network)
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
@@ -51,10 +52,8 @@ class OpenstackApiEndpoint():
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
                 thread.start()
-        #self.read_heat_file()
+        self.read_heat_file()
         #self.deploy_simulation() #TODO start a simulation
-
-
 
     def read_heat_file(self):
         stack = Stack()

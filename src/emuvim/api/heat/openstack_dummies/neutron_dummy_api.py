@@ -22,12 +22,12 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronListNetworks, "/v2.0/networks")
         self.api.add_resource(NeutornShowNetwork, "/v2.0/networks/<network_id>")
         self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks/<network_id>")
-        self.api.add_resource(NeutronListSubnets, "v2.0/subnets")
-        self.api.add_resource(NeutronShowSubnet, "v2.0/subnets/<subnet_id>")
-        self.api.add_resource(NeutronUpdateSubnet, "v2.0/subnets/<subnet_id>")
-        self.api.add_resource(NeutronListPorts, "v2.0/ports")
-        self.api.add_resource(NeutronShowPort, "v2.0/ports/<port_id>")
-        self.api.add_resource(NeutronUpdatePort, "v2.0/ports/<port_id>")
+        self.api.add_resource(NeutronListSubnets, "/v2.0/subnets")
+        self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets/<subnet_id>")
+        self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets/<subnet_id>")
+        self.api.add_resource(NeutronListPorts, "/v2.0/ports")
+        self.api.add_resource(NeutronShowPort, "/v2.0/ports/<port_id>")
+        self.api.add_resource(NeutronUpdatePort, "/v2.0/ports/<port_id>")
 
     def _start_flask(self):
         global compute
@@ -48,9 +48,11 @@ class NeutronListNetworks(Resource):
             network_list = list()
             network_dict = dict()
 
-            for net in compute.stack.nets.values():
-                tmp_network_dict = create_network_dict(net)
-                network_list.append(tmp_network_dict)
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    print('Found some network')
+                    tmp_network_dict = create_network_dict(net)
+                    network_list.append(tmp_network_dict)
 
             network_dict["networks"] = network_list
 
@@ -68,12 +70,14 @@ class NeutornShowNetwork(Resource):
 
         logging.debug("API CALL: Neutron - Show network")
         try:
-            for net in compute.stack.nets.values():
-                if net.id is network_id:
-                    tmp_network_dict = create_network_dict(net)
-                    tmp_dict = dict()
-                    tmp_dict["network"] = tmp_network_dict
-                    return json.dumps(tmp_dict)
+
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    if net.id is network_id:
+                        tmp_network_dict = create_network_dict(net)
+                        tmp_dict = dict()
+                        tmp_dict["network"] = tmp_network_dict
+                        return json.dumps(tmp_dict)
 
             return 'Network not found.', 404
 
@@ -92,27 +96,29 @@ class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be ch
 
         logging.debug("API CALL: Neutron - Update network")
         try:
-            for net in compute.stack.nets.values():
-                if net.id is network_id:
-                    tmp_network_dict = request._get_current_object()  # TODO is it really a dict?
-                    if "status" in tmp_network_dict["network"]:
-                        None  # tmp_network_dict["status"] = "ACTIVE"
-                    if "subnets" in tmp_network_dict["network"]:
-                        None  # tmp_network_dict["subnets"] = None
-                    if "name" in tmp_network_dict["network"] and net.name is not tmp_network_dict["network"]["name"]:
-                        old_name = net.name
-                        net.name = tmp_network_dict["network"]["name"]
-                        compute.stack.nets[net.name] = compute.stack.nets[old_name]
-                        del compute.stack.nets[old_name]
-                    if "admin_state_up" in tmp_network_dict["network"]:
-                        None  # tmp_network_dict["admin_state_up"] = True
-                    if "tenant_id" in tmp_network_dict["network"]:
-                        None  # tmp_network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"
-                    if "shared" in tmp_network_dict["network"]:
-                        None  # tmp_network_dict["shared"] = False
 
-                    tmp_network_dict = create_network_dict(net)
-                    return json.dumps(tmp_network_dict)
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    if net.id is network_id:
+                        tmp_network_dict = request._get_current_object()  # TODO is it really a dict?
+                        if "status" in tmp_network_dict["network"]:
+                            pass  # tmp_network_dict["status"] = "ACTIVE"
+                        if "subnets" in tmp_network_dict["network"]:
+                            pass  # tmp_network_dict["subnets"] = None
+                        if "name" in tmp_network_dict["network"] and net.name is not tmp_network_dict["network"]["name"]:
+                            old_name = net.name
+                            net.name = tmp_network_dict["network"]["name"]
+                            compute.stack.nets[net.name] = compute.stack.nets[old_name]
+                            del compute.stack.nets[old_name]
+                        if "admin_state_up" in tmp_network_dict["network"]:
+                            pass  # tmp_network_dict["admin_state_up"] = True
+                        if "tenant_id" in tmp_network_dict["network"]:
+                            pass  # tmp_network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"
+                        if "shared" in tmp_network_dict["network"]:
+                            pass  # tmp_network_dict["shared"] = False
+
+                        tmp_network_dict = create_network_dict(net)
+                        return json.dumps(tmp_network_dict)
 
             return 'Network not found.', 404  # TODO which number for not found?
 
@@ -134,9 +140,10 @@ class NeutronListSubnets(Resource):
             subnet_list = list()
             subnet_dict = dict()
 
-            for net in compute.stack.nets.values():
-                tmp_subnet_dict = create_subnet_dict(net)
-                subnet_list.append(tmp_subnet_dict)
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    tmp_subnet_dict = create_subnet_dict(net)
+                    subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
 
@@ -154,13 +161,13 @@ class NeutronShowSubnet(Resource):
 
         logging.debug("API CALL: Neutron - Show subnet")
         try:
-
-            for net in compute.stack.nets.values():
-                if net.subnet_id is subnet_id:
-                    tmp_subnet_dict = create_subnet_dict(net)
-                    tmp_dict = dict()
-                    tmp_dict["subnet"] = tmp_subnet_dict
-                    return json.dumps(tmp_dict)
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    if net.subnet_id is subnet_id:
+                        tmp_subnet_dict = create_subnet_dict(net)
+                        tmp_dict = dict()
+                        tmp_dict["subnet"] = tmp_subnet_dict
+                        return json.dumps(tmp_dict)
 
             return 'Subnet not found.', 404
 
@@ -179,30 +186,32 @@ class NeutronUpdateSubnet(Resource):
 
         logging.debug("API CALL: Neutron - Update subnet")
         try:
-            for net in compute.stack.nets.values():
-                if net.id is subnet_id:
-                    subnet_dict = request._get_current_object()  # TODO is it really a dict?
-                    if "name" in subnet_dict["subnet"]:
-                        net.subnet_name = subnet_dict["subnet"]["name"]
-                    if "network_id" in subnet_dict["subnet"]:
-                        net.id = subnet_dict["subnet"]["network_id"]
-                    if "tenant_id" in subnet_dict["subnet"]:
-                        None
-                    if "allocation_pools" in subnet_dict["subnet"]:
-                        None
-                    if "gateway_ip" in subnet_dict["subnet"]:
-                        net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
-                    if "ip_version" in subnet_dict["subnet"]:
-                        None
-                    if "cidr" in subnet_dict["subnet"]:
-                        net.cidr = subnet_dict["subnet"]["cidr"]
-                    if "id" in subnet_dict["subnet"]:
-                        net.subnet_id = subnet_dict["subnet"]["id"]
-                    if "enable_dhcp" in subnet_dict["subnet"]:
-                        None
 
-                    subnet_dict = create_subnet_dict(net)
-                    return json.dumps(subnet_dict)
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    if net.id is subnet_id:
+                        subnet_dict = request._get_current_object()  # TODO is it really a dict?
+                        if "name" in subnet_dict["subnet"]:
+                            net.subnet_name = subnet_dict["subnet"]["name"]
+                        if "network_id" in subnet_dict["subnet"]:
+                            net.id = subnet_dict["subnet"]["network_id"]
+                        if "tenant_id" in subnet_dict["subnet"]:
+                            pass
+                        if "allocation_pools" in subnet_dict["subnet"]:
+                            pass
+                        if "gateway_ip" in subnet_dict["subnet"]:
+                            net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
+                        if "ip_version" in subnet_dict["subnet"]:
+                            pass
+                        if "cidr" in subnet_dict["subnet"]:
+                            net.cidr = subnet_dict["subnet"]["cidr"]
+                        if "id" in subnet_dict["subnet"]:
+                            net.subnet_id = subnet_dict["subnet"]["id"]
+                        if "enable_dhcp" in subnet_dict["subnet"]:
+                            pass
+
+                        subnet_dict = create_subnet_dict(net)
+                        return json.dumps(subnet_dict)
 
             return 'Network not found.', 404  # TODO which number for not found?
 
@@ -224,9 +233,10 @@ class NeutronListPorts(Resource):
             port_list = list()
             port_dict = dict()
 
-            for net in compute.stack.nets.values():
-                tmp_port_dict = create_subnet_dict(net)
-                port_list.append(tmp_port_dict)
+            for stack in compute.stacks.values():
+                for net in stack.ports.values():
+                    tmp_port_dict = create_port_dict(net)
+                    port_list.append(tmp_port_dict)
 
             port_dict["ports"] = port_list
 
@@ -245,12 +255,13 @@ class NeutronShowPort(Resource):
         logging.debug("API CALL: Neutron - Show port")
         try:
 
-            for port in compute.stack.ports.values():
-                if port.id is port_id:
-                    tmp_subnet_dict = create_port_dict(port)
-                    tmp_dict = dict()
-                    tmp_dict["port"] = tmp_subnet_dict
-                    return json.dumps(tmp_dict)
+            for stack in compute.stacks.values():
+                for port in stack.ports.values():
+                    if port.id is port_id:
+                        tmp_subnet_dict = create_port_dict(port)
+                        tmp_dict = dict()
+                        tmp_dict["port"] = tmp_subnet_dict
+                        return json.dumps(tmp_dict)
 
             return 'Port not found.', 404
 
@@ -269,35 +280,36 @@ class NeutronUpdatePort(Resource):
 
         logging.debug("API CALL: Neutron - Update port")
         try:
-            for port in compute.stack.nets.values():
-                if port.id is port_id:
-                    port_dict = request._get_current_object()  # TODO is it really a dict?
-                    if "admin_state_up" in port_dict["port"]:
-                        None
-                    if "device_id" in port_dict["port"]:
-                        None
-                    if "device_owner" in port_dict["port"]:
-                        None
-                    if "fixed_ips" in port_dict["port"]:
-                        None
-                    if "id" in port_dict["port"]:
-                        port.id = port_dict["port"]["id"]
-                    if "mac_adress" in port_dict["port"]:
-                        port.mac_address = port_dict["port"]["mac_address"]
-                    if "name" in port_dict["port"] and port_dict["port"]["name"] is not port.name:
-                        old_name = port.name
-                        port.name = port_dict["port"]["name"]
-                        compute.stack.ports[port.name] = compute.stack.ports[old_name]
-                        del compute.stack.ports[old_name]
-                    if "network_id" in port_dict["port"]:
-                        None
-                    if "status" in port_dict["port"]:
-                        None
-                    if "tenant_id" in port_dict["port"]:
-                        None
+            for stack in compute.stacks.values():
+                for port in stack.ports.values():
+                    if port.id is port_id:
+                        port_dict = request._get_current_object()  # TODO is it really a dict?
+                        if "admin_state_up" in port_dict["port"]:
+                            pass
+                        if "device_id" in port_dict["port"]:
+                            pass
+                        if "device_owner" in port_dict["port"]:
+                            pass
+                        if "fixed_ips" in port_dict["port"]:
+                            pass
+                        if "id" in port_dict["port"]:
+                            port.id = port_dict["port"]["id"]
+                        if "mac_adress" in port_dict["port"]:
+                            port.mac_address = port_dict["port"]["mac_address"]
+                        if "name" in port_dict["port"] and port_dict["port"]["name"] is not port.name:
+                            old_name = port.name
+                            port.name = port_dict["port"]["name"]
+                            compute.stack.ports[port.name] = compute.stack.ports[old_name]
+                            del compute.stack.ports[old_name]
+                        if "network_id" in port_dict["port"]:
+                            pass
+                        if "status" in port_dict["port"]:
+                            pass
+                        if "tenant_id" in port_dict["port"]:
+                            pass
 
-                    port_dict = create_subnet_dict(port)
-                    return json.dumps(port_dict)
+                        port_dict = create_subnet_dict(port)
+                        return json.dumps(port_dict)
 
             return 'Port not found.', 404  # TODO which number for not found?
 
