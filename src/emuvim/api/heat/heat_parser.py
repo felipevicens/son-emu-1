@@ -87,7 +87,8 @@ class HeatParser:
 
                 tmp_net = stack.nets[net_name]
                 tmp_net.subnet_name = name
-                tmp_net.subnet_id = gateway_ip  # TODO maybe this is wrong!? gateway_ip could be something else
+                tmp_net.gateway_ip = gateway_ip
+                tmp_net.subnet_id = str(len(stack.nets))
                 tmp_net.cidr = cidr
             except Exception as e:
                 print('Could not create Subnet: ' + e.message)
@@ -99,6 +100,7 @@ class HeatParser:
             try:
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
+                    stack.ports[name].id = len(stack.ports)
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == network:
@@ -163,6 +165,7 @@ class HeatParser:
                 floating_network_id = resource['properties']['floating_network_id']
                 if port_id not in stack.ports:
                     stack.ports[port_id] = Port(port_id)
+                    stack.ports[port_id].id = len(stack.ports)
 
                 tmp_port = stack.ports[port_id]
                 tmp_port.floating_ip = floating_network_id
