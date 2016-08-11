@@ -13,13 +13,13 @@ class Stack:
             self.id = id
 
     def add_server(self, server):
-        self.servers.append(server)
+        self.servers[server.name] = server
 
     def add_net(self, net):
-        self.nets.append(net)
+        self.nets[net.name] = net
 
     def add_port(self, port):
-        self.ports.append(port)
+        self.ports[port.name] = port
 
     def add_router(self, router):
-        self.routers.append(router)
+        self.routers[router.name] = router
