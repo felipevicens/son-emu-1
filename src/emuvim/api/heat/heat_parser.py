@@ -91,7 +91,7 @@ class HeatParser:
                 tmp_net = stack.nets[net_name]
                 tmp_net.subnet_name = name
                 tmp_net.gateway_ip = gateway_ip
-                tmp_net.subnet_id = str(len(stack.nets))
+                tmp_net.subnet_id = tmp_net.id  # TODO could there be a different number of subnets than nets?
                 tmp_net.cidr = cidr
             except Exception as e:
                 print('Could not create Subnet: ' + e.message)
