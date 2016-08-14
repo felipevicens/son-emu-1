@@ -88,7 +88,7 @@ class NeutornShowNetwork(Resource):
 # TODO maybe add 'Create Network' function
 
 
-class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be changed, dict key has to be updated too
+class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be changed
 
     def put(self, network_id):
         global compute
@@ -99,29 +99,28 @@ class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be ch
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
                     if net.id == network_id:
-                        print("hey ho")
-                        tmp_network_dict = request.json  # TODO is it really a dict?
-                        print(tmp_network_dict)
-                        if "status" in tmp_network_dict["network"]:
+                        network_dict = request.json
+
+                        if "status" in network_dict["network"]:
                             pass  # tmp_network_dict["status"] = "ACTIVE"
-                        if "subnets" in tmp_network_dict["network"]:
+                        if "subnets" in network_dict["network"]:
                             pass  # tmp_network_dict["subnets"] = None
-                        if "name" in tmp_network_dict["network"] and net.name is not tmp_network_dict["network"]["name"]:
+                        if "name" in network_dict["network"] and net.name != network_dict["network"]["name"]:
                             old_name = net.name
-                            net.name = tmp_network_dict["network"]["name"]
-                            compute.stack.nets[net.name] = compute.stack.nets[old_name]
-                            del compute.stack.nets[old_name]
-                        if "admin_state_up" in tmp_network_dict["network"]:
+                            net.name = network_dict["network"]["name"]
+                            stack.nets[net.name] = stack.nets[old_name]
+                            del stack.nets[old_name]
+                        if "admin_state_up" in network_dict["network"]:
                             pass  # tmp_network_dict["admin_state_up"] = True
-                        if "tenant_id" in tmp_network_dict["network"]:
+                        if "tenant_id" in network_dict["network"]:
                             pass  # tmp_network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"
-                        if "shared" in tmp_network_dict["network"]:
+                        if "shared" in network_dict["network"]:
                             pass  # tmp_network_dict["shared"] = False
 
-                        tmp_network_dict = create_network_dict(net)
-                        return json.dumps(tmp_network_dict)
+                        network_dict = create_network_dict(net)
+                        return json.dumps(network_dict)
 
-            return 'Network not found.', 404  # TODO which number for not found?
+            return 'Network not found.', 404
 
         except Exception as ex:
             logging.exception("Neutron: Show networks exception.")
@@ -191,7 +190,8 @@ class NeutronUpdateSubnet(Resource):
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
                     if net.id == subnet_id:
-                        subnet_dict = request._get_current_object()  # TODO is it really a dict?
+                        subnet_dict = request.json
+
                         if "name" in subnet_dict["subnet"]:
                             net.subnet_name = subnet_dict["subnet"]["name"]
                         if "network_id" in subnet_dict["subnet"]:
@@ -214,7 +214,7 @@ class NeutronUpdateSubnet(Resource):
                         subnet_dict = create_subnet_dict(net)
                         return json.dumps(subnet_dict)
 
-            return 'Network not found.', 404  # TODO which number for not found?
+            return 'Network not found.', 404
 
         except Exception as ex:
             logging.exception("Neutron: Show networks exception.")
@@ -259,9 +259,9 @@ class NeutronShowPort(Resource):
             for stack in compute.stacks.values():
                 for port in stack.ports.values():
                     if port.id == port_id:
-                        tmp_subnet_dict = create_port_dict(port)
+                        tmp_port_dict = create_port_dict(port)
                         tmp_dict = dict()
-                        tmp_dict["port"] = tmp_subnet_dict
+                        tmp_dict["port"] = tmp_port_dict
                         return json.dumps(tmp_dict)
 
             return 'Port not found.', 404
@@ -284,7 +284,8 @@ class NeutronUpdatePort(Resource):
             for stack in compute.stacks.values():
                 for port in stack.ports.values():
                     if port.id == port_id:
-                        port_dict = request._get_current_object()  # TODO is it really a dict?
+                        port_dict = request.json
+
                         if "admin_state_up" in port_dict["port"]:
                             pass
                         if "device_id" in port_dict["port"]:
@@ -295,13 +296,13 @@ class NeutronUpdatePort(Resource):
                             pass
                         if "id" in port_dict["port"]:
                             port.id = port_dict["port"]["id"]
-                        if "mac_adress" in port_dict["port"]:
+                        if "mac_address" in port_dict["port"]:
                             port.mac_address = port_dict["port"]["mac_address"]
-                        if "name" in port_dict["port"] and port_dict["port"]["name"] is not port.name:
+                        if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
                             old_name = port.name
                             port.name = port_dict["port"]["name"]
-                            compute.stack.ports[port.name] = compute.stack.ports[old_name]
-                            del compute.stack.ports[old_name]
+                            stack.ports[port.name] = stack.ports[old_name]
+                            del stack.ports[old_name]
                         if "network_id" in port_dict["port"]:
                             pass
                         if "status" in port_dict["port"]:
@@ -309,10 +310,10 @@ class NeutronUpdatePort(Resource):
                         if "tenant_id" in port_dict["port"]:
                             pass
 
-                        port_dict = create_subnet_dict(port)
+                        port_dict = create_port_dict(port)
                         return json.dumps(port_dict)
 
-            return 'Port not found.', 404  # TODO which number for not found?
+            return 'Port not found.', 404
 
         except Exception as ex:
             logging.exception("Neutron: Update port exception.")
