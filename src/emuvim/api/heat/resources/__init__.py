@@ -1,4 +1,4 @@
-from instance_flavor import InterfaceFlavor
+from instance_flavor import InstanceFlavor
 from model import Model
 from net import Net
 from port import Port

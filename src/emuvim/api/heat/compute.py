@@ -17,6 +17,7 @@ class OpenstackCompute:
         self.stacks = dict()
         self.computeUnits = dict()
         self.routers = dict()
+        self.flavors = dict()
 
     def add_stack(self, stack):
         self.check_stack(stack)
@@ -26,6 +27,10 @@ class OpenstackCompute:
     def check_stack(self, stack):
         # raise HeatApiStackInvalidException("Stack did not pass validity checks")
         return True
+
+    def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
+        flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit )
+        self.flavors[flavor.id] = flavor
 
     def deploy_stack(self, stackid):
         if self.dc is None:
