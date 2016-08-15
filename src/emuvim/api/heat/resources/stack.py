@@ -7,6 +7,7 @@ class Stack:
         self.nets = dict()
         self.ports = dict()
         self.routers = dict()
+        self.stack_name = None
         if id is None:
             self.id = str(uuid.uuid4())
         else:

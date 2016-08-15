@@ -14,7 +14,7 @@ class HeatParser:
         self.bufferResource = list()
 
     def parse_input(self, input_string, stack, dc_label):
-        yaml_dict = yaml.load(input_string)
+        yaml_dict = input_string
 
         if not (str(yaml_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
             print('Unsupported template version: ' + yaml_dict['heat_template_version'], file=sys.stderr)
