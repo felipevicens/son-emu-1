@@ -28,7 +28,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "debian:latest"
+      image: "ubuntu:trusty"
       name: "firewall-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:
@@ -115,7 +115,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "debian:latest"
+      image: "ubuntu:trusty"
       name: "iperf-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:
@@ -203,7 +203,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "debian:latest"
+      image: "ubuntu:trusty"
       name: "tcpdump-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:

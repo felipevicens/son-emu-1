@@ -4,7 +4,7 @@ from flask import request,jsonify
 from flask_restful import Api,Resource
 import logging
 import json
-from resources import Stack
+from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from datetime import datetime, timedelta
 
