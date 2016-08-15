@@ -39,17 +39,18 @@ from emuvim.api.sonata import SonataDummyGatekeeperEndpoint
 from mininet.node import RemoteController
 import signal
 import sys
-
+import time
 
 logging.basicConfig(level=logging.INFO)
 
-net = None
-cli = None
-
+exit = False
 
 def create_topology1():
+
+    global exit
+
     # create topology
-    net = DCNetwork(controller=RemoteController, monitor=False, enable_learning = False)
+    net = DCNetwork(controller=RemoteController, monitor=True, enable_learning = False)
     dc1 = net.addDatacenter("dc1")
     dc2 = net.addDatacenter("dc2")
     s1 = net.addSwitch("s1")
@@ -60,6 +61,8 @@ def create_topology1():
     rapi1 = RestApiEndpoint("0.0.0.0", 5001)
     rapi1.connectDatacenter(dc1)
     rapi1.connectDatacenter(dc2)
+    # connect total network also, needed to do the chaining and monitoring
+    rapi1.connectDCNetwork(net)
     # run API endpoint server (in another thread, don't block)
     rapi1.start()
 
@@ -72,27 +75,34 @@ def create_topology1():
 
     # start the emulation platform
     net.start()
+    
+    #does not work from docker compose (cannot start container in interactive mode)
     #cli = net.CLI()
-    #net.stop()
+    # instead wait here:
+    logging.info("waiting for SIGTERM or SIGINT signal")
+    while not exit:
+        time.sleep(1)
+    logging.info("got SIG signal")
+    net.stop()
 
 def exit_gracefully(signum, frame):
     """
-    7. At shutdown, we should receive th SIGTERM signal here and shutdown gracefully
+    7. At shutdown, we should receive the unix signal here and shutdown gracefully
     """
-    # TODO: investigate why this is not called by the sigterm handler
 
-    global net
-    global cli
+    global exit
 
     logging.info('Signal handler called with signal {0}'.format(signum))
-    net.stop()
+    exit = True
 
-    sys.exit()
 
 def main():
     setLogLevel('info')  # set Mininet loglevel
     # add the SIGTERM handler (eg. received when son-emu docker container stops)
     signal.signal(signal.SIGTERM, exit_gracefully)
+    # also handle Ctrl-C
+    signal.signal(signal.SIGINT, exit_gracefully)
+    # start the topology
     create_topology1()
 
 
