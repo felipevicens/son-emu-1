@@ -7,21 +7,25 @@ import json
 from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from datetime import datetime, timedelta
+from emuvim.api.heat.heat_parser import HeatParser
 
 
 compute = None
+ip = None
+port = None
 class HeatDummyApi(BaseOpenstackDummy):
-    global compute
+    global compute, ip, port
 
-    def __init__(self, ip, port):
+    def __init__(self, in_ip, in_port):
         global compute
 
-        super(HeatDummyApi, self).__init__(ip, port)
-        compute = None
+        super(HeatDummyApi, self).__init__(in_ip, in_port)
+        self.compute = None
+        ip = in_ip
+        port = in_port
 
-        self.api.add_resource(HeatCreateStack, "/v2.0/networks/<tenant_id>")
-        self.api.add_resource(HeatAdoptStack, "/v2.0/networks/<tenant_id>")
-        self.api.add_resource(HeatListStackData, "/v2.0/networks/<tenant_id>")
+        self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
+        self.api.add_resource(HeatAdoptStack, "/v1/networks/<tenant_id>")
 
     def _start_flask(self):
         global compute
@@ -34,27 +38,59 @@ class HeatDummyApi(BaseOpenstackDummy):
 
 class HeatCreateStack(Resource):
     def post(self, tenant_id):
-        global compute
+        global compute, ip, port
 
         logging.debug("API CALL: Heat - Create Stack")
 
         try:
             stack_dict = request.json
+
             stack = Stack()
+            reader = HeatParser()
+            reader.parse_input(stack_dict['template'], stack, compute.dc.label)
+
+            stack.stack_name = stack_dict['stack_name']
 
             return_dict = {"stack": {"id": stack.id,
                                      "links": [
                                         {
-                                            "href": "http://192.168.123.200:8004/v1/eb1c63a4f77141548385f113a28f0f52/stacks/teststack/"+stack.id,
+                                            "href": "http://%s:%s/v1/%s/stacks/%s/"
+                                                    %(ip, port,stack.id, stack.stack_name),
                                             "rel": "self"
-                                        } ]}}#TODO find out the URL of the stack
+                                        } ]}}
 
-            compute.stacks.append(stack)
-
+            compute.add_stack(stack)
+            compute.deploy_stack(stack.id)
             return json.dumps(return_dict), 200
 
         except Exception as ex:
             logging.exception("Heat: Create Stack exception.")
+            return ex.message, 500
+
+    def get(self, tenant_id):
+        global compute
+
+        logging.debug("API CALL: HEAT - List Stack Data")
+        try:
+            tmp_stack_list = list()
+            for stack in compute.stacks.values():
+                tmp_stack_list = {"creation_time":datetime.datetime.now() - timedelta(days=7),
+                                  "description":"desc of "+stack.id,
+                                  "id": stack.id,
+                                  "links": [],
+                                  "stack_name": "simple_stack",
+                                  "stack_status": "CREATE_COMPLETE",
+                                  "stack_status_reason": "Stack CREATE completed successfully",
+                                  "updated_time": "",
+                                  "tags": ""
+                                  }
+
+            return json.dumps(tmp_stack_list),200
+
+
+
+        except Exception as ex:
+            logging.exception("Heat: List Stack Dataexception.")
             return ex.message, 500
 
 
@@ -88,32 +124,4 @@ class HeatAdoptStack(Resource):
 
         except Exception as ex:
             logging.exception("Heat: Adopt Stack exception.")
-            return ex.message, 500
-
-class HeatListStackData(Resource):
-
-    def get(self, tenant_id):
-        global compute
-
-        logging.debug("API CALL: HEAT - List Stack Data")
-        try:
-            tmp_stack_list = list()
-            for stack in compute.stacks.values():
-                tmp_stack_list = {"creation_time":datetime.datetime.now() - timedelta(days=7),
-                                  "description":"desc of "+stack.id,
-                                  "id": stack.id,
-                                  "links": [],
-                                  "stack_name": "simple_stack",
-                                  "stack_status": "CREATE_COMPLETE",
-                                  "stack_status_reason": "Stack CREATE completed successfully",
-                                  "updated_time": "",
-                                  "tags": ""
-                                  }
-
-            return json.dumps(tmp_stack_list),200
-
-
-
-        except Exception as ex:
-            logging.exception("Heat: List Stack Dataexception.")
             return ex.message, 500
