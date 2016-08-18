@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-from flask import request,jsonify
+from flask import request,jsonify, Response
 from flask_restful import Api,Resource
 import logging
 import json
@@ -25,7 +25,6 @@ class HeatDummyApi(BaseOpenstackDummy):
         port = in_port
 
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
-        self.api.add_resource(HeatAdoptStack, "/v1/networks/<tenant_id>")
 
     def _start_flask(self):
         global compute
@@ -72,7 +71,9 @@ class HeatCreateStack(Resource):
 
         logging.debug("API CALL: HEAT - List Stack Data")
         try:
-            tmp_stack_list = list()
+            return_stacks = dict()
+            return_stacks['stacks'] = list()
+            tmp_stack_list = return_stacks['stacks']
             for stack in compute.stacks.values():
                 tmp_stack_list = {"creation_time":datetime.datetime.now() - timedelta(days=7),
                                   "description":"desc of "+stack.id,
@@ -85,14 +86,10 @@ class HeatCreateStack(Resource):
                                   "tags": ""
                                   }
 
-            return json.dumps(tmp_stack_list),200
-
-
-
+            return Response(json.dumps(return_stacks), status=200)
         except Exception as ex:
             logging.exception("Heat: List Stack Dataexception.")
             return ex.message, 500
-
 
 class HeatAdoptStack(Resource):
     def post(self, tenant_id):

@@ -61,7 +61,7 @@ class KeystoneGetToken(Resource):
             token['tenant'] = dict()
             token['tenant']['description'] = None
             token['tenant']['enabled'] = True
-            token['tenant']['id'] = 1873
+            token['tenant']['id'] = "fc394f2ab2df4114bde39905f800dc57"
             token['tenant']['name'] = "tenantName"
 
             ret['access']['user'] = dict()
@@ -69,19 +69,19 @@ class KeystoneGetToken(Resource):
             user['username'] = "username"
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = 1873
+            user['id'] = "fc394f2ab2df4114bde39905f800dc57"
             user['roles'] = [{'name' : 'Member'}]
 
-            ret['access']['region_name'] = "blaaa"
+            ret['access']['region_name'] = "RegionOne"
 
             ret['access']['serviceCatalog'] = [{
                 "endpoints": [
                     {
-                        "adminURL": "http://%s:%s/v2/%s" %(ip, port +3774, 1873),
+                        "adminURL": "http://%s:%s/v2/%s" %(ip, port +3774, user['id'] ),
                         "region": "RegionOne",
-                        "internalURL": "http://%s:%s/v2/%s" %(ip, port+3774, 1873),
+                        "internalURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] ),
                         "id": "2dad48f09e2a447a9bf852bcd93548ef",
-                        "publicURL": "http://%s:%s/v2/%s" %(ip, port+3774, 1873)
+                        "publicURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] )
                     }
                 ],
                 "endpoints_links": [],
@@ -105,11 +105,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, 1873),
+                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v1//%s" % (ip, port + 3004, 1873),
+                            "internalURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
                             "id": "2dad48f09e2a447a9bf852bcd93548bf",
-                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, 1873)
+                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] )
                         }
                     ],
                     "endpoints_links": [],
@@ -131,7 +131,7 @@ class KeystoneGetToken(Resource):
                     "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
                     "impersonation": False
             }
-
+            print json.dumps(ret)
             resp = Response(json.dumps(ret), status=200)
 
             return resp
