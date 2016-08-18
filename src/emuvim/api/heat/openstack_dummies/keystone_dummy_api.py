@@ -43,25 +43,24 @@ class KeystoneGetToken(Resource):
         # OS_AUTH_URL=http://<ip>:<port>/v2.0
         # OS_IDENTITY_API_VERSION=2.0
         # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
-        # OS_REGION_NAME=regionOne
+        # OS_REGION_NAME=RegionOne
         # OS_AUTH_TOKEN=aaaaa-bbbbb-ccccc-dddd
-        # OS_USER_ID=9a6590b2ab024747bc2167c4e064d00d
-        # OS_USERNAME=username
 
         logging.debug("API CALL: Keystone - Get token")
         try:
             ret = dict()
+            req = request.json
             ret['access'] = dict()
             ret['access']['token'] = dict()
             token = ret['access']['token']
 
             token['issued_at'] = str(datetime.now())
             token['expires'] = str(datetime.now() + timedelta(days=7))
-            token['id'] = "435345"
+            token['id'] = req['auth']['token']['id']
             token['tenant'] = dict()
             token['tenant']['description'] = None
             token['tenant']['enabled'] = True
-            token['tenant']['id'] = "fc394f2ab2df4114bde39905f800dc57"
+            token['tenant']['id'] = req['auth']['tenantId']
             token['tenant']['name'] = "tenantName"
 
             ret['access']['user'] = dict()
@@ -69,7 +68,7 @@ class KeystoneGetToken(Resource):
             user['username'] = "username"
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = "fc394f2ab2df4114bde39905f800dc57"
+            user['id'] = req['auth']['tenantId']
             user['roles'] = [{'name' : 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"
@@ -88,6 +87,20 @@ class KeystoneGetToken(Resource):
                 "type": "compute",
                 "name": "nova"
             },
+                {
+                    "endpoints": [
+                        {
+                            "adminURL": "http://%s:%s/v2.0" % (ip, port),
+                            "region": "RegionOne",
+                            "internalURL": "http://%s:%s/v2.0" % (ip, port),
+                            "id": "2dad48f09e2a447a9bf852bcd93543fc",
+                            "publicURL": "http://%s:%s/v2" % (ip, port)
+                        }
+                    ],
+                    "endpoints_links": [],
+                    "type": "identity",
+                    "name": "keystone"
+                },
             {
                 "endpoints": [
                     {
@@ -121,8 +134,7 @@ class KeystoneGetToken(Resource):
             ret['access']["metadata"] =  {
                             "is_admin": 0,
                             "roles": [
-                                "7598ac3c634d4c3da4b9126a5f67ca2b",
-                                "f95c0ab82d6045d9805033ee1fbc80d4"
+                                "7598ac3c634d4c3da4b9126a5f67ca2b"
                             ]
                         },
             ret['access']['trust'] = {
