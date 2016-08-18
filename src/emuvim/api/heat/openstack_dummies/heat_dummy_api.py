@@ -25,6 +25,7 @@ class HeatDummyApi(BaseOpenstackDummy):
         port = in_port
 
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
+        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
 
     def _start_flask(self):
         global compute
@@ -55,8 +56,8 @@ class HeatCreateStack(Resource):
             return_dict = {"stack": {"id": stack.id,
                                      "links": [
                                         {
-                                            "href": "http://%s:%s/v1/%s/stacks/%s/"
-                                                    %(ip, port,stack.id, stack.stack_name),
+                                            "href": "http://%s:%s/v1/%s/stacks/%s"
+                                                    %(ip, port, tenant_id, stack.id),
                                             "rel": "self"
                                         } ]}}
 
@@ -90,5 +91,21 @@ class HeatCreateStack(Resource):
 
             return Response(json.dumps(return_stacks), status=200)
         except Exception as ex:
-            logging.exception("Heat: List Stack Dataexception.")
+            logging.exception("Heat: List Stack exception.")
+            return ex.message, 500
+
+class HeatShowStack(Resource):
+    def get(self, tenant_id, stack_name, stack_id):
+        global compute, ip, port
+
+        logging.debug("HEAT: Show Stack")
+        try:
+            stack = compute.stacks[stack_id]
+
+
+
+
+            return Response("", status=200)
+        except Exception as ex:
+            logging.exception("Heat: Show stack exception.")
             return ex.message, 500
