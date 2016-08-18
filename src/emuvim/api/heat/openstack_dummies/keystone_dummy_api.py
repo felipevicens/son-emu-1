@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from flask_restful import Resource
-from flask import request
+from flask import request, Response
 from flask import jsonify
 import logging
 import json
@@ -13,17 +13,17 @@ compute = None
 ip = None
 port = None
 logging.basicConfig(level=logging.INFO)
-class KeystoneDummyApi(BaseOpenstackDummy):
 
-    def __init__(self,in_ip,in_port):
+
+class KeystoneDummyApi(BaseOpenstackDummy):
+    def __init__(self, in_ip, in_port):
         global compute, ip, port
 
-        super(KeystoneDummyApi, self).__init__(in_ip,in_port)
+        super(KeystoneDummyApi, self).__init__(in_ip, in_port)
         compute = self.compute
         ip = in_ip
         port = in_port
         self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
-
 
     def _start_flask(self):
         global compute
@@ -36,47 +36,71 @@ class KeystoneDummyApi(BaseOpenstackDummy):
 
 class KeystoneGetToken(Resource):
     global ip, port
+
     def post(self):
+        # everything is hardcoded here
+        # to work with this keystone setup you need the following parameters
+        # OS_AUTH_URL=http://<ip>:<port>/v2.0
+        # OS_IDENTITY_API_VERSION=2.0
+        # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
+        # OS_REGION_NAME=RegionOne
+        # OS_AUTH_TOKEN=aaaaa-bbbbb-ccccc-dddd
+
         logging.debug("API CALL: Keystone - Get token")
         try:
             ret = dict()
-
+            req = request.json
             ret['access'] = dict()
             ret['access']['token'] = dict()
             token = ret['access']['token']
 
             token['issued_at'] = str(datetime.now())
             token['expires'] = str(datetime.now() + timedelta(days=7))
-            token['id'] = str(uuid.uuid4())
+            token['id'] = req['auth']['token']['id']
             token['tenant'] = dict()
             token['tenant']['description'] = None
             token['tenant']['enabled'] = True
-            token['tenant']['id'] = request.json['auth']['tenantId']
-            token['tenant']['name'] = request.json['auth']['passwordCredentials']['username']
+            token['tenant']['id'] = req['auth']['tenantId']
+            token['tenant']['name'] = "tenantName"
 
             ret['access']['user'] = dict()
             user = ret['access']['user']
-            user['username'] = request.json['auth']['passwordCredentials']['username']
-            user['uname'] = request.json['auth']['passwordCredentials']['username']
+            user['username'] = "username"
+            user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = request.json['auth']['tenantId']
+            user['id'] = req['auth']['tenantId']
             user['roles'] = [{'name' : 'Member'}]
 
-            ret['access']['serviceCatalog'] = dict()
+            ret['access']['region_name'] = "RegionOne"
+
             ret['access']['serviceCatalog'] = [{
                 "endpoints": [
                     {
-                        "adminURL": "http://%s:%s/v2/%s" %(ip, port +3774, request.json['auth']['tenantId']),
+                        "adminURL": "http://%s:%s/v2/%s" %(ip, port +3774, user['id'] ),
                         "region": "RegionOne",
-                        "internalURL": "http://%s:%s/v2/%s" %(ip, port+3774, request.json['auth']['tenantId']),
+                        "internalURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] ),
                         "id": "2dad48f09e2a447a9bf852bcd93548ef",
-                        "publicURL": "http://%s:%s/v2/%s" %(ip, port+3774, request.json['auth']['tenantId'])
+                        "publicURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] )
                     }
                 ],
                 "endpoints_links": [],
                 "type": "compute",
                 "name": "nova"
             },
+                {
+                    "endpoints": [
+                        {
+                            "adminURL": "http://%s:%s/v2.0" % (ip, port),
+                            "region": "RegionOne",
+                            "internalURL": "http://%s:%s/v2.0" % (ip, port),
+                            "id": "2dad48f09e2a447a9bf852bcd93543fc",
+                            "publicURL": "http://%s:%s/v2" % (ip, port)
+                        }
+                    ],
+                    "endpoints_links": [],
+                    "type": "identity",
+                    "name": "keystone"
+                },
             {
                 "endpoints": [
                     {
@@ -94,11 +118,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004,request.json['auth']['tenantId']),
+                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v1//%s" % (ip, port + 3004, request.json['auth']['tenantId']),
+                            "internalURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
                             "id": "2dad48f09e2a447a9bf852bcd93548bf",
-                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, request.json['auth']['tenantId'])
+                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] )
                         }
                     ],
                     "endpoints_links": [],
@@ -110,62 +134,19 @@ class KeystoneGetToken(Resource):
             ret['access']["metadata"] =  {
                             "is_admin": 0,
                             "roles": [
-                                "7598ac3c634d4c3da4b9126a5f67ca2b",
-                                "f95c0ab82d6045d9805033ee1fbc80d4"
+                                "7598ac3c634d4c3da4b9126a5f67ca2b"
                             ]
                         },
             ret['access']['trust'] = {
-                "trust": {
                     "id": "394998fa61f14736b1f0c1f322882949",
                     "trustee_user_id": "269348fdd9374b8885da1418e0730af1",
                     "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
                     "impersonation": False
-                }
             }
+            resp = Response(json.dumps(ret), status=200)
 
-
-            print ret
-
-            return json.dumps(ret), 200
+            return resp
 
         except Exception as ex:
             logging.exception("Keystone: Get token failed.")
-            return ex.message, 500
-
-
-class KeystoneTokenDefaultScope(Resource):
-    def get(self):
-
-        logging.debug("API CALL: Keystone - Token Default Scope")
-        try:
-            return_dict = dict()
-            token_dict = dict()
-
-            methods_dict = {"methods":list("password")}
-            token_dict.append(methods_dict)
-
-            roles_list = [{"id": "9fe2ff9ee4384b1894a90878d3e92bab","name": "_member_"},
-                          {"id": "c703057be878458588961ce9a0ce686b","name": "admin"}]
-            token_dict.append(roles_list)
-
-            token_dict.append({"expires_at":datetime.datetime.now() + timedelta(days=7)})
-
-            token_dict.append({"project": {"domain":{"id":"default", "name":"Default"},
-                                           "id":"8538a3f13f9541b28c2620eb19065e45", "name":"admin"}})
-
-            token_dict.append({"user": {"domain": {"id": "default","name": "Default"},
-                                        "id": "3ec3164f750146be97f21559ee4d9c51","name": "admin"}})
-
-            #TODO here we have to return the supported endpoints
-
-            token_dict.append({"audit_ids": ["yRt0UrxJSs6-WYJgwEMMmg"]})
-
-            token_dict.append({"issued_at": datetime.datetime.now()})
-
-            return_dict.append(token_dict)
-
-            return json.dumps(return_dict), 200
-
-        except Exception as ex:
-            logging.exception("Keystone: Default Scope exception.")
             return ex.message, 500
