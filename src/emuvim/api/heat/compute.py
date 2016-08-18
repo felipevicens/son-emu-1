@@ -50,5 +50,3 @@ class OpenstackCompute:
 
             c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
-        logging.info(stack.servers)
-

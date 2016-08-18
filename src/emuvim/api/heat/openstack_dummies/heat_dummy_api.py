@@ -39,7 +39,7 @@ class HeatCreateStack(Resource):
     def post(self, tenant_id):
         global compute, ip, port
 
-        logging.debug("API CALL: Heat - Create Stack")
+        logging.debug("HEAT: Create Stack")
 
         try:
             stack_dict = request.json
@@ -49,6 +49,8 @@ class HeatCreateStack(Resource):
             reader.parse_input(stack_dict['template'], stack, compute.dc.label)
 
             stack.stack_name = stack_dict['stack_name']
+            stack.creation_time = str(datetime.now())
+            stack.status = "CREATE_COMPLETE"
 
             return_dict = {"stack": {"id": stack.id,
                                      "links": [
@@ -69,56 +71,24 @@ class HeatCreateStack(Resource):
     def get(self, tenant_id):
         global compute
 
-        logging.debug("API CALL: HEAT - List Stack Data")
+        logging.debug("HEAT: Stack List")
         try:
             return_stacks = dict()
             return_stacks['stacks'] = list()
-            tmp_stack_list = return_stacks['stacks']
             for stack in compute.stacks.values():
-                tmp_stack_list = {"creation_time":datetime.datetime.now() - timedelta(days=7),
+                return_stacks['stacks'].append(
+                                {"creation_time": stack.creation_time,
                                   "description":"desc of "+stack.id,
                                   "id": stack.id,
                                   "links": [],
-                                  "stack_name": "simple_stack",
-                                  "stack_status": "CREATE_COMPLETE",
+                                  "stack_name": stack.stack_name,
+                                  "stack_status": stack.status,
                                   "stack_status_reason": "Stack CREATE completed successfully",
-                                  "updated_time": "",
+                                  "updated_time": stack.update_time,
                                   "tags": ""
-                                  }
+                                })
 
             return Response(json.dumps(return_stacks), status=200)
         except Exception as ex:
             logging.exception("Heat: List Stack Dataexception.")
-            return ex.message, 500
-
-class HeatAdoptStack(Resource):
-    def post(self, tenant_id):
-        global compute
-
-        logging.debug("API CALL: Heat - Adopt Stack")
-
-        try:
-            request_dict = request.json
-            for stack in compute.stacks.values():
-                if stack.id == request_dict["id"]:
-                    stack_to_modify = stack
-                    pass #TODO does this quit the for-loop?
-
-
-            #TODO do we need to update anything here?
-
-
-            return_dict = {"stack": {"id": stack.id,
-                                     "links": [
-                                         {
-                                             "href": "http://192.168.123.200:8004/v1/eb1c63a4f77141548385f113a28f0f52/stacks/teststack/" + stack.id,
-                                             "rel": "self"
-                                         }]}}  # TODO find out the URL of the stack
-
-            compute.stacks.append(stack)
-
-            return json.dumps(return_dict), 200
-
-        except Exception as ex:
-            logging.exception("Heat: Adopt Stack exception.")
             return ex.message, 500

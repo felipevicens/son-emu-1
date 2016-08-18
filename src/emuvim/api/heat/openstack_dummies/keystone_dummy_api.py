@@ -143,7 +143,6 @@ class KeystoneGetToken(Resource):
                     "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
                     "impersonation": False
             }
-            print json.dumps(ret)
             resp = Response(json.dumps(ret), status=200)
 
             return resp
