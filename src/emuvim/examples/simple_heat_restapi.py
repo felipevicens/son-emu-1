@@ -60,12 +60,6 @@ def create_topology1():
     heatapi3.start()
     heatapi4.start()
 
-    # connect data centers to this endpoint
-    heatapi1.connect_datacenter(dc1)
-    heatapi2.connect_datacenter(dc2)
-    heatapi3.connect_datacenter(dc3)
-    heatapi4.connect_datacenter(dc4)
-
     heatapi1.connect_dc_network(net)
     heatapi2.connect_dc_network(net)
     heatapi3.connect_dc_network(net)
