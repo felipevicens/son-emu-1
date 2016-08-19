@@ -165,7 +165,7 @@ class HeatUpdateStack(Resource):
             return ex.message, 500
 
 class HeatDeleteStack(Resource):
-    def put(self, tenant_id, stack_name, stack_id):
+    def delete(self, tenant_id, stack_name, stack_id):
         global compute, ip, port
 
         logging.debug("Heat: Delete Stack")
@@ -173,7 +173,7 @@ class HeatDeleteStack(Resource):
             if compute.stacks[stack_id].stack_name != stack_name:
                 return Response('Stack names do not match.', 404)
 
-            del compute.stacks[stack_id]
+            compute.delete_stack(stack_id)
 
             return Response('Deleted Stack: ' + stack_id, 204)
 
