@@ -26,6 +26,8 @@ class HeatDummyApi(BaseOpenstackDummy):
 
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
         self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
+        self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
+        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
 
     def _start_flask(self):
         global compute
@@ -101,11 +103,80 @@ class HeatShowStack(Resource):
         logging.debug("HEAT: Show Stack")
         try:
             stack = compute.stacks[stack_id]
+            if stack.stack_name != stack_name:
+                return Response('Stack names do not match.', 404)
 
+            return_stack = {
+                            "stack": {
+                                "capabilities": [],
+                                "creation_time": stack.creation_time,
+                                "description": "desc of "+stack.id,
+                                "id": stack.id,
+                                "links": [
+                                    {
+                                        "href": "http://%s:%s/v1/%s/stacks/%s"
+                                                %(ip, port, tenant_id, stack.id),
+                                        "rel": "self"
+                                    }
+                                ],
+                                "notification_topics": [],
+                                "outputs": [],
+                                "parameters": {
+                                    "OS::project_id": "3ab5b02f-a01f-4f95-afa1-e254afc4a435",  # add real project id
+                                    "OS::stack_id": stack.id,
+                                    "OS::stack_name": stack.stack_name
+                                },
+                                "stack_name": stack.stack_name,
+                                "stack_owner": "The owner of the stack.",  # add stack owner
+                                "stack_status": stack.status,
+                                "stack_status_reason": "The reason for the current status of the stack.",  # add status reason
+                                "template_description": "The description of the stack template.",
+                                "stack_user_project_id": "The project UUID of the stack user.",
+                                "timeout_mins": "",
+                                "updated_time": "",
+                                "parent": "",
+                                "tags": ""
+                            }
+                        }
+            return Response(json.dumps(return_stack), status=200)
 
-
-
-            return Response("", status=200)
         except Exception as ex:
             logging.exception("Heat: Show stack exception.")
+            return ex.message, 500
+
+class HeatUpdateStack(Resource):
+    def put(self, tenant_id, stack_name, stack_id):
+        global compute, ip, port
+
+        logging.debug("Heat: Update Stack")
+        try:
+            stack = compute.stacks[stack_id]
+            if stack.stack_name != stack_name:
+                return Response('Stack names do not match.', 404)
+
+            stack_dict = request.json
+
+            # TODO update the stack
+
+            return Response('', 202)
+
+        except Exception as ex:
+            logging.exception("Heat: Update Stack exception")
+            return ex.message, 500
+
+class HeatDeleteStack(Resource):
+    def delete(self, tenant_id, stack_name, stack_id):
+        global compute, ip, port
+
+        logging.debug("Heat: Delete Stack")
+        try:
+            if compute.stacks[stack_id].stack_name != stack_name:
+                return Response('Stack names do not match.', 404)
+
+            compute.delete_stack(stack_id)
+
+            return Response('Deleted Stack: ' + stack_id, 204)
+
+        except Exception as ex:
+            logging.exception("Heat: Delete Stack exception")
             return ex.message, 500
