@@ -76,11 +76,11 @@ class KeystoneGetToken(Resource):
             ret['access']['serviceCatalog'] = [{
                 "endpoints": [
                     {
-                        "adminURL": "http://%s:%s/v2/%s" %(ip, port +3774, user['id'] ),
+                        "adminURL": "http://%s:%s/v2.1/%s" %(ip, port +3774, user['id'] ),
                         "region": "RegionOne",
-                        "internalURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] ),
+                        "internalURL": "http://%s:%s/v2.1/%s" %(ip, port+3774, user['id'] ),
                         "id": "2dad48f09e2a447a9bf852bcd93548ef",
-                        "publicURL": "http://%s:%s/v2/%s" %(ip, port+3774, user['id'] )
+                        "publicURL": "http://%s:%s/v2.1/%s" %(ip, port+3774, user['id'] )
                     }
                 ],
                 "endpoints_links": [],

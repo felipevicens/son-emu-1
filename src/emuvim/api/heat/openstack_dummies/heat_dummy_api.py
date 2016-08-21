@@ -110,7 +110,7 @@ class HeatShowStack(Resource):
                             "stack": {
                                 "capabilities": [],
                                 "creation_time": stack.creation_time,
-                                "description": "desc of "+stack.id,
+                                "description": "desc of "+stack.stack_name,
                                 "id": stack.id,
                                 "links": [
                                     {
