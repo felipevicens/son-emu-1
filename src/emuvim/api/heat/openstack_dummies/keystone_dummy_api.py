@@ -75,7 +75,8 @@ class KeystoneGetToken(Resource):
         # OS_IDENTITY_API_VERSION=2.0
         # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
         # OS_REGION_NAME=RegionOne
-        # OS_AUTH_TOKEN=aaaaa-bbbbb-ccccc-dddd
+        # OS_USERNAME=bla
+        # OS_PASSWORD = bla
 
         logging.debug("API CALL: Keystone - Get token")
         try:
@@ -87,11 +88,11 @@ class KeystoneGetToken(Resource):
 
             token['issued_at'] = str(datetime.now())
             token['expires'] = str(datetime.now() + timedelta(days=7))
-            token['id'] = req['auth']['token']['id']
+            token['id'] = req['auth'].get('token', {'id': 'fc394f2ab2df4114bde39905f800dc57'}).get('id')
             token['tenant'] = dict()
             token['tenant']['description'] = None
             token['tenant']['enabled'] = True
-            token['tenant']['id'] = req['auth']['tenantId']
+            token['tenant']['id'] = req['auth'].get('tenantId', 'fc394f2ab2df4114bde39905f800dc57')
             token['tenant']['name'] = "tenantName"
 
             ret['access']['user'] = dict()
@@ -99,7 +100,7 @@ class KeystoneGetToken(Resource):
             user['username'] = "username"
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = req['auth']['tenantId']
+            user['id'] = token['tenant']['id']
             user['roles'] = [{'name': 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"
@@ -175,6 +176,7 @@ class KeystoneGetToken(Resource):
                 "impersonation": False
             }
             resp = Response(json.dumps(ret), status=200)
+            resp.headers['Content-Type'] = 'application/json'
 
             return resp
 
