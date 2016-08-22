@@ -24,6 +24,7 @@ class HeatDummyApi(BaseOpenstackDummy):
         ip = in_ip
         port = in_port
 
+        self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
         self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
         self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
@@ -37,6 +38,27 @@ class HeatDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
+class HeatListAPIVersions(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Heat - List API Versions")
+        resp = dict()
+
+        resp['versions'] = dict()
+        resp['versions'] = [{
+                "status": "CURRENT",
+                "id": "v1.0",
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "rel": "self"
+                    }
+                ]
+            }]
+
+        return json.dumps(resp), 200
 
 class HeatCreateStack(Resource):
     def post(self, tenant_id):
