@@ -23,7 +23,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronListAPIVersions, "/")
         self.api.add_resource(NeutronShowAPIv2Details, "/v2.0")
         self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json")
-        self.api.add_resource(NeutornShowNetwork, "/v2.0/networks.json/<network_id>")
+        self.api.add_resource(NeutronShowNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json")
         self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>")
@@ -133,7 +133,7 @@ class NeutronListNetworks(Resource):
             return ex.message, 500
 
 
-class NeutornShowNetwork(Resource):
+class NeutronShowNetwork(Resource):
 
     def get(self, network_id):
         global compute
