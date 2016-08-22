@@ -13,7 +13,7 @@ port = None
 class NovaDummyApi(BaseOpenstackDummy):
     def __init__(self, inc_ip, inc_port):
         super(NovaDummyApi, self).__init__(inc_ip, inc_port)
-        self.api.add_resource(NovaVersionShow, "/v2.1")
+        self.api.add_resource(NovaVersionShow, "/v2.1/<id>")
         self.api.add_resource(NovaListServersApi, "/v2.1/<id>/servers")
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail")
         self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>")
