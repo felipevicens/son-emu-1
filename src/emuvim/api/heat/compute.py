@@ -50,5 +50,12 @@ class OpenstackCompute:
 
             c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
-        logging.info(stack.servers)
+    def delete_stack(self, stack_id):
+        if self.dc is None:
+            return False
 
+        stack = self.stacks[stack_id]
+        for server in stack.servers.values():
+            self.dc.stopCompute(server.name)
+
+        del self.stacks[stack_id]

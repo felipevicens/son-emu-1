@@ -129,7 +129,7 @@ class Service(object):
         else:
             self._load_docker_urls()
             self._pull_predefined_dockerimages()
-        LOG.info("On-boarded service: %r" % self.manifest.get("package_name"))
+        LOG.info("On-boarded service: %r" % self.manifest.get("name"))
 
     def start_service(self):
         """
@@ -157,7 +157,7 @@ class Service(object):
                 vnfi = self._start_vnfd(vnfd)
             self.instances[instance_uuid]["vnf_instances"].append(vnfi)
 
-        # 3. Configure the chaining of the network functions (currently only E-Line links supported)
+        # 3. Configure the chaining of the network functions (currently only E-Line and E-LAN links supported)
         vnf_id2vnf_name = defaultdict(lambda: "NotExistingNode",
                                 reduce(lambda x, y: dict(x, **y),
                                        map(lambda d: {d["vnf_id"]: d["vnf_name"]},

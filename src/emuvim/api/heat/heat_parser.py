@@ -13,39 +13,37 @@ class HeatParser:
         self.outputs = None
         self.bufferResource = list()
 
-    def parse_input(self, input_string, stack, dc_label):
-        yaml_dict = yaml.load(input_string)
-
-        if not (str(yaml_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
-            print('Unsupported template version: ' + yaml_dict['heat_template_version'], file=sys.stderr)
+    def parse_input(self, input_dict, stack, dc_label):
+        if not (str(input_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
+            print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
             return
 
         try:
-            self.description = yaml_dict['description']
+            self.description = input_dict['description']
         except KeyError as e:
             self.description = None
             #print('No ' + e.message + ' found.')
 
         try:
-            self.parameter_groups = yaml_dict['parameter_groups']
+            self.parameter_groups = input_dict['parameter_groups']
         except KeyError as e:
             self.parameter_groups = None
             #print('No ' + e.message + ' found.')
 
         try:
-            self.parameters = yaml_dict['parameters']
+            self.parameters = input_dict['parameters']
         except KeyError as e:
             self.parameters = None
             #print('No ' + e.message + ' found.')
 
         try:
-            self.resources = yaml_dict['resources']
+            self.resources = input_dict['resources']
         except KeyError as e:
             self.resources = None
             #print('No ' + e.message + ' found.')
 
         try:
-            self.outputs = yaml_dict['outputs']
+            self.outputs = input_dict['outputs']
         except KeyError as e:
             self.outputs = None
             #print('No ' + e.message + ' found.')
