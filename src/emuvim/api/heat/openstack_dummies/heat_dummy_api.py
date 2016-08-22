@@ -46,12 +46,15 @@ class HeatCreateStack(Resource):
 
         try:
             stack_dict = request.json
-
+            for stack in compute.stacks.values():
+                if stack.stack_name == stack_dict['stack_name']:
+                    return [], 409
             stack = Stack()
+            stack.stack_name = stack_dict['stack_name']
             reader = HeatParser()
             reader.parse_input(stack_dict['template'], stack, compute.dc.label)
 
-            stack.stack_name = stack_dict['stack_name']
+
             stack.creation_time = str(datetime.now())
             stack.status = "CREATE_COMPLETE"
 

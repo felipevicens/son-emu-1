@@ -23,6 +23,7 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         compute = self.compute
         ip = in_ip
         port = in_port
+        self.api.add_resource(KeystoneListVersions, "/")
         self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
 
     def _start_flask(self):
@@ -32,6 +33,36 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         compute = self.compute
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+
+class KeystoneListVersions(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Keystone - List Versions")
+        resp = dict()
+        resp['versions'] = dict()
+
+        version = [{
+                "id": "v2.0",
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "rel": "self"
+                    }
+                ],
+                "media-types": [
+                    {
+                        "base": "application/json",
+                        "type": "application/vnd.openstack.identity-v2.0+json"
+                    }
+                ],
+                "status": "stable",
+                "updated": "2014-04-17T00:00:00Z"
+            }]
+        resp['versions']['values'] = version
+
+        return Response(json.dumps(resp), status=200)
 
 
 class KeystoneGetToken(Resource):
@@ -44,7 +75,8 @@ class KeystoneGetToken(Resource):
         # OS_IDENTITY_API_VERSION=2.0
         # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
         # OS_REGION_NAME=RegionOne
-        # OS_AUTH_TOKEN=aaaaa-bbbbb-ccccc-dddd
+        # OS_USERNAME=bla
+        # OS_PASSWORD = bla
 
         logging.debug("API CALL: Keystone - Get token")
         try:
@@ -54,13 +86,13 @@ class KeystoneGetToken(Resource):
             ret['access']['token'] = dict()
             token = ret['access']['token']
 
-            token['issued_at'] = str(datetime.now())
-            token['expires'] = str(datetime.now() + timedelta(days=7))
-            token['id'] = req['auth']['token']['id']
+            token['issued_at'] = "2014-01-30T15:30:58.819Z",
+            token['expires'] = "2999-01-30T15:30:58.819Z"
+            token['id'] = req['auth'].get('token', {'id': 'fc394f2ab2df4114bde39905f800dc57'}).get('id')
             token['tenant'] = dict()
             token['tenant']['description'] = None
             token['tenant']['enabled'] = True
-            token['tenant']['id'] = req['auth']['tenantId']
+            token['tenant']['id'] = req['auth'].get('tenantId', 'fc394f2ab2df4114bde39905f800dc57')
             token['tenant']['name'] = "tenantName"
 
             ret['access']['user'] = dict()
@@ -68,19 +100,19 @@ class KeystoneGetToken(Resource):
             user['username'] = "username"
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = req['auth']['tenantId']
-            user['roles'] = [{'name' : 'Member'}]
+            user['id'] = token['tenant']['id']
+            user['roles'] = [{'name': 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"
 
             ret['access']['serviceCatalog'] = [{
                 "endpoints": [
                     {
-                        "adminURL": "http://%s:%s/v2.1/%s" %(ip, port +3774, user['id'] ),
+                        "adminURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id']),
                         "region": "RegionOne",
-                        "internalURL": "http://%s:%s/v2.1/%s" %(ip, port+3774, user['id'] ),
+                        "internalURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id']),
                         "id": "2dad48f09e2a447a9bf852bcd93548ef",
-                        "publicURL": "http://%s:%s/v2.1/%s" %(ip, port+3774, user['id'] )
+                        "publicURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id'])
                     }
                 ],
                 "endpoints_links": [],
@@ -101,28 +133,28 @@ class KeystoneGetToken(Resource):
                     "type": "identity",
                     "name": "keystone"
                 },
-            {
-                "endpoints": [
-                    {
-                        "adminURL": "http://%s:%s/" %(ip, port+4696),
-                        "region": "RegionOne",
-                        "internalURL": "http://%s:%s/" %(ip, port+4696),
-                        "id": "2dad48f09e2a447a9bf852bcd93548cf",
-                        "publicURL": "http://%s:%s/" %(ip, port+4696)
-                    }
-                ],
-                "endpoints_links": [],
-                "type": "network",
-                "name": "neutron"
-            },
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
+                            "adminURL": "http://%s:%s/" % (ip, port + 4696),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] ),
+                            "internalURL": "http://%s:%s/" % (ip, port + 4696),
+                            "id": "2dad48f09e2a447a9bf852bcd93548cf",
+                            "publicURL": "http://%s:%s/" % (ip, port + 4696)
+                        }
+                    ],
+                    "endpoints_links": [],
+                    "type": "network",
+                    "name": "neutron"
+                },
+                {
+                    "endpoints": [
+                        {
+                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id']),
+                            "region": "RegionOne",
+                            "internalURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id']),
                             "id": "2dad48f09e2a447a9bf852bcd93548bf",
-                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'] )
+                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'])
                         }
                     ],
                     "endpoints_links": [],
@@ -131,19 +163,20 @@ class KeystoneGetToken(Resource):
                 }
             ]
 
-            ret['access']["metadata"] =  {
-                            "is_admin": 0,
-                            "roles": [
-                                "7598ac3c634d4c3da4b9126a5f67ca2b"
-                            ]
-                        },
+            ret['access']["metadata"] = {
+                                            "is_admin": 0,
+                                            "roles": [
+                                                "7598ac3c634d4c3da4b9126a5f67ca2b"
+                                            ]
+                                        },
             ret['access']['trust'] = {
-                    "id": "394998fa61f14736b1f0c1f322882949",
-                    "trustee_user_id": "269348fdd9374b8885da1418e0730af1",
-                    "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
-                    "impersonation": False
+                "id": "394998fa61f14736b1f0c1f322882949",
+                "trustee_user_id": "269348fdd9374b8885da1418e0730af1",
+                "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
+                "impersonation": False
             }
             resp = Response(json.dumps(ret), status=200)
+            resp.headers['Content-Type'] = 'application/json'
 
             return resp
 

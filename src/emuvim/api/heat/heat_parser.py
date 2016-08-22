@@ -113,7 +113,7 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = str(dc_label) + '_' + str(resource['properties']['name'])
+            compute_name = str(dc_label) + "_" + str(stack.stack_name) + '_' + str(resource['properties']['name'])
             shortened_name = self.shorten_server_name(compute_name, stack)
             stack.server_names[shortened_name] = compute_name
             flavor = resource['properties']['flavor']
