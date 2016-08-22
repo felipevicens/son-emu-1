@@ -24,10 +24,11 @@ class HeatDummyApi(BaseOpenstackDummy):
         ip = in_ip
         port = in_port
 
+        self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
         self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
         self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
-        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
+        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
 
     def _start_flask(self):
         global compute
@@ -37,6 +38,27 @@ class HeatDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
+class HeatListAPIVersions(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Heat - List API Versions")
+        resp = dict()
+
+        resp['versions'] = dict()
+        resp['versions'] = [{
+                "status": "CURRENT",
+                "id": "v1.0",
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "rel": "self"
+                    }
+                ]
+            }]
+
+        return json.dumps(resp), 200
 
 class HeatCreateStack(Resource):
     def post(self, tenant_id):
@@ -52,6 +74,8 @@ class HeatCreateStack(Resource):
             stack = Stack()
             stack.stack_name = stack_dict['stack_name']
             reader = HeatParser()
+            if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
+                stack_dict['template'] = json.loads(stack_dict['template'])
             reader.parse_input(stack_dict['template'], stack, compute.dc.label)
 
 
@@ -168,17 +192,19 @@ class HeatUpdateStack(Resource):
             return ex.message, 500
 
 class HeatDeleteStack(Resource):
-    def delete(self, tenant_id, stack_name, stack_id):
+    def delete(self, tenant_id, stack_name_or_id):
         global compute, ip, port
 
         logging.debug("Heat: Delete Stack")
         try:
-            if compute.stacks[stack_id].stack_name != stack_name:
-                return Response('Stack names do not match.', 404)
+            if stack_name_or_id in compute.stacks:
+                compute.delete_stack(stack_name_or_id)
+                return Response('Deleted Stack: ' + stack_name_or_id, 204)
 
-            compute.delete_stack(stack_id)
-
-            return Response('Deleted Stack: ' + stack_id, 204)
+            for stack in compute.stacks.values():
+                if stack.stack_name == stack_name_or_id:
+                    compute.delete_stack(stack.id)
+                    return Response('Deleted Stack: ' + stack.id, 204)
 
         except Exception as ex:
             logging.exception("Heat: Delete Stack exception")

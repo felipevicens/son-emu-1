@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from flask_restful import Resource
-from flask import request
+from flask import request, Response
 from flask import jsonify
 import logging
 import json
@@ -20,8 +20,10 @@ class NeutronDummyApi(BaseOpenstackDummy):
         super(NeutronDummyApi, self).__init__(ip, port)
         compute = None
 
+        self.api.add_resource(NeutronListAPIVersions, "/")
+        self.api.add_resource(NeutronShowAPIv2Details, "/v2.0")
         self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json")
-        self.api.add_resource(NeutornShowNetwork, "/v2.0/networks.json/<network_id>")
+        self.api.add_resource(NeutronShowNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json")
         self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>")
@@ -37,6 +39,73 @@ class NeutronDummyApi(BaseOpenstackDummy):
         compute = self.compute
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+class NeutronListAPIVersions(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Neutron - List API Versions")
+        resp = dict()
+        resp['versions'] = dict()
+
+        versions = [{
+                "status": "CURRENT",
+                "id": "v2.0",
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "rel": "self"
+                    }
+                ]
+            }]
+        resp['versions'] = versions
+
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
+
+
+class NeutronShowAPIv2Details(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Neutron - Show API v2 details")
+        resp = dict()
+
+        resp['resources'] = dict()
+        resp['resources'] = [{
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/subnets" % (ip, port),
+                        "rel": "self"
+                    }
+                ],
+                "name": "subnet",
+                "collection": "subnets"
+            },
+            {
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/networks" % (ip, port),
+                        "rel": "self"
+                    }
+                ],
+                "name": "network",
+                "collection": "networks"
+            },
+            {
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/ports" % (ip, port),
+                        "rel": "self"
+                    }
+                ],
+                "name": "ports",
+                "collection": "ports"
+            }
+        ]
+
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
 
 
 class NeutronListNetworks(Resource):
@@ -56,14 +125,15 @@ class NeutronListNetworks(Resource):
 
             network_dict["networks"] = network_list
 
-            return json.dumps(network_dict), 200
+            return Response(json.dumps(network_dict), status=200, mimetype='application/json')
+
 
         except Exception as ex:
             logging.exception("Neutron: List networks exception.")
             return ex.message, 500
 
 
-class NeutornShowNetwork(Resource):
+class NeutronShowNetwork(Resource):
 
     def get(self, network_id):
         global compute
@@ -77,7 +147,9 @@ class NeutornShowNetwork(Resource):
                         tmp_network_dict = create_network_dict(net)
                         tmp_dict = dict()
                         tmp_dict["network"] = tmp_network_dict
-                        return json.dumps(tmp_dict)
+
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
+
 
             return 'Network not found.', 404
 
@@ -119,7 +191,9 @@ class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be ch
                             pass  # tmp_network_dict["shared"] = False
 
                         network_dict = create_network_dict(net)
-                        return json.dumps(network_dict)
+
+                        return Response(json.dumps(network_dict), status=200, mimetype='application/json')
+
 
             return 'Network not found.', 404
 
@@ -147,8 +221,10 @@ class NeutronListSubnets(Resource):
                     subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
+            resp = Response(json.dumps(subnet_dict), status=200)
+            resp.headers['Content-Type'] = 'application/json'
 
-            return json.dumps(subnet_dict), 200
+            return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: List subnets exception.")
@@ -168,7 +244,7 @@ class NeutronShowSubnet(Resource):
                         tmp_subnet_dict = create_subnet_dict(net)
                         tmp_dict = dict()
                         tmp_dict["subnet"] = tmp_subnet_dict
-                        return json.dumps(tmp_dict)
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Subnet not found.', 404
 
@@ -213,7 +289,8 @@ class NeutronUpdateSubnet(Resource):
                             pass
 
                         subnet_dict = create_subnet_dict(net)
-                        return json.dumps(subnet_dict)
+
+                        return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
 
@@ -242,7 +319,7 @@ class NeutronListPorts(Resource):
 
             port_dict["ports"] = port_list
 
-            return json.dumps(port_dict), 200
+            return Response(json.dumps(port_dict), status=200, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: List ports exception.")
@@ -263,7 +340,7 @@ class NeutronShowPort(Resource):
                         tmp_port_dict = create_port_dict(port)
                         tmp_dict = dict()
                         tmp_dict["port"] = tmp_port_dict
-                        return json.dumps(tmp_dict)
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Port not found.', 404
 
@@ -312,7 +389,8 @@ class NeutronUpdatePort(Resource):
                             pass
 
                         port_dict = create_port_dict(port)
-                        return json.dumps(port_dict)
+
+                        return Response(json.dumps(port_dict), status=200, mimetype='application/json')
 
             return 'Port not found.', 404
 
@@ -327,7 +405,7 @@ class NeutronUpdatePort(Resource):
 def create_network_dict(network):
     network_dict = dict()
     network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-    network_dict["subnets"] = None  # TODO can we add subnets?
+    network_dict["subnets"] = []  # TODO can we add subnets?
     network_dict["name"] = network.name
     network_dict["admin_state_up"] = True  # TODO is it always true?
     network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here

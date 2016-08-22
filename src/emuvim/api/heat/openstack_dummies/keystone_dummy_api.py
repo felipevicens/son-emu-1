@@ -62,7 +62,7 @@ class KeystoneListVersions(Resource):
             }]
         resp['versions']['values'] = version
 
-        return Response(json.dumps(resp), status=200)
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 
 class KeystoneGetToken(Resource):
@@ -175,10 +175,7 @@ class KeystoneGetToken(Resource):
                 "trustor_user_id": "3ec3164f750146be97f21559ee4d9c51",
                 "impersonation": False
             }
-            resp = Response(json.dumps(ret), status=200)
-            resp.headers['Content-Type'] = 'application/json'
-
-            return resp
+            return Response(json.dumps(ret), status=200, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Keystone: Get token failed.")
