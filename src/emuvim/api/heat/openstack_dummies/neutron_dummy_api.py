@@ -9,6 +9,7 @@ from emuvim.api.heat.heat_parser import HeatParser
 from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 
+logging.basicConfig(level=logging.DEBUG)
 compute = None
 class NeutronDummyApi(BaseOpenstackDummy):
     global compute
@@ -19,15 +20,15 @@ class NeutronDummyApi(BaseOpenstackDummy):
         super(NeutronDummyApi, self).__init__(ip, port)
         compute = None
 
-        self.api.add_resource(NeutronListNetworks, "/v2.0/networks")
-        self.api.add_resource(NeutornShowNetwork, "/v2.0/networks/<network_id>")
-        self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks/<network_id>")
-        self.api.add_resource(NeutronListSubnets, "/v2.0/subnets")
-        self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets/<subnet_id>")
-        self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets/<subnet_id>")
-        self.api.add_resource(NeutronListPorts, "/v2.0/ports")
-        self.api.add_resource(NeutronShowPort, "/v2.0/ports/<port_id>")
-        self.api.add_resource(NeutronUpdatePort, "/v2.0/ports/<port_id>")
+        self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json")
+        self.api.add_resource(NeutornShowNetwork, "/v2.0/networks.json/<network_id>")
+        self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>")
+        self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json")
+        self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>")
+        self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets.json/<subnet_id>")
+        self.api.add_resource(NeutronListPorts, "/v2.0/ports.json")
+        self.api.add_resource(NeutronShowPort, "/v2.0/ports.json/<port_id>")
+        self.api.add_resource(NeutronUpdatePort, "/v2.0/ports.json/<port_id>")
 
     def _start_flask(self):
         global compute
