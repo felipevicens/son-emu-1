@@ -13,6 +13,7 @@ port = None
 class NovaDummyApi(BaseOpenstackDummy):
     def __init__(self, inc_ip, inc_port):
         super(NovaDummyApi, self).__init__(inc_ip, inc_port)
+        self.api.add_resource(NovaVersionsList, "/")
         self.api.add_resource(NovaVersionShow, "/v2.1/<id>")
         self.api.add_resource(NovaListServersApi, "/v2.1/<id>/servers")
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail")
@@ -34,6 +35,37 @@ class NovaDummyApi(BaseOpenstackDummy):
         compute.add_flavor('m1.micro', 1, 128, "MB", 0, "GB")
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+
+class NovaVersionsList(Resource):
+    def get(self, id):
+        global compute, ip, port
+        try:
+            resp = """[
+                {
+                    "versions": [
+                        {
+                            "id": "v2.1",
+                            "links": [
+                                {
+                                    "href": "http://%s:%d/v2.1/",
+                                    "rel": "self"
+                                }
+                            ],
+                            "status": "CURRENT",
+                            "version": "2.38",
+                            "min_version": "2.1",
+                            "updated": "2013-07-23T11:33:21Z"
+                        }
+                    ]
+                }
+            """ % (ip, port)
+
+            return Response(resp, status=200, mimetype="application/json")
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not show list of versions." % __name__)
+            return ex.message, 500
 
 
 class NovaVersionShow(Resource):
@@ -69,7 +101,7 @@ class NovaVersionShow(Resource):
             }
             """ % (ip, port)
 
-            return Response(resp, status=200)
+            return Response(resp, status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not show list of versions." % __name__)
@@ -91,7 +123,7 @@ class NovaListServersApi(Resource):
                     s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (ip, port, server.id)}]
                     resp['servers'].append(s)
 
-            return Response(json.dumps(resp), status=200)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -113,7 +145,7 @@ class NovaListServersDetailed(Resource):
                     s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (ip, port, server.id)}]
                     resp['servers'].append(s)
 
-            return Response(json.dumps(resp), status=200)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -132,8 +164,7 @@ class NovaListFlavors(Resource):
                 f['name'] = flavor.name
                 f['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (ip, port, flavor.id)}]
                 resp['flavors'].append(f)
-
-            return Response(json.dumps(resp), status=200)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -155,9 +186,14 @@ class NovaListFlavorsDetails(Resource):
                 f['OS-FLV-DISABLED:disabled'] = False
                 f['OS-FLV-EXT-DATA:ephemeral'] = 0
                 f['os-flavor-access:is_public'] = True
+                f['ram'] = flavor.memory
+                f['vcpus'] = flavor.cpu
+                f['swap'] = 0
+                f['disk'] = flavor.storage
+                f['rxtx_factor'] = 1.0
                 resp['flavors'].append(f)
 
-            return Response(json.dumps(resp), status=200)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -171,8 +207,8 @@ class NovaShowServerDetails(Resource):
             resp = dict()
             resp['server'] = dict()
 
-            return Response(json.dumps(resp), status=200)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
-            logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
+            logging.exception(u"%s: Could not retrieve the server details." % __name__)
             return ex.message, 500

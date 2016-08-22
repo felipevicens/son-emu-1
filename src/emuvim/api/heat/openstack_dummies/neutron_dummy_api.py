@@ -221,6 +221,8 @@ class NeutronListSubnets(Resource):
                     subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
+            resp = Response(json.dumps(subnet_dict), status=200)
+            resp.headers['Content-Type'] = 'application/json'
 
             return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
 
@@ -403,7 +405,7 @@ class NeutronUpdatePort(Resource):
 def create_network_dict(network):
     network_dict = dict()
     network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-    network_dict["subnets"] = None  # TODO can we add subnets?
+    network_dict["subnets"] = []  # TODO can we add subnets?
     network_dict["name"] = network.name
     network_dict["admin_state_up"] = True  # TODO is it always true?
     network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here
