@@ -1,5 +1,3 @@
-
-
 from flask_restful import Resource
 from flask import Response
 from flask import jsonify
@@ -10,10 +8,12 @@ from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstack
 compute = None
 ip = None
 port = None
-class NovaDummyApi(BaseOpenstackDummy):
 
+
+class NovaDummyApi(BaseOpenstackDummy):
     def __init__(self, inc_ip, inc_port):
         super(NovaDummyApi, self).__init__(inc_ip, inc_port)
+        self.api.add_resource(NovaVersionShow, "/v2.1/<id>")
         self.api.add_resource(NovaListServersApi, "/v2.1/<id>/servers")
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail")
         self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>")
@@ -35,11 +35,52 @@ class NovaDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
+class NovaVersionShow(Resource):
+    def get(self, id):
+        global compute, ip, port
+        try:
+            resp = """
+            {
+                "version": {
+                    "id": "v2.1",
+                    "links": [
+                        {
+                            "href": "http://%s:%d/v2.1/",
+                            "rel": "self"
+                        },
+                        {
+                            "href": "http://docs.openstack.org/",
+                            "rel": "describedby",
+                            "type": "text/html"
+                        }
+                    ],
+                    "media-types": [
+                        {
+                            "base": "application/json",
+                            "type": "application/vnd.openstack.compute+json;version=2.1"
+                        }
+                    ],
+                    "status": "CURRENT",
+                    "version": "2.38",
+                    "min_version": "2.1",
+                    "updated": "2013-07-23T11:33:21Z"
+                }
+            }
+            """ % (ip, port)
+
+            return Response(resp, status=200)
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not show list of versions." % __name__)
+            return ex.message, 500
+
+
 class NovaListServersApi(Resource):
     def get(self, id):
         global compute, ip, port
         try:
-            #data = json.loads(request.json)
+            # data = json.loads(request.json)
             resp = dict()
             resp['servers'] = list()
             for stack in compute.stacks.values():
@@ -56,11 +97,12 @@ class NovaListServersApi(Resource):
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
+
 class NovaListServersDetailed(Resource):
     def get(self, id):
         global compute, ip, port
         try:
-            #data = json.loads(request.json)
+            # data = json.loads(request.json)
             resp = dict()
             resp['servers'] = list()
             for stack in compute.stacks.values():
@@ -97,6 +139,7 @@ class NovaListFlavors(Resource):
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
+
 class NovaListFlavorsDetails(Resource):
     def get(self, id):
         global compute, ip, port
@@ -104,10 +147,10 @@ class NovaListFlavorsDetails(Resource):
             resp = dict()
             resp['flavors'] = list()
             for flavor in compute.flavors.values():
-                #use the class dict. it should work fine
-                #but use a copy so we don't modifiy the original
+                # use the class dict. it should work fine
+                # but use a copy so we don't modifiy the original
                 f = flavor.__dict__.copy()
-                #add additional expected stuff stay openstack compatible
+                # add additional expected stuff stay openstack compatible
                 f['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (ip, port, flavor.id)}]
                 f['OS-FLV-DISABLED:disabled'] = False
                 f['OS-FLV-EXT-DATA:ephemeral'] = 0
@@ -120,13 +163,13 @@ class NovaListFlavorsDetails(Resource):
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
+
 class NovaShowServerDetails(Resource):
     def get(self, id, serverid):
         global compute, ip, port
         try:
             resp = dict()
             resp['server'] = dict()
-
 
             return Response(json.dumps(resp), status=200)
 
