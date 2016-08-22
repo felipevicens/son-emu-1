@@ -74,6 +74,8 @@ class HeatCreateStack(Resource):
             stack = Stack()
             stack.stack_name = stack_dict['stack_name']
             reader = HeatParser()
+            if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
+                stack_dict['template'] = json.loads(stack_dict['template'])
             reader.parse_input(stack_dict['template'], stack, compute.dc.label)
 
 
