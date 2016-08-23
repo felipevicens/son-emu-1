@@ -24,6 +24,7 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         ip = in_ip
         port = in_port
         self.api.add_resource(KeystoneListVersions, "/")
+        self.api.add_resource(KeystoneShowAPIv2, "/v2.0")
         self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
 
     def _start_flask(self):
@@ -61,6 +62,51 @@ class KeystoneListVersions(Resource):
                 "updated": "2014-04-17T00:00:00Z"
             }]
         resp['versions']['values'] = version
+
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
+
+class KeystoneShowAPIv2(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Show API v2.0 details")
+
+        neutrnonPort = port + 4696
+
+        resp = dict()
+        resp['resources'] = [{
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/subnets" % (ip, neutrnonPort),
+                        "rel": "self"
+                    }
+                ],
+                "name": "subnet",
+                "collection": "subnets"
+            },
+            {
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/networks" % (ip, neutrnonPort),
+                        "rel": "self"
+                    }
+                ],
+                "name": "network",
+                "collection": "networks"
+            },
+            {
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0/ports" % (ip, neutrnonPort),
+                        "rel": "self"
+                    }
+                ],
+                "name": "ports",
+                "collection": "ports"
+            }
+        ]
+        # TODO add all API calls
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
