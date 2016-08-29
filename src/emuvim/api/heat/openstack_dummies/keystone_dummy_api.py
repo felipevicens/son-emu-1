@@ -132,7 +132,7 @@ class KeystoneGetToken(Resource):
             ret['access']['token'] = dict()
             token = ret['access']['token']
 
-            token['issued_at'] = "2014-01-30T15:30:58.819Z",
+            token['issued_at'] = "2014-01-30T15:30:58.819Z"
             token['expires'] = "2999-01-30T15:30:58.819Z"
             token['id'] = req['auth'].get('token', {'id': 'fc394f2ab2df4114bde39905f800dc57'}).get('id')
             token['tenant'] = dict()

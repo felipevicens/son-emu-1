@@ -22,15 +22,15 @@ class NeutronDummyApi(BaseOpenstackDummy):
 
         self.api.add_resource(NeutronListAPIVersions, "/")
         self.api.add_resource(NeutronShowAPIv2Details, "/v2.0")
-        self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json")
-        self.api.add_resource(NeutronShowNetwork, "/v2.0/networks.json/<network_id>")
-        self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>")
-        self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json")
-        self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>")
-        self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets.json/<subnet_id>")
-        self.api.add_resource(NeutronListPorts, "/v2.0/ports.json")
-        self.api.add_resource(NeutronShowPort, "/v2.0/ports.json/<port_id>")
-        self.api.add_resource(NeutronUpdatePort, "/v2.0/ports.json/<port_id>")
+        self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json", "/v2.0/networks")
+        self.api.add_resource(NeutronShowNetwork, "/v2.0/networks.json/<network_id>", "/v2.0/networks/<network_id>")
+        self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>", "/v2.0/networks/<network_id>")
+        self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json", "/v2.0/subnets")
+        self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>", "/v2.0/subnets/<subnet_id>")
+        self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets.json/<subnet_id>", "/v2.0/subnets/<subnet_id>")
+        self.api.add_resource(NeutronListPorts, "/v2.0/ports.json", "/v2.0/ports")
+        self.api.add_resource(NeutronShowPort, "/v2.0/ports.json/<port_id>", "/v2.0/ports/<port_id>")
+        self.api.add_resource(NeutronUpdatePort, "/v2.0/ports.json/<port_id>", "/v2.0/ports/<port_id>")
 
     def _start_flask(self):
         global compute
