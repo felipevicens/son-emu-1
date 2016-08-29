@@ -5,10 +5,9 @@ python:
   - "2.7"
 before_install:
   - sudo apt-get install ansible git aptitude
-  - sudo echo 'localhost ansible_connection=local' >> /etc/ansible/hosts
   - git clone https://github.com/mpeuster/containernet.git
   - cd containernet/ansible/
-  - sudo ansible-playbook install.yml
+  - sudo ansible-playbook install.yml -e ansible_connection=local
   - sudo python examples/dockerhosts.py
   - apt-get install python-heatclient
   - sudo apt-get install python-heatclient
