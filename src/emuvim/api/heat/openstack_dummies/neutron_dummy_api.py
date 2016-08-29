@@ -23,7 +23,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronListAPIVersions, "/")
         self.api.add_resource(NeutronShowAPIv2Details, "/v2.0")
         self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json")
-        self.api.add_resource(NeutornShowNetwork, "/v2.0/networks.json/<network_id>")
+        self.api.add_resource(NeutronShowNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronUpdateNetwork, "/v2.0/networks.json/<network_id>")
         self.api.add_resource(NeutronListSubnets, "/v2.0/subnets.json")
         self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets.json/<subnet_id>")
@@ -41,8 +41,6 @@ class NeutronDummyApi(BaseOpenstackDummy):
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 class NeutronListAPIVersions(Resource):
-    global ip, port
-
     def get(self):
         logging.debug("API CALL: Neutron - List API Versions")
         resp = dict()
@@ -53,7 +51,7 @@ class NeutronListAPIVersions(Resource):
                 "id": "v2.0",
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "href": request.url_root + '/v2.0',
                         "rel": "self"
                     }
                 ]
@@ -65,8 +63,6 @@ class NeutronListAPIVersions(Resource):
 
 
 class NeutronShowAPIv2Details(Resource):
-    global ip, port
-
     def get(self):
         logging.debug("API CALL: Neutron - Show API v2 details")
         resp = dict()
@@ -75,7 +71,7 @@ class NeutronShowAPIv2Details(Resource):
         resp['resources'] = [{
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0/subnets" % (ip, port),
+                        "href": request.url_root + 'v2.0/subnets',
                         "rel": "self"
                     }
                 ],
@@ -85,7 +81,7 @@ class NeutronShowAPIv2Details(Resource):
             {
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0/networks" % (ip, port),
+                        "href": request.url_root + 'v2.0/networks',
                         "rel": "self"
                     }
                 ],
@@ -95,7 +91,7 @@ class NeutronShowAPIv2Details(Resource):
             {
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0/ports" % (ip, port),
+                        "href": request.url_root + 'v2.0/ports',
                         "rel": "self"
                     }
                 ],
@@ -115,6 +111,11 @@ class NeutronListNetworks(Resource):
 
         logging.debug("API CALL: Neutron - List networks")
         try:
+
+            if request.args.get('name'):
+                show_network = NeutronShowNetwork()
+                return show_network.get(request.args.get('name'))
+
             network_list = list()
             network_dict = dict()
 
@@ -127,13 +128,12 @@ class NeutronListNetworks(Resource):
 
             return Response(json.dumps(network_dict), status=200, mimetype='application/json')
 
-
         except Exception as ex:
             logging.exception("Neutron: List networks exception.")
             return ex.message, 500
 
 
-class NeutornShowNetwork(Resource):
+class NeutronShowNetwork(Resource):
 
     def get(self, network_id):
         global compute
@@ -212,6 +212,10 @@ class NeutronListSubnets(Resource):
 
         logging.debug("API CALL: Neutron - List subnets")
         try:
+            if request.args.get('name'):
+                show_subnet = NeutronShowSubnet()
+                return show_subnet.get(request.args.get('name'))
+
             subnet_list = list()
             subnet_dict = dict()
 
@@ -221,6 +225,8 @@ class NeutronListSubnets(Resource):
                     subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
+            resp = Response(json.dumps(subnet_dict), status=200)
+            resp.headers['Content-Type'] = 'application/json'
 
             return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
 
@@ -307,6 +313,10 @@ class NeutronListPorts(Resource):
 
         logging.debug("API CALL: Neutron - List ports")
         try:
+            if request.args.get('name'):
+                show_port = NeutronShowPort()
+                return show_port.get(request.args.get('name'))
+
             port_list = list()
             port_dict = dict()
 
@@ -331,7 +341,6 @@ class NeutronShowPort(Resource):
 
         logging.debug("API CALL: Neutron - Show port")
         try:
-
             for stack in compute.stacks.values():
                 for port in stack.ports.values():
                     if port.id == port_id:
@@ -403,7 +412,7 @@ class NeutronUpdatePort(Resource):
 def create_network_dict(network):
     network_dict = dict()
     network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-    network_dict["subnets"] = None  # TODO can we add subnets?
+    network_dict["subnets"] = network.subnet_id  # TODO can we add subnets?
     network_dict["name"] = network.name
     network_dict["admin_state_up"] = True  # TODO is it always true?
     network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here
@@ -417,7 +426,7 @@ def create_subnet_dict(network):
     subnet_dict["name"] = network.subnet_name
     subnet_dict["network_id"] = network.id
     subnet_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here?
-    subnet_dict["allocation_pools"] = [{"start": "10.10.0.2", "end": "10.10.0.254"}]  # TODO where do we get the real pools?
+    subnet_dict["allocation_pools"] = [calculate_start_and_end_dict(network.cidr)]
     subnet_dict["gateway_ip"] = network.gateway_ip
     subnet_dict["ip_version"] = "4"  # TODO which versions do we support?
     subnet_dict["cidr"] = network.cidr
@@ -440,3 +449,32 @@ def create_port_dict(port):
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "cf1a5775e766426cb1968766d0191908"  # TODO find real tenant_id
     return port_dict
+
+
+def calculate_start_and_end_dict(cidr):
+    address, suffix = cidr.rsplit('/', 1)
+    int_suffix = int(suffix)
+    int_address = ip_2_int(address)
+    address_space = 2**32 - 1
+
+    for x in range(0, 31-int_suffix):
+        address_space = ~(~address_space | (1 << x))
+
+    start = int_address & address_space
+    end = start + (2**(32-int_suffix) - 1)
+
+    return {'start': int_2_ip(start), 'end': int_2_ip(end)}
+
+
+def ip_2_int(ip):
+    o = map(int, ip.split('.'))
+    res = (16777216 * o[0]) + (65536 * o[1]) + (256 * o[2]) + o[3]
+    return res
+
+
+def int_2_ip(int_ip):
+    o1 = int(int_ip / 16777216) % 256
+    o2 = int(int_ip / 65536) % 256
+    o3 = int(int_ip / 256) % 256
+    o4 = int(int_ip) % 256
+    return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()

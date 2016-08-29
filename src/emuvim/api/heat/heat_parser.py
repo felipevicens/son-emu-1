@@ -113,8 +113,9 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = str(dc_label) + "_" + str(stack.stack_name) + '_' + str(resource['properties']['name'])
-            shortened_name = self.shorten_server_name(compute_name, stack)
+            compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
+            shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' +\
+                             self.shorten_server_name(str(resource['properties']['name']), stack)
             stack.server_names[shortened_name] = compute_name
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
@@ -185,14 +186,13 @@ class HeatParser:
                 print('Could not create Router: ' + e.message)
             return
 
-    # TODO find a better way to shorten the name (e.g. dc_stacknr_shortName)
     def shorten_server_name(self, server_name, stack):
         shortened_name = server_name.split(':',1)[0]
         shortened_name = shortened_name.replace("-", "_")
-        shortened_name = shortened_name[0:24]
+        shortened_name = shortened_name[0:12]
         iterator = 0
         while shortened_name in stack.server_names:
-            shortened_name = shortened_name[0:24] + str(iterator)
+            shortened_name = shortened_name[0:12] + str(iterator)
             iterator += 1
         return shortened_name
 
