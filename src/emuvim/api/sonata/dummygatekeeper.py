@@ -38,6 +38,7 @@ import uuid
 import hashlib
 import zipfile
 import yaml
+import threading
 from docker import Client as DockerClient
 from flask import Flask, request
 import flask_restful as fr
@@ -63,6 +64,7 @@ GK_STANDALONE_MODE = False
 FORCE_PULL = False
 
 # Automatically deploy SAPs (endpoints) of the service as new containers
+# Attention: This is not a configuration switch but a global variable! Don't change its default value.
 DEPLOY_SAP = False
 
 class Gatekeeper(object):
@@ -237,8 +239,8 @@ class Service(object):
 
                 if vnf_name in self.vnfds:
                     # re-configure the VNFs IP assignment and ensure that a new subnet is used for each E-LAN
-                    # E-LAN relies on the learning switch capability of the infrastructure switch in dockernet,
-                    # so no explicit chaining is necessary
+                    # E-LAN relies on the learning switch capability of Ryu which has to be turned on in the topology
+                    # (DCNetwork(controller=RemoteController, enable_learning=True)), so no explicit chaining is necessary.
                     vnfi = self._get_vnf_instance(instance_uuid, vnf_name)
                     if vnfi is not None:
                         self._vnf_reconfigure_network(vnfi, intf_name, ip_address)
@@ -332,8 +334,11 @@ class Service(object):
             for env_var in env:
                 if "SON_EMU_CMD=" in env_var:
                     cmd = str(env_var.split("=")[1])
-                    LOG.info("Executing entrypoint script in %r: %r" % (vnfi.name, cmd))
-                    vnfi.cmdPrint(cmd)
+                    LOG.info("Executing entry point script in %r: %r" % (vnfi.name, cmd))
+                    # execute command in new thread to ensure that GK is not blocked by VNF
+                    t = threading.Thread(target=vnfi.cmdPrint, args=(cmd,))
+                    t.daemon = True
+                    t.start()
 
     def _unpack_service_package(self):
         """
