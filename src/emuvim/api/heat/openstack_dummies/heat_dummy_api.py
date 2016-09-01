@@ -204,7 +204,7 @@ class HeatDeleteStack(Resource):
             for stack in compute.stacks.values():
                 if stack.stack_name == stack_name_or_id:
                     compute.delete_stack(stack.id)
-                    return Response('Deleted Stack: ' + stack.id, 204)
+                    return Response('Deleted Stack: ' + stack_name_or_id, 204)
 
         except Exception as ex:
             logging.exception("Heat: Delete Stack exception")

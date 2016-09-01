@@ -202,7 +202,41 @@ class NeutronUpdateNetwork(Resource):  # TODO currently only the name will be ch
             return ex.message, 500
 
 
-# TODO maybe add 'Delete Network' function
+class NeutronDeleteNetwork(Resource):
+    def delete(self, network_id):
+        global compute
+
+        logging.debug("API CALL: Neutron - Delete network")
+        try:
+            for stack in compute.stacks.values():
+                for net in stack.nets.values():
+                    if net.id == network_id:
+                        # TODO  how do i change a running stack?
+
+
+                        for server in stack.servers.values():
+                            logging.debug("Starting new compute resources %s" % server.name)
+                            network = list()
+                            for port in server.ports:
+                                network_dict = dict()
+                                network_dict['id'] = port.net.id
+                                network_dict['ip'] = port.net.cidr
+                                network.append(network_dict)
+
+
+                        compute.cd.net.removeLink(link=None, node1=sevrer.name, node2=compute.dc.switch)
+
+
+
+                        delete_subnet = NeutronDeleteSubnet()
+                        delete_subnet.delete(net.subnet_id)
+
+
+                        net_name = net.name
+                        del stack.nets[net_name]
+        except Exception as ex:
+            logging.exception("Neutron: Delete network exception.")
+            return ex.message, 500
 
 
 class NeutronListSubnets(Resource):
@@ -303,8 +337,16 @@ class NeutronUpdateSubnet(Resource):
             return ex.message, 500
 
 
-# TODO maybe add 'Delete Subnet' function
+class NeutronDeleteSubnet(Resource):
+    def delete(self, subnet_id):
+        global compute
 
+        logging.debug("API CALL: Neutron - Delete subnet")
+        try:
+            pass  # TODO Delete the subnet!
+        except Exception as ex:
+            logging.exception("Neutron: Delete subnet exception.")
+            return ex.message, 500
 
 class NeutronListPorts(Resource):
 
