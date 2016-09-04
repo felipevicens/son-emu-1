@@ -13,7 +13,7 @@ before_install:
   - cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
 
- - cd ~/son-emu
+  - cd ~/son-emu
   - python setup.py build
 install:
   - "python setup.py install"
