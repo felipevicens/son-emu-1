@@ -10,7 +10,7 @@ install:
   - cd containernet/ansible/
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd
-  - git clone https://github.com/CN-UPB/son-emu.git
+  - git clone https://github.com/hafer1992/son-emu.git
   - cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd ~/son-emu
