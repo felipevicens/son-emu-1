@@ -54,7 +54,11 @@ class OpenstackCompute:
         if self.dc is None:
             return False
 
-        # TODO delete links as well but, currently only 'addLink' exists in 'dcemulator/net.py'
+        tmp_links = list(self.dc.net.links)
+        for link in tmp_links:
+            self.dc.net.removeLink(link=link)
+            #link.stop()
+
         stack = self.stacks[stack_id]
         for server in stack.servers.values():
             self.dc.stopCompute(server.name)
