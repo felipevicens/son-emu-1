@@ -96,7 +96,7 @@ class HeatParser:
             return
 
         if 'OS::Neutron::Port' in resource['type']:
-            network = resource['properties']['network']['get_resource']
+            network_name = resource['properties']['network']['get_resource']
             name = resource['properties']['name']
             try:
                 if name not in stack.ports:
@@ -104,7 +104,7 @@ class HeatParser:
                     stack.ports[name].id = str(len(stack.ports)-1)
 
                 for tmp_net in stack.nets.values():
-                    if tmp_net.name == network:
+                    if tmp_net.name == network_name:
                         stack.ports[name].net = tmp_net
                         return
             except Exception as e:
@@ -187,13 +187,17 @@ class HeatParser:
             return
 
     def shorten_server_name(self, server_name, stack):
-        shortened_name = server_name.split(':',1)[0]
-        shortened_name = shortened_name.replace("-", "_")
-        shortened_name = shortened_name[0:12]
+        server_name = self.shorten_name(server_name, 12)
         iterator = 0
-        while shortened_name in stack.server_names:
-            shortened_name = shortened_name[0:12] + str(iterator)
+        while server_name in stack.server_names:
+            server_name = server_name[0:12] + str(iterator)
             iterator += 1
+        return server_name
+
+    def shorten_name(self, name, max_size):
+        shortened_name = name.split(':', 1)[0]
+        shortened_name = shortened_name.replace("-", "_")
+        shortened_name = shortened_name[0:max_size]
         return shortened_name
 
 if __name__ == '__main__':
