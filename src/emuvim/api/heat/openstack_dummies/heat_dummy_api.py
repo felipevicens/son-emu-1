@@ -92,7 +92,7 @@ class HeatCreateStack(Resource):
 
             compute.add_stack(stack)
             compute.deploy_stack(stack.id)
-            return json.dumps(return_dict), 200
+            return return_dict, 200
 
         except Exception as ex:
             logging.exception("Heat: Create Stack exception.")
@@ -118,7 +118,7 @@ class HeatCreateStack(Resource):
                                   "tags": ""
                                 })
 
-            return Response(json.dumps(return_stacks), status=200)
+            return Response(json.dumps(return_stacks), status=200, mimetype="application/json")
         except Exception as ex:
             logging.exception("Heat: List Stack exception.")
             return ex.message, 500
@@ -204,7 +204,7 @@ class HeatDeleteStack(Resource):
             for stack in compute.stacks.values():
                 if stack.stack_name == stack_name_or_id:
                     compute.delete_stack(stack.id)
-                    return Response('Deleted Stack: ' + stack.id, 204)
+                    return Response('Deleted Stack: ' + stack_name_or_id, 204)
 
         except Exception as ex:
             logging.exception("Heat: Delete Stack exception")

@@ -24,6 +24,7 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         ip = in_ip
         port = in_port
         self.api.add_resource(KeystoneListVersions, "/")
+        self.api.add_resource(KeystoneShowAPIv2, "/v2.0")
         self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
 
     def _start_flask(self):
@@ -65,6 +66,57 @@ class KeystoneListVersions(Resource):
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 
+class KeystoneShowAPIv2(Resource):
+    global ip, port
+
+    def get(self):
+        logging.debug("API CALL: Show API v2.0 details")
+
+        neutrnon_port = port + 4696
+        heat_port = port + 3004
+
+        resp = dict()
+        resp['version'] = {
+                "status": "stable",
+                "media-types": [
+                    {
+                        "base": "application/json",
+                        "type": "application/vnd.openstack.identity-v2.0+json"
+                    }
+                ],
+                "id": "v2.0",
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/tokens" % (ip, port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/networks" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/subnets" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/ports" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (ip, heat_port),
+                        "rel": "self"
+                    }
+                ]
+            }
+        # TODO add all API calls
+
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
+
 class KeystoneGetToken(Resource):
     global ip, port
 
@@ -86,7 +138,7 @@ class KeystoneGetToken(Resource):
             ret['access']['token'] = dict()
             token = ret['access']['token']
 
-            token['issued_at'] = "2014-01-30T15:30:58.819Z",
+            token['issued_at'] = "2014-01-30T15:30:58.819Z"
             token['expires'] = "2999-01-30T15:30:58.819Z"
             token['id'] = req['auth'].get('token', {'id': 'fc394f2ab2df4114bde39905f800dc57'}).get('id')
             token['tenant'] = dict()
