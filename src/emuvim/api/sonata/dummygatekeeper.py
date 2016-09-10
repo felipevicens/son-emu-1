@@ -38,6 +38,7 @@ import uuid
 import hashlib
 import zipfile
 import yaml
+import threading
 from docker import Client as DockerClient
 from flask import Flask, request
 import flask_restful as fr
@@ -63,7 +64,11 @@ GK_STANDALONE_MODE = False
 FORCE_PULL = False
 
 # Automatically deploy SAPs (endpoints) of the service as new containers
+# Attention: This is not a configuration switch but a global variable! Don't change its default value.
 DEPLOY_SAP = False
+
+# flag to indicate if we use bidirectional forwarding rules in the automatic chaining process
+BIDIRECTIONAL_CHAIN = False
 
 class Gatekeeper(object):
 
@@ -162,7 +167,8 @@ class Service(object):
 
         # 3. compute placement of this service instance (adds DC names to VNFDs)
         if not GK_STANDALONE_MODE:
-            self._calculate_placement(FirstDcPlacement)
+            #self._calculate_placement(FirstDcPlacement)
+            self._calculate_placement(RoundRobinDcPlacement)
         # iterate over all vnfds that we have to start
         for vnfd in self.vnfds.itervalues():
             vnfi = None
@@ -209,7 +215,7 @@ class Service(object):
                 ret = network.setChain(
                     src_docker_name, dst_docker_name,
                     vnf_src_interface=src_if_name, vnf_dst_interface=dst_if_name,
-                    bidirectional=True, cmd="add-flow", cookie=cookie, priority=10)
+                    bidirectional=BIDIRECTIONAL_CHAIN, cmd="add-flow", cookie=cookie, priority=10)
 
                 # re-configure the VNFs IP assignment and ensure that a new subnet is used for each E-Link
                 src_vnfi = self._get_vnf_instance(instance_uuid, src_name)
@@ -237,8 +243,8 @@ class Service(object):
 
                 if vnf_name in self.vnfds:
                     # re-configure the VNFs IP assignment and ensure that a new subnet is used for each E-LAN
-                    # E-LAN relies on the learning switch capability of the infrastructure switch in dockernet,
-                    # so no explicit chaining is necessary
+                    # E-LAN relies on the learning switch capability of Ryu which has to be turned on in the topology
+                    # (DCNetwork(controller=RemoteController, enable_learning=True)), so no explicit chaining is necessary.
                     vnfi = self._get_vnf_instance(instance_uuid, vnf_name)
                     if vnfi is not None:
                         self._vnf_reconfigure_network(vnfi, intf_name, ip_address)
@@ -332,8 +338,11 @@ class Service(object):
             for env_var in env:
                 if "SON_EMU_CMD=" in env_var:
                     cmd = str(env_var.split("=")[1])
-                    LOG.info("Executing entrypoint script in %r: %r" % (vnfi.name, cmd))
-                    vnfi.cmdPrint(cmd)
+                    LOG.info("Executing entry point script in %r: %r" % (vnfi.name, cmd))
+                    # execute command in new thread to ensure that GK is not blocked by VNF
+                    t = threading.Thread(target=vnfi.cmdPrint, args=(cmd,))
+                    t.daemon = True
+                    t.start()
 
     def _unpack_service_package(self):
         """
@@ -389,7 +398,7 @@ class Service(object):
             # set of the connection_point ids found in the nsd (in the examples this is 'ns')
             self.sap_identifiers.add(sap_vnf_id)
 
-            sap_docker_name = sap.replace(':', '_')
+            sap_docker_name = "%s_%s" % (sap_vnf_id, sap_vnf_interface)
 
             # add SAP to self.vnfds
             sapfile = pkg_resources.resource_filename(__name__, "sap_vnfd.yml")
@@ -495,6 +504,20 @@ class FirstDcPlacement(object):
     def place(self, nsd, vnfds, dcs):
         for name, vnfd in vnfds.iteritems():
             vnfd["dc"] = list(dcs.itervalues())[0]
+
+
+class RoundRobinDcPlacement(object):
+    """
+    Placement: Distribute VNFs across all available DCs in a round robin fashion.
+    """
+    def place(self, nsd, vnfds, dcs):
+        c = 0
+        dcs_list = list(dcs.itervalues()) 
+        for name, vnfd in vnfds.iteritems():
+            vnfd["dc"] = dcs_list[c % len(dcs_list)]
+            c += 1  # inc. c to use next DC
+
+
 
 
 """
