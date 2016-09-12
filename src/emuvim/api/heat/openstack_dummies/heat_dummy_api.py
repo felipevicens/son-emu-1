@@ -177,15 +177,40 @@ class HeatUpdateStack(Resource):
 
         logging.debug("Heat: Update Stack")
         try:
-            stack = compute.stacks[stack_id]
-            if stack.stack_name != stack_name:
-                return Response('Stack names do not match.', 404)
+            old_stack = None
+            if stack_id in compute.stacks:
+                old_stack = compute.stacks[stack_id]
+            else:
+                for tmp_stack in compute.stacks.values:
+                    if tmp_stack.stack_name == stack_name:
+                        old_stack = tmp_stack
+            if old_stack is None:
+                return 'Could not resolve Stack - ID', 404
 
             stack_dict = request.json
+            # TODO create a new stack and update the old one!
 
-            # TODO update the stack
+            # ----------------------------------------------------------------------------
+            reader = HeatParser()
+            if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
+                stack_dict['template'] = json.loads(stack_dict['template'])
+            reader.parse_input(stack_dict['template'], old_stack, compute.dc.label)
 
-            return Response('', 202)
+            old_stack.creation_time = str(datetime.now())
+            old_stack.status = "CREATE_COMPLETE"
+
+            return_dict = {"stack": {"id": old_stack.id,
+                                     "links": [
+                                         {
+                                             "href": "http://%s:%s/v1/%s/stacks/%s"
+                                                     % (ip, port, tenant_id, old_stack.id),
+                                             "rel": "self"
+                                         }]}}
+
+            compute.update_stack(stack_id, old_stack)
+            compute.deploy_stack(old_stack.id)
+
+            return Response(json.dumps(return_dict), status=202, mimetype="application/json")
 
         except Exception as ex:
             logging.exception("Heat: Update Stack exception")

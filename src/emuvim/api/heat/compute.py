@@ -64,3 +64,12 @@ class OpenstackCompute:
             self.dc.stopCompute(server.name)
 
         del self.stacks[stack_id]
+
+    def update_stack(self, old_stack_id, new_stack):
+        old_stack = self.stacks[old_stack_id]
+        # TODO start all new dockers
+
+
+
+        # TODO stop all unused dockers
+        return

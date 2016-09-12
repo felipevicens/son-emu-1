@@ -186,6 +186,9 @@ class HeatParser:
                 print('Could not create Router: ' + e.message)
             return
 
+        print('Could not determine resource type!')
+        return
+
     def shorten_server_name(self, server_name, stack):
         server_name = self.shorten_name(server_name, 12)
         iterator = 0
