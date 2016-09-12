@@ -72,40 +72,46 @@ class KeystoneShowAPIv2(Resource):
     def get(self):
         logging.debug("API CALL: Show API v2.0 details")
 
-        neutrnonPort = port + 4696
+        neutrnon_port = port + 4696
+        heat_port = port + 3004
 
         resp = dict()
-        resp['resources'] = [{
-                "links": [
+        resp['version'] = {
+                "status": "stable",
+                "media-types": [
                     {
-                        "href": "http://%s:%d/v2.0/subnets" % (ip, neutrnonPort),
-                        "rel": "self"
+                        "base": "application/json",
+                        "type": "application/vnd.openstack.identity-v2.0+json"
                     }
                 ],
-                "name": "subnet",
-                "collection": "subnets"
-            },
-            {
+                "id": "v2.0",
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0/networks" % (ip, neutrnonPort),
+                        "href": "http://%s:%d/v2.0" % (ip, port),
                         "rel": "self"
-                    }
-                ],
-                "name": "network",
-                "collection": "networks"
-            },
-            {
-                "links": [
+                    },
                     {
-                        "href": "http://%s:%d/v2.0/ports" % (ip, neutrnonPort),
+                        "href": "http://%s:%d/v2.0/tokens" % (ip, port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/networks" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/subnets" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v2.0/ports" % (ip, neutrnon_port),
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (ip, heat_port),
                         "rel": "self"
                     }
-                ],
-                "name": "ports",
-                "collection": "ports"
+                ]
             }
-        ]
         # TODO add all API calls
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
