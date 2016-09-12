@@ -67,6 +67,9 @@ FORCE_PULL = False
 # Attention: This is not a configuration switch but a global variable! Don't change its default value.
 DEPLOY_SAP = False
 
+# flag to indicate if we use bidirectional forwarding rules in the automatic chaining process
+BIDIRECTIONAL_CHAIN = False
+
 class Gatekeeper(object):
 
     def __init__(self):
@@ -164,7 +167,8 @@ class Service(object):
 
         # 3. compute placement of this service instance (adds DC names to VNFDs)
         if not GK_STANDALONE_MODE:
-            self._calculate_placement(FirstDcPlacement)
+            #self._calculate_placement(FirstDcPlacement)
+            self._calculate_placement(RoundRobinDcPlacement)
         # iterate over all vnfds that we have to start
         for vnfd in self.vnfds.itervalues():
             vnfi = None
@@ -211,7 +215,7 @@ class Service(object):
                 ret = network.setChain(
                     src_docker_name, dst_docker_name,
                     vnf_src_interface=src_if_name, vnf_dst_interface=dst_if_name,
-                    bidirectional=True, cmd="add-flow", cookie=cookie, priority=10)
+                    bidirectional=BIDIRECTIONAL_CHAIN, cmd="add-flow", cookie=cookie, priority=10)
 
                 # re-configure the VNFs IP assignment and ensure that a new subnet is used for each E-Link
                 src_vnfi = self._get_vnf_instance(instance_uuid, src_name)
@@ -394,7 +398,7 @@ class Service(object):
             # set of the connection_point ids found in the nsd (in the examples this is 'ns')
             self.sap_identifiers.add(sap_vnf_id)
 
-            sap_docker_name = sap.replace(':', '_')
+            sap_docker_name = "%s_%s" % (sap_vnf_id, sap_vnf_interface)
 
             # add SAP to self.vnfds
             sapfile = pkg_resources.resource_filename(__name__, "sap_vnfd.yml")
@@ -500,6 +504,20 @@ class FirstDcPlacement(object):
     def place(self, nsd, vnfds, dcs):
         for name, vnfd in vnfds.iteritems():
             vnfd["dc"] = list(dcs.itervalues())[0]
+
+
+class RoundRobinDcPlacement(object):
+    """
+    Placement: Distribute VNFs across all available DCs in a round robin fashion.
+    """
+    def place(self, nsd, vnfds, dcs):
+        c = 0
+        dcs_list = list(dcs.itervalues()) 
+        for name, vnfd in vnfds.iteritems():
+            vnfd["dc"] = dcs_list[c % len(dcs_list)]
+            c += 1  # inc. c to use next DC
+
+
 
 
 """
