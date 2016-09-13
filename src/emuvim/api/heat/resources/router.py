@@ -7,3 +7,9 @@ class Router:
 
     def add_subnet(self, subnet):
         self.subnet.append(subnet)
+
+    def __eq__(self, other):
+        if self.name == other.name and len(self.subnet) == len(other.subnet) and \
+                                       set(self.subnet) == set(other.subnet):
+            return True
+        return False

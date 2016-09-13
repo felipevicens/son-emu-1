@@ -40,15 +40,7 @@ class OpenstackCompute:
 
         # Create the networks first
         for server in stack.servers.values():
-            logging.debug("Starting new compute resources %s" % server.name)
-            network = list()
-            for port in server.ports:
-                network_dict = dict()
-                network_dict['id'] = port.net.id
-                network_dict['ip'] = port.net.cidr
-                network.append(network_dict)
-
-            c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+            self.start_compute(server)
 
     def delete_stack(self, stack_id):
         if self.dc is None:
@@ -64,3 +56,40 @@ class OpenstackCompute:
             self.dc.stopCompute(server.name)
 
         del self.stacks[stack_id]
+
+    def update_stack(self, old_stack_id, new_stack):
+        if old_stack_id in self.stacks:
+            old_stack = self.stacks[old_stack_id]
+        else:
+            return False
+
+        # Remove all unnecessary servers
+        for server in old_stack.servers.values():
+            if not (server.name in new_stack.servers and server == new_stack.servers[server.name]):
+                my_links = self.dc.net.links
+                for link in my_links:
+                    if link.intf1.node == self.dc.net.get(server.name) or link.intf2.node == self.dc.net.get(server.name):
+                        print('Remove link from ' + link.intf1.name + ' to ' + link.intf2.name + '.')
+                        self.dc.net.removeLink(link)
+
+                self.dc.stopCompute(server.name)
+
+        # Start all new servers
+        for server in new_stack.servers.values():
+            if server.name not in self.dc.containers:
+                self.start_compute(server)
+
+        del self.stacks[old_stack_id]
+        self.stacks[new_stack.id] = new_stack
+        return True
+
+    def start_compute(self, server):
+        logging.debug("Starting new compute resources %s" % server.name)
+        network = list()
+        for port in server.ports:
+            network_dict = dict()
+            network_dict['id'] = port.net.id
+            network_dict['ip'] = port.net.cidr
+            network.append(network_dict)
+
+        c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
