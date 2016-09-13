@@ -116,7 +116,6 @@ class HeatParser:
             compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
             shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' +\
                              self.shorten_server_name(str(resource['properties']['name']), stack)
-            stack.server_names[shortened_name] = compute_name
             flavor = resource['properties']['flavor']
             nw_list = resource['properties']['networks']
             image = resource['properties']['image']
@@ -126,6 +125,7 @@ class HeatParser:
                     stack.servers[shortened_name] = Server(shortened_name)
 
                 tmp_server = stack.servers[shortened_name]
+                tmp_server.full_name = compute_name
                 tmp_server.command = command
                 tmp_server.image = image
                 tmp_server.flavor = flavor
@@ -192,7 +192,7 @@ class HeatParser:
     def shorten_server_name(self, server_name, stack):
         server_name = self.shorten_name(server_name, 12)
         iterator = 0
-        while server_name in stack.server_names:
+        while server_name in stack.servers:
             server_name = server_name[0:12] + str(iterator)
             iterator += 1
         return server_name
