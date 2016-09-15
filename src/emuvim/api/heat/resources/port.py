@@ -20,8 +20,6 @@ class Port:
     def __hash__(self):
         return hash((self.name,
                      self.full_name,
-                     #self.id,
                      self.ip_address,
                      self.mac_address,
                      self.floating_ip))
-                     #self.net))
