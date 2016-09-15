@@ -18,9 +18,7 @@ class Net:
 
     def __hash__(self):
         return hash((self.name,
-                     #self.id,
                      self.subnet_name,
-                     #self.subnet_id,
                      self.gateway_ip,
                      self.segmentation_id,
                      self.cidr))

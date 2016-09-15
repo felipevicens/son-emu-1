@@ -64,10 +64,6 @@ class OpenstackApiEndpoint():
         self.compute.add_stack(stack)
         self.compute.deploy_stack(stack.id)
 
-    def deploy_simulation(self):
-        for server in compute.server_list:
-            server.start_compute("datacenter1")
-
 if __name__ == "__main__":
     ha = OpenstackApiEndpoint("localhost", 5000)
     ha.start()
