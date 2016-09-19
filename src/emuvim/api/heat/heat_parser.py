@@ -66,8 +66,8 @@ class HeatParser:
 
     def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
-            name = resource['properties']['name']
             try:
+                name = resource['properties']['name']
                 if name not in stack.nets:
                     stack.nets[name] = Net(name)
                     stack.nets[name].id = str(len(stack.nets)-1)
@@ -77,35 +77,31 @@ class HeatParser:
             return
 
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
-            cidr = resource['properties']['cidr']
-            gateway_ip = resource['properties']['gateway_ip']
-            name = resource['properties']['name']
-            net_name = resource['properties']['network']['get_resource']
             try:
+                net_name = resource['properties']['network']['get_resource']
                 if net_name not in stack.nets:
                     stack.nets[net_name] = Net(net_name)
                     stack.nets[net_name].id = str(len(stack.nets)-1)
 
                 tmp_net = stack.nets[net_name]
-                tmp_net.subnet_name = name
-                if gateway_ip is not None:
-                    tmp_net.gateway_ip = gateway_ip
+                tmp_net.subnet_name = resource['properties']['name']
+                if 'gateway_ip' in resource['properties']:
+                    tmp_net.gateway_ip = resource['properties']['gateway_ip']
                 tmp_net.subnet_id = tmp_net.id  # TODO could there be a different number of subnets than nets?
-                tmp_net.cidr = cidr
+                tmp_net.cidr = resource['properties']['cidr']
             except Exception as e:
                 print('Could not create Subnet: ' + e.message)
             return
 
         if 'OS::Neutron::Port' in resource['type']:
-            network_name = resource['properties']['network']['get_resource']
-            name = resource['properties']['name']
             try:
+                name = resource['properties']['name']
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
                     stack.ports[name].id = str(len(stack.ports)-1)
 
                 for tmp_net in stack.nets.values():
-                    if tmp_net.name == network_name:
+                    if tmp_net.name == resource['properties']['network']['get_resource']:
                         stack.ports[name].net = tmp_net
                         return
             except Exception as e:
@@ -114,22 +110,19 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
-            shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' +\
-                             self.shorten_server_name(str(resource['properties']['name']), stack)
-            flavor = resource['properties']['flavor']
-            nw_list = resource['properties']['networks']
-            image = resource['properties']['image']
-            command = '/bin/bash'   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
+                compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
+                shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + \
+                                 self.shorten_server_name(str(resource['properties']['name']), stack)
+                nw_list = resource['properties']['networks']
                 if shortened_name not in stack.servers:
                     stack.servers[shortened_name] = Server(shortened_name)
 
                 tmp_server = stack.servers[shortened_name]
                 tmp_server.full_name = compute_name
-                tmp_server.command = command
-                tmp_server.image = image
-                tmp_server.flavor = flavor
+                tmp_server.command = '/bin/bash'
+                tmp_server.image = resource['properties']['image']
+                tmp_server.flavor = resource['properties']['flavor']
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     if port_name not in stack.ports:

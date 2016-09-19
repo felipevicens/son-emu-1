@@ -2,7 +2,6 @@
 class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
         self.name = name
-        self.full_name = None
         self.id = None
         self.ip_address = ip_address    # not set
         self.mac_address = mac_address  # not set
@@ -19,7 +18,6 @@ class Port:
 
     def __hash__(self):
         return hash((self.name,
-                     self.full_name,
                      self.ip_address,
                      self.mac_address,
                      self.floating_ip))
