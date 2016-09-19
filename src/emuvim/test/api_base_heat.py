@@ -100,6 +100,10 @@ class ApiBaseHeat(unittest.TestCase):
         for i in self.api:
             i.start()
 
+    def stopApi(self):
+        for i in self.api:
+            i.stop()
+
     def startNet(self):
         self.net.start()
 
@@ -125,14 +129,27 @@ class ApiBaseHeat(unittest.TestCase):
     def setUp():
         pass
 
-    @staticmethod
-    def tearDown():
+
+    def tearDown(self):
         print('->>>>>>> tear everything down ->>>>>>>>>>>>>>>')
+        self.stopApi() # stop all flask threads
+        self.stopNet() # stop some mininet and containernet stuff
         cleanup()
         # make sure that all pending docker containers are killed
+        with open(os.devnull, 'w') as devnull: # kill a possibly running docker process that blocks the open ports
+            subprocess.call("kill $(netstat -npl | grep '5000' | grep -o -e'[0-9]\+/docker' | grep -o -e '[0-9]\+')",
+                stdout=devnull,
+                stderr=devnull,
+                shell=True)
+
         with open(os.devnull, 'w') as devnull:
             subprocess.call(
                 "sudo docker rm -f $(sudo docker ps --filter 'label=com.containernet' -a -q)",
                 stdout=devnull,
                 stderr=devnull,
                 shell=True)
+
+
+
+
+

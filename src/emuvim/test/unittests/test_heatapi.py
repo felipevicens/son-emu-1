@@ -70,24 +70,33 @@ class testRestApi(ApiBaseHeat):
         listapiversionstackresponse = requests.get(url, headers=headers)
         self.assertTrue(listapiversionstackresponse.status_code == 200)
         self.assertTrue(json.loads(listapiversionstackresponse.content)["versions"][0]["id"] == "v1.0")
-
+        print(" ")
 
         print('->>>>>>> testCreateStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackresponse = requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
-        print createstackresponse.content
         self.assertTrue(createstackresponse.status_code == 200)
         self.assertTrue(json.loads(createstackresponse.content)["stack"]["id"] != "")
+        print(" ")
+
+        print('->>>>>>> testListStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
+        liststackresponse = requests.get(url, headers=headers)
+        self.assertTrue(liststackresponse.status_code == 200)
+        self.assertTrue(json.loads(liststackresponse.content)["stacks"][0]["stack_status"] == "CREATE_COMPLETE")
+        print(" ")
 
 
         print('->>>>>>> testShowStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/name1233/%s"% json.loads(createstackresponse.content)['stack']['id']
+        url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/%s"% json.loads(createstackresponse.content)['stack']['id']
         headers = {'Content-type': 'application/json'}
         liststackdetailsresponse = requests.get(url, headers=headers)
-        print liststackdetailsresponse.content
         self.assertTrue(liststackdetailsresponse.status_code == 200)
+        self.assertTrue(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"] == "CREATE_COMPLETE")
+        print(" ")
 
 
 """

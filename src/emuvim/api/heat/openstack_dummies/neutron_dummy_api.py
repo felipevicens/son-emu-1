@@ -25,6 +25,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
         compute = None
 
         self.api.add_resource(NeutronListAPIVersions, "/")
+        self.api.add_resource(Shutdown, "/shutdown")
         self.api.add_resource(NeutronShowAPIv2Details, "/v2.0")
         self.api.add_resource(NeutronListNetworks, "/v2.0/networks.json", "/v2.0/networks")
         self.api.add_resource(NeutronShowNetwork, "/v2.0/networks/<network_id>.json", "/v2.0/networks/<network_id>")
@@ -52,6 +53,13 @@ class NeutronDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+class Shutdown(Resource):
+    def get(self):
+        print("%s ist ein braver thread und fährt sich herunter") % (__name__)
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 class NeutronListAPIVersions(Resource):
     def get(self):
