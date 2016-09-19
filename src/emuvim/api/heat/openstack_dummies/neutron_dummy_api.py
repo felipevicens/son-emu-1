@@ -681,7 +681,10 @@ def create_port_dict(port):
     port_dict["id"] = port.id
     port_dict["mac_address"] = port.mac_address
     port_dict["name"] = port.name
-    port_dict["network_id"] = port.net.id
+    if port.net is not None:
+        port_dict["network_id"] = port.net.id
+    else:
+        port_dict["network_id"] = None
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "cf1a5775e766426cb1968766d0191908"  # TODO find real tenant_id
     return port_dict
