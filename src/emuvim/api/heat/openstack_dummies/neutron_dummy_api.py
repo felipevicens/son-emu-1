@@ -6,6 +6,7 @@ from flask import jsonify
 import logging
 import json
 import uuid
+import re
 from emuvim.api.heat.heat_parser import HeatParser
 from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
@@ -342,6 +343,14 @@ class NeutronCreateSubnet(Resource):
                         if net.subnet_id is not None:
                             return 'Only one subnet per network is supported', 409
 
+                        if "cidr" in subnet_dict["subnet"]:
+                            r = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{2}')
+                            if r.match(subnet_dict["subnet"]["cidr"]):
+                                net.cidr = subnet_dict["subnet"]["cidr"]
+                            else:
+                                return 'Wrong CIDR format.', 400
+                        else:
+                            return 'No CIDR found.', 400
                         if "name" in subnet_dict["subnet"]:
                             net.subnet_name = subnet_dict["subnet"]["name"]
                         if "tenant_id" in subnet_dict["subnet"]:
@@ -352,8 +361,6 @@ class NeutronCreateSubnet(Resource):
                             net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
                         if "ip_version" in subnet_dict["subnet"]:
                             pass
-                        if "cidr" in subnet_dict["subnet"]:
-                            net.cidr = subnet_dict["subnet"]["cidr"]
                         if "id" in subnet_dict["subnet"]:
                             net.subnet_id = subnet_dict["subnet"]["id"]
                         else:

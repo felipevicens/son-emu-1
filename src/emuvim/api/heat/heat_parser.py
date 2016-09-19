@@ -88,7 +88,8 @@ class HeatParser:
 
                 tmp_net = stack.nets[net_name]
                 tmp_net.subnet_name = name
-                tmp_net.gateway_ip = gateway_ip
+                if gateway_ip is not None:
+                    tmp_net.gateway_ip = gateway_ip
                 tmp_net.subnet_id = tmp_net.id  # TODO could there be a different number of subnets than nets?
                 tmp_net.cidr = cidr
             except Exception as e:
