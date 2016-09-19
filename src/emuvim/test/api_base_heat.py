@@ -127,6 +127,7 @@ class ApiBaseHeat(unittest.TestCase):
 
     @staticmethod
     def tearDown():
+        print('->>>>>>> tear everything down ->>>>>>>>>>>>>>>')
         cleanup()
         # make sure that all pending docker containers are killed
         with open(os.devnull, 'w') as devnull:

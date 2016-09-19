@@ -51,6 +51,7 @@ class OpenstackApiEndpoint():
                 endpoint.compute = self.compute
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
+                thread.name = endpoint.__class__
                 thread.start()
         #self.deploy_simulation() #TODO start a simulation
 

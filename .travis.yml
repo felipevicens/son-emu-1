@@ -18,6 +18,9 @@ install:
 script:
 
   - sudo python src/emuvim/examples/simple_heat_restapi_single_dc_travis.py &
+  - son-emu-cli compute start -d datacenter1 -n vnf1
+  - son-emu-cli compute start -d datacenter1 -n vnf2
+  - son-emu-cli compute list
 
 
 

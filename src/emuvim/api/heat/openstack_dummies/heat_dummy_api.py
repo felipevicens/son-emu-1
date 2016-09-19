@@ -14,16 +14,14 @@ compute = None
 ip = None
 port = None
 class HeatDummyApi(BaseOpenstackDummy):
-    global compute, ip, port
+
 
     def __init__(self, in_ip, in_port):
-        global compute
-
+        global compute, ip, port
         super(HeatDummyApi, self).__init__(in_ip, in_port)
-        self.compute = None
+        compute = None
         ip = in_ip
         port = in_port
-
         self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
         self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
@@ -58,11 +56,11 @@ class HeatListAPIVersions(Resource):
                 ]
             }]
 
-        return json.dumps(resp), 200
+        return Response(json.dumps(resp), status=200, mimetype="application/json")
 
 class HeatCreateStack(Resource):
+    global compute, ip, port
     def post(self, tenant_id):
-        global compute, ip, port
 
         logging.debug("HEAT: Create Stack")
 
@@ -92,7 +90,7 @@ class HeatCreateStack(Resource):
 
             compute.add_stack(stack)
             compute.deploy_stack(stack.id)
-            return return_dict, 200
+            return Response(json.dumps(return_dict), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception("Heat: Create Stack exception.")
