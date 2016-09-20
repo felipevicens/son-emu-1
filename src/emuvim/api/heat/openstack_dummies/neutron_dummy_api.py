@@ -199,6 +199,7 @@ class NeutronCreateNetwork(Resource):
 
                 return Response(json.dumps(tmp_dict), status=201, mimetype='application/json')
 
+            return 'No Stack found to create the Network.', 404
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
             return ex.message, 500
@@ -245,7 +246,7 @@ class NeutronUpdateNetwork(Resource):
 
 class NeutronDeleteNetwork(Resource):
 
-    def delete(self, network_id):  # TODO delete reference port.net too
+    def delete(self, network_id):
         global compute
 
         logging.debug("API CALL: Neutron - Delete network")
@@ -344,10 +345,7 @@ class NeutronCreateSubnet(Resource):
                             return 'Only one subnet per network is supported', 409
 
                         if "cidr" in subnet_dict["subnet"]:
-                            r = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{2}')
-                            if r.match(subnet_dict["subnet"]["cidr"]):
-                                net.cidr = subnet_dict["subnet"]["cidr"]
-                            else:
+                            if not net.set_cidr(subnet_dict["subnet"]["cidr"]):
                                 return 'Wrong CIDR format.', 400
                         else:
                             return 'No CIDR found.', 400
@@ -367,11 +365,6 @@ class NeutronCreateSubnet(Resource):
                             net.subnet_id = str(uuid.uuid4())
                         if "enable_dhcp" in subnet_dict["subnet"]:
                             pass
-
-                        for server in stack.servers.values():
-                            for port in server.ports:
-                                if port.net.id == net_id:
-                                    create_link(net.id)
 
                         tmp_subnet_dict = create_subnet_dict(net)
                         tmp_dict = dict()
@@ -410,7 +403,7 @@ class NeutronUpdateSubnet(Resource):
                         if "ip_version" in subnet_dict["subnet"]:
                             pass
                         if "cidr" in subnet_dict["subnet"]:
-                            net.cidr = subnet_dict["subnet"]["cidr"]
+                            net.set_cidr(subnet_dict["subnet"]["cidr"])
                         if "id" in subnet_dict["subnet"]:
                             net.subnet_id = subnet_dict["subnet"]["id"]
                         if "enable_dhcp" in subnet_dict["subnet"]:
@@ -436,22 +429,21 @@ class NeutronDeleteSubnet(Resource):
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
                     if net.subnet_id == subnet_id:
-                        tmp_server = None
                         for server in stack.servers.values():
-                            for port in server.ports:
-                                if port.net.subnet_id == subnet_id:
-                                    tmp_server = server
-                        if tmp_server is not None:
-                            compute.dc.net.removeLink(
-                                link=None,
-                                node1=compute.dc.containers[tmp_server.name],
-                                node2=compute.dc.switch)
-                        else:
-                            return 'Could not delete link.', 404
+                            for port_name in server.ports:
+                                port = stack[port_name]
+                                if port.net_id == net.id:
+                                    port.ip_address = None
+                                    compute.dc.net.removeLink(
+                                        link=None,
+                                        node1=compute.dc.containers[server.name],
+                                        node2=compute.dc.switch)
 
                         net.subnet_id = None
                         net.subnet_name = None
-                        net.cidr = None
+                        net.set_cidr(None)
+                        net.start_end_dict = None
+                        net.reset_issued_ip_addresses()
 
                         return 'Subnet ' + str(subnet_id) + ' deleted.', 204
 
@@ -534,14 +526,15 @@ class NeutronCreatePort(Resource):
             for stack in compute.stacks.values():
                 for net in stack.nets.values():
                     if net.id == net_id:
+                        port = None
                         if name not in stack.ports:
-                            stack.ports[name] = Port(name)
+                            port = Port(name)
+                            stack.ports[name] = port
                         else:
                             return 'Port name already exists.', 400
 
-                        stack.ports[name].net = net
-                        if net.cidr is not None:  # If cidr exists the subnet was created and we can create the link
-                            create_link(net.id)
+                        port.net_id = net.id
+                        port.ip_address = net.get_new_ip_address(name)
 
                         if "admin_state_up" in port_dict["port"]:
                             pass
@@ -602,6 +595,9 @@ class NeutronUpdatePort(Resource):
                         if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
                             old_name = port.name
                             port.name = port_dict["port"]["name"]
+                            for net in stack.nets.values():
+                                if port.net_id == net.id and port.ip_address is not None:
+                                    net.update_port_name_for_ip_address(port.ip_address, port.name)
                             stack.ports[port.name] = stack.ports[old_name]
                             del stack.ports[old_name]
                         if "network_id" in port_dict["port"]:
@@ -634,9 +630,11 @@ class NeutronDeletePort(Resource):
                     if port.id == port_id:
                         port_name = port.name
 
+                        for net in stack.nets.values():
+                            if port.net_id == net.id and port.ip_address is not None:
+                                net.withdraw_ip_address(port.ip_address)
                         for server in stack.servers.values():
-                            if port in server.ports:
-                                del server.ports[server.ports.index(port)]
+                            server.ports.remove(port_name)
                         del stack.ports[port_name]
 
                         return 'Port ' + port_id + ' deleted.', 204
@@ -667,11 +665,11 @@ def create_subnet_dict(network):
     subnet_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here?
     subnet_dict["created_at"] = "2016-09-02T17:20:00"
     subnet_dict["dns_nameservers"] = []
-    subnet_dict["allocation_pools"] = [calculate_start_and_end_dict(network.cidr)]
+    subnet_dict["allocation_pools"] = [network.start_end_dict]
     subnet_dict["host_routers"] = []
     subnet_dict["gateway_ip"] = network.gateway_ip
     subnet_dict["ip_version"] = "4"  # TODO which versions do we support?
-    subnet_dict["cidr"] = network.cidr
+    subnet_dict["cidr"] = network._cidr
     subnet_dict["updated_at"] = "2016-09-02T17:20:00"
     subnet_dict["id"] = network.subnet_id  # TODO it is currently the gateway_ip. Where do we get the real id?
     subnet_dict["enable_dhcp"] = False  # TODO do we support DHCP?
@@ -683,65 +681,39 @@ def create_port_dict(port):
     port_dict["admin_state_up"] = True  # TODO is it always true?
     port_dict["device_id"] = "257614cc-e178-4c92-9c61-3b28d40eca44"  # TODO find real values
     port_dict["device_owner"] = ""  # TODO do we have such things?
-    fixed_ips_list = list()  # TODO add something (floating ip? or some ip that is within the network?)
-    port_dict["fixed_ips"] = fixed_ips_list
+    tmp_subnet_id = None
+    for stack in compute.stacks.values():
+        for net in stack.nets.values():
+            if net.id == port.net_id:
+                tmp_subnet_id = net.subnet_id
+                break
+    tmp_ip_address = None
+    if port.ip_address is not None:
+        tmp_ip_address = port.ip_address.rsplit('/', 1)[0]
+    port_dict["fixed_ips"] = [
+                                  {
+                                      "ip_address": tmp_ip_address,
+                                      "subnet_id": tmp_subnet_id
+                                  }
+                             ]
     port_dict["id"] = port.id
     port_dict["mac_address"] = port.mac_address
     port_dict["name"] = port.name
-    if port.net is not None:
-        port_dict["network_id"] = port.net.id
-    else:
-        port_dict["network_id"] = None
+    port_dict["network_id"] = port.net_id
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "cf1a5775e766426cb1968766d0191908"  # TODO find real tenant_id
     return port_dict
 
 
-def calculate_start_and_end_dict(cidr):
-    address, suffix = cidr.rsplit('/', 1)
-    int_suffix = int(suffix)
-    int_address = ip_2_int(address)
-    address_space = 2**32 - 1
-
-    for x in range(0, 31-int_suffix):
-        address_space = ~(~address_space | (1 << x))
-
-    start = int_address & address_space
-    end = start + (2**(32-int_suffix) - 1)
-
-    return {'start': int_2_ip(start), 'end': int_2_ip(end)}
-
-
-def ip_2_int(ip):
-    o = map(int, ip.split('.'))
-    res = (16777216 * o[0]) + (65536 * o[1]) + (256 * o[2]) + o[3]
-    return res
-
-
-def int_2_ip(int_ip):
-    o1 = int(int_ip / 16777216) % 256
-    o2 = int(int_ip / 65536) % 256
-    o3 = int(int_ip / 256) % 256
-    o4 = int(int_ip) % 256
-    return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
-
-
 def create_link(net_id):
     for stack in compute.stacks.values():
-        for net in stack.nets.values():
-            if net.id == net_id:
-                tmp_server = None
-                for server in stack.servers.values():
-                    for port in server.ports:  # TODO new ports are currently not added to any server.ports dict
-                        if port.net.id == net_id:
-                            tmp_server = server
-
-                if tmp_server is not None:
+        for server in stack.servers.values():
+            for port_name in server.ports:  # TODO new ports are currently not added to any server.ports dict
+                port = stack.ports[port_name]
+                if port.net_id == net_id:
                     compute.dc.net.addLink(
-                        compute.dc.containers[tmp_server.name],
+                        compute.dc.containers[server.name],
                         compute.dc.switch,
-                        params1={"ip": str(net.cidr)},
+                        params1={"ip": str(port.ip_address)},
                         cls=Link,
-                        intfName1=net.id)
-                else:
-                    print('AAAAAAAAAAAHHHHHHHHHHHHHHHHHH server-class not found!!')
+                        intfName1=port.net_id)

@@ -6,13 +6,13 @@ class Port:
         self.ip_address = ip_address    # not set
         self.mac_address = mac_address  # not set
         self.floating_ip = floating_ip
-        self.net = None
+        self.net_id = None
 
     def __eq__(self, other):
         if self.name == other.name and self.ip_address == other.ip_address and \
                                        self.mac_address == other.mac_address and \
                                        self.floating_ip == other.floating_ip and \
-                                       self.net == other.net:
+                                       self.net_id == other.net:
             return True
         return False
 
@@ -20,4 +20,5 @@ class Port:
         return hash((self.name,
                      self.ip_address,
                      self.mac_address,
-                     self.floating_ip))
+                     self.floating_ip,
+                     self.net_id))
