@@ -40,7 +40,7 @@ class OpenstackCompute:
 
         # Create the networks first
         for server in stack.servers.values():
-            self._start_compute(server)
+            self._start_compute(server, stack)
 
     def delete_stack(self, stack_id):
         if self.dc is None:
@@ -67,7 +67,8 @@ class OpenstackCompute:
             if not (server.name in new_stack.servers and server == new_stack.servers[server.name]):
                 my_links = self.dc.net.links
                 for link in my_links:
-                    if link.intf1.node == self.dc.net.get(server.name) or link.intf2.node == self.dc.net.get(server.name):
+                    if link.intf1.node == self.dc.net.get(server.name) or \
+                       link.intf2.node == self.dc.net.get(server.name):
                         self.dc.net.removeLink(link)
 
                 self.dc.stopCompute(server.name)
@@ -75,19 +76,19 @@ class OpenstackCompute:
         # Start all new servers
         for server in new_stack.servers.values():
             if server.name not in self.dc.containers:
-                self._start_compute(server)
+                self._start_compute(server, new_stack)
 
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
 
-    def _start_compute(self, server):
+    def _start_compute(self, server, stack):
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
-        for port in server.ports:
+        for port_name in server.ports:
             network_dict = dict()
-            network_dict['id'] = port.net.id
-            network_dict['ip'] = port.net.cidr
+            network_dict['id'] = stack.ports[port_name].net_id
+            network_dict['ip'] = stack.ports[port_name].ip_address
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
