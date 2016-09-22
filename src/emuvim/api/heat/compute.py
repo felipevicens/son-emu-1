@@ -85,7 +85,7 @@ class OpenstackCompute:
     def _start_compute(self, server, stack):
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
-        for port_name in server.ports:
+        for port_name in server.port_names:
             network_dict = dict()
             network_dict['id'] = stack.ports[port_name].net_id
             network_dict['ip'] = stack.ports[port_name].ip_address

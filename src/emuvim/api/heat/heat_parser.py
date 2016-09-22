@@ -130,7 +130,7 @@ class HeatParser:
                         stack.ports[port_name] = Port(port_name)
                         stack.ports[port_name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
 
-                    stack.servers[shortened_name].ports.append(port_name)
+                    stack.servers[shortened_name].port_names.append(port_name)
             except Exception as e:
                 print('Could not create Server: ' + e.message)
             return
