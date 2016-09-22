@@ -282,6 +282,9 @@ class NeutronListSubnets(Resource):
             if request.args.get('name'):
                 show_subnet = NeutronShowSubnet()
                 return show_subnet.get_subnet(request.args.get('name'), True)
+            if request.args.get('id'):
+                show_subnet = NeutronShowSubnet()
+                return show_subnet.get_subnet(request.args.get('id'), True)
 
             subnet_list = list()
             subnet_dict = dict()
@@ -430,8 +433,8 @@ class NeutronDeleteSubnet(Resource):
                 for net in stack.nets.values():
                     if net.subnet_id == subnet_id:
                         for server in stack.servers.values():
-                            for port_name in server.ports:
-                                port = stack[port_name]
+                            for port_name in server.port_names:
+                                port = stack.ports[port_name]
                                 if port.net_id == net.id:
                                     port.ip_address = None
                                     compute.dc.net.removeLink(
@@ -463,6 +466,9 @@ class NeutronListPorts(Resource):
             if request.args.get('name'):
                 show_port = NeutronShowPort()
                 return show_port.get_port(request.args.get('name'), True)
+            if request.args.get('id'):
+                show_port = NeutronShowPort()
+                return show_port.get_port(request.args.get('id'), True)
 
             port_list = list()
             port_dict = dict()
@@ -634,7 +640,11 @@ class NeutronDeletePort(Resource):
                             if port.net_id == net.id and port.ip_address is not None:
                                 net.withdraw_ip_address(port.ip_address)
                         for server in stack.servers.values():
-                            server.ports.remove(port_name)
+                            try:
+                                server.port_names.remove(port_name)
+                            except ValueError:
+                                pass
+
                         del stack.ports[port_name]
 
                         return 'Port ' + port_id + ' deleted.', 204
@@ -708,7 +718,7 @@ def create_port_dict(port):
 def create_link(net_id):
     for stack in compute.stacks.values():
         for server in stack.servers.values():
-            for port_name in server.ports:  # TODO new ports are currently not added to any server.ports dict
+            for port_name in server.port_names:  # TODO new ports are currently not added to any server.ports dict
                 port = stack.ports[port_name]
                 if port.net_id == net_id:
                     compute.dc.net.addLink(
