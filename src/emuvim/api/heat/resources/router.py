@@ -3,13 +3,13 @@ class Router:
     def __init__(self, name, id=None):
         self.name = name
         self.id = id
-        self.subnet = list()
+        self.subnet_names = list()
 
-    def add_subnet(self, subnet):
-        self.subnet.append(subnet)
+    def add_subnet(self, subnet_name):
+        self.subnet_names.append(subnet_name)
 
     def __eq__(self, other):
-        if self.name == other.name and len(self.subnet) == len(other.subnet) and \
-                                       set(self.subnet) == set(other.subnet):
+        if self.name == other.name and len(self.subnet_names) == len(other.subnet_names) and \
+                                       set(self.subnet_names) == set(other.subnet_names):
             return True
         return False
