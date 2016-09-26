@@ -1,6 +1,7 @@
 from __future__ import print_function  # TODO remove when print is no longer needed for debugging
 import yaml
 import sys
+import uuid
 from resources import *
 
 
@@ -66,46 +67,44 @@ class HeatParser:
 
     def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
-            name = resource['properties']['name']
             try:
+                name = resource['properties']['name']
                 if name not in stack.nets:
                     stack.nets[name] = Net(name)
-                    stack.nets[name].id = str(len(stack.nets)-1)
+                    stack.nets[name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
 
             except Exception as e:
                 print('Could not create Net: ' + e.message)
             return
 
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
-            cidr = resource['properties']['cidr']
-            gateway_ip = resource['properties']['gateway_ip']
-            name = resource['properties']['name']
-            net_name = resource['properties']['network']['get_resource']
             try:
+                net_name = resource['properties']['network']['get_resource']
                 if net_name not in stack.nets:
                     stack.nets[net_name] = Net(net_name)
-                    stack.nets[net_name].id = str(len(stack.nets)-1)
+                    stack.nets[net_name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
 
-                tmp_net = stack.nets[net_name]
-                tmp_net.subnet_name = name
-                tmp_net.gateway_ip = gateway_ip
-                tmp_net.subnet_id = tmp_net.id  # TODO could there be a different number of subnets than nets?
-                tmp_net.cidr = cidr
+                stack.nets[net_name].subnet_name = resource['properties']['name']
+                if 'gateway_ip' in resource['properties']:
+                    stack.nets[net_name].gateway_ip = resource['properties']['gateway_ip']
+                stack.nets[net_name].subnet_id = stack.nets[net_name].id  # TODO could there be a different number of subnets than nets?
+                stack.nets[net_name].set_cidr(resource['properties']['cidr'])
             except Exception as e:
                 print('Could not create Subnet: ' + e.message)
             return
 
         if 'OS::Neutron::Port' in resource['type']:
-            network_name = resource['properties']['network']['get_resource']
-            name = resource['properties']['name']
             try:
+                name = resource['properties']['name']
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
-                    stack.ports[name].id = str(len(stack.ports)-1)
+                    stack.ports[name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
 
                 for tmp_net in stack.nets.values():
-                    if tmp_net.name == network_name:
-                        stack.ports[name].net = tmp_net
+                    if tmp_net.name == resource['properties']['network']['get_resource'] and \
+                       tmp_net.subnet_id is not None:
+                        stack.ports[name].net_id = tmp_net.id
+                        stack.ports[name].ip_address = tmp_net.get_new_ip_address(name)
                         return
             except Exception as e:
                 print('Could not create Port: ' + e.message)
@@ -113,29 +112,25 @@ class HeatParser:
             return
 
         if 'OS::Nova::Server' in resource['type']:
-            compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
-            shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' +\
-                             self.shorten_server_name(str(resource['properties']['name']), stack)
-            flavor = resource['properties']['flavor']
-            nw_list = resource['properties']['networks']
-            image = resource['properties']['image']
-            command = '/bin/bash'   # some parameter for Containernet-Hosts TODO which command should be used?
             try:
+                compute_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + str(resource['properties']['name'])
+                shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + \
+                                 self.shorten_server_name(str(resource['properties']['name']), stack)
+                nw_list = resource['properties']['networks']
                 if shortened_name not in stack.servers:
                     stack.servers[shortened_name] = Server(shortened_name)
 
-                tmp_server = stack.servers[shortened_name]
-                tmp_server.full_name = compute_name
-                tmp_server.command = command
-                tmp_server.image = image
-                tmp_server.flavor = flavor
+                stack.servers[shortened_name].full_name = compute_name
+                stack.servers[shortened_name].command = '/bin/bash'
+                stack.servers[shortened_name].image = resource['properties']['image']
+                stack.servers[shortened_name].flavor = resource['properties']['flavor']
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     if port_name not in stack.ports:
                         stack.ports[port_name] = Port(port_name)
-                        stack.ports[port_name].id = str(len(stack.ports)-1)
+                        stack.ports[port_name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
 
-                    tmp_server.ports.append(stack.ports[port_name])
+                    stack.servers[shortened_name].port_names.append(port_name)
             except Exception as e:
                 print('Could not create Server: ' + e.message)
             return
@@ -153,10 +148,9 @@ class HeatParser:
                 if router_name not in stack.routers:
                     stack.routers[router_name] = Router(router_name)
 
-                tmp_router = stack.routers[router_name]
                 for tmp_net in stack.nets.values():
                     if tmp_net.subnet_name == subnet_name:
-                        tmp_router.add_subnet(tmp_net)
+                        stack.routers[router_name].add_subnet(tmp_net)
                         return
             except Exception as e:
                 print('Could not create RouterInterface: ' + e.__repr__())
@@ -169,10 +163,9 @@ class HeatParser:
                 floating_network_id = resource['properties']['floating_network_id']
                 if port_id not in stack.ports:
                     stack.ports[port_id] = Port(port_id)
-                    stack.ports[port_id].id = str(len(stack.ports)-1)
+                    stack.ports[port_id].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
 
-                tmp_port = stack.ports[port_id]
-                tmp_port.floating_ip = floating_network_id
+                stack.ports[port_id].floating_ip = floating_network_id
             except Exception as e:
                 print('Could not create FloatingIP: ' + e.message)
             return
@@ -202,6 +195,7 @@ class HeatParser:
         shortened_name = shortened_name.replace("-", "_")
         shortened_name = shortened_name[0:max_size]
         return shortened_name
+
 
 if __name__ == '__main__':
     inputFile = open('yamlTest2', 'r')

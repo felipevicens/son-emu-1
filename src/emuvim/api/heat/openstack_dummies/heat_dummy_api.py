@@ -15,7 +15,6 @@ ip = None
 port = None
 class HeatDummyApi(BaseOpenstackDummy):
 
-
     def __init__(self, in_ip, in_port):
         global compute, ip, port
         super(HeatDummyApi, self).__init__(in_ip, in_port)
