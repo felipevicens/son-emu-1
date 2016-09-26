@@ -22,9 +22,9 @@ class HeatDummyApi(BaseOpenstackDummy):
         compute = None
         ip = in_ip
         port = in_port
-        self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(Shutdown, "/shutdown")
-        self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
+        self.api.add_resource(HeatListAPIVersions, "/")
+        self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks") # create Stack (post)  list stack (get)
         self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
         self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
         self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
@@ -40,7 +40,7 @@ class HeatDummyApi(BaseOpenstackDummy):
 
 class Shutdown(Resource):
     def get(self):
-        print("%s ist ein braver thread und fährt sich herunter") % (__name__)
+        logging.debug(("%s is beeing shut doen") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')

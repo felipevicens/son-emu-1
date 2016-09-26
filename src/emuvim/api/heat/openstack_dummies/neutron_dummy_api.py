@@ -55,7 +55,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
 
 class Shutdown(Resource):
     def get(self):
-        print("%s ist ein braver thread und fährt sich herunter") % (__name__)
+        logging.debug(("%s is beeing shut doen") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
