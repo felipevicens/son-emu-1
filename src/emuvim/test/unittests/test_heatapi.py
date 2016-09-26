@@ -63,6 +63,8 @@ class testRestApi(ApiBaseHeat):
     def testStack(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open("test_heatapi_template_create_stack.json").read()
+        test_heatapi_template_update_stack = open("test_heatapi_template_update_stack.json").read()
+        print(" ")
 
         print('->>>>>>> testHeatListAPIVersionsStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -92,11 +94,34 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>> testShowStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/%s"% json.loads(createstackresponse.content)['stack']['id']
-        headers = {'Content-type': 'application/json'}
         liststackdetailsresponse = requests.get(url, headers=headers)
         self.assertTrue(liststackdetailsresponse.status_code == 200)
+        print(liststackdetailsresponse.content)
         self.assertTrue(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"] == "CREATE_COMPLETE")
         print(" ")
+
+        print('->>>>>>> testUpdateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/%s"% json.loads(createstackresponse.content)['stack']['id']
+        updatestackresponse = requests.put(url, data=json.dumps(json.loads(test_heatapi_template_update_stack)),
+                                            headers=headers)
+        self.assertTrue(updatestackresponse.status_code == 202)
+        liststackdetailsresponse = requests.get(url, headers=headers)
+        self.assertTrue(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"] == "UPDATE_COMPLETE")
+        print(" ")
+
+        print('->>>>>>> testDeleteStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/%s" % \
+              json.loads(createstackresponse.content)['stack']['id']
+        deletestackdetailsresponse = requests.delete(url, headers=headers)
+        self.assertTrue(deletestackdetailsresponse.status_code == 204)
+        print(" ")
+
+
+
+
+
 
 
 """
