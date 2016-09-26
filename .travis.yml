@@ -1,0 +1,27 @@
+sudo: required
+dist: trusty
+language: python
+python:
+  - "2.7"
+before_install:
+  - sudo apt-get install ansible git aptitude python-heatclient
+install:
+  - git clone https://github.com/mpeuster/containernet.git
+  - cd containernet/ansible/
+  - sudo ansible-playbook -i "localhost," -c local install.yml
+  - cd
+  - git clone https://github.com/hafer1992/son-emu.git
+  - cd ~/son-emu/ansible
+  - sudo ansible-playbook -i "localhost," -c local install.yml
+  - cd ~/son-emu
+
+script:
+
+  - sudo python src/emuvim/examples/simple_heat_restapi_single_dc_travis.py &
+  - son-emu-cli compute start -d datacenter1 -n vnf1
+  - son-emu-cli compute start -d datacenter1 -n vnf2
+  - son-emu-cli compute list
+
+
+
+

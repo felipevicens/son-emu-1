@@ -8,6 +8,7 @@ from openstack_dummies import *
 import compute
 import heat_parser
 import network
+import requests
 
 from resources import Stack
 
@@ -51,8 +52,16 @@ class OpenstackApiEndpoint():
                 endpoint.compute = self.compute
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
+                thread.name = endpoint.__class__
                 thread.start()
         #self.deploy_simulation() #TODO start a simulation
+
+    def stop(self):
+        for component in self.openstack_endpoints.values():
+            for endpoint in component:
+                url = "http://"+endpoint.ip+":"+str(endpoint.port)+"/shutdown"
+                requests.get(url)
+
 
     def read_heat_file(self):
         stack = Stack()
