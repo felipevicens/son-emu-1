@@ -14,7 +14,7 @@ class Server:
                                        self.flavor == other.flavor and \
                                        self.image == other.image and \
                                        self.command == other.command and \
-                                       len(self.port_names) == len(other.ports) and \
-                                       set(self.port_names) == set(other.ports):
+                                       len(self.port_names) == len(other.ports_names) and \
+                                       set(self.port_names) == set(other.ports_names):
             return True
         return False
