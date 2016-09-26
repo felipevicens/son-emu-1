@@ -150,7 +150,7 @@ class HeatParser:
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.subnet_name == subnet_name:
-                        stack.routers[router_name].add_subnet(tmp_net)
+                        stack.routers[router_name].add_subnet(subnet_name)
                         return
             except Exception as e:
                 print('Could not create RouterInterface: ' + e.__repr__())

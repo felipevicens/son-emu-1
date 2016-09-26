@@ -265,7 +265,7 @@ class NeutronDeleteNetwork(Resource):
 
                         return 'Network ' + str(network_id) + ' deleted.', 204
 
-            return 'Could not find network.', 404
+            return 'Could not find network. (' + network_id + ')', 404
 
         except Exception as ex:
             logging.exception("Neutron: Delete network exception.")
@@ -282,18 +282,27 @@ class NeutronListSubnets(Resource):
             if request.args.get('name'):
                 show_subnet = NeutronShowSubnet()
                 return show_subnet.get_subnet(request.args.get('name'), True)
-            if request.args.get('id'):
+            id_list = request.args.getlist('id')
+            if len(id_list) == 1:
                 show_subnet = NeutronShowSubnet()
-                return show_subnet.get_subnet(request.args.get('id'), True)
+                return show_subnet.get_subnet(id_list[0], True)
 
             subnet_list = list()
             subnet_dict = dict()
 
-            for stack in compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.subnet_id is not None:
-                        tmp_subnet_dict = create_subnet_dict(net)
-                        subnet_list.append(tmp_subnet_dict)
+            if len(id_list) == 0:
+                for stack in compute.stacks.values():
+                    for net in stack.nets.values():
+                        if net.subnet_id is not None:
+                            tmp_subnet_dict = create_subnet_dict(net)
+                            subnet_list.append(tmp_subnet_dict)
+            else:
+                for id in id_list:
+                    for stack in compute.stacks.values():
+                        for net in stack.nets.values():
+                            if net.subnet_id == id:
+                                tmp_subnet_dict = create_subnet_dict(net)
+                                subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
 
@@ -325,7 +334,7 @@ class NeutronShowSubnet(Resource):
                             tmp_dict["subnet"] = tmp_subnet_dict
                         return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
-            return 'Subnet not found.', 404
+            return 'Subnet not found. (' + subnet_id + ')', 404
 
         except Exception as ex:
             logging.exception("Neutron: Show subnet exception.")
@@ -508,7 +517,7 @@ class NeutronShowPort(Resource):
                             tmp_dict["port"] = tmp_port_dict
                         return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
-            return 'Port not found.', 404
+            return 'Port not found. (' + port_id + ')', 404
 
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
