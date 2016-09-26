@@ -17,7 +17,7 @@ class HeatDummyApi(BaseOpenstackDummy):
     global compute, ip, port
 
     def __init__(self, in_ip, in_port):
-        global compute
+        global compute, ip, port
 
         super(HeatDummyApi, self).__init__(in_ip, in_port)
         self.compute = None
@@ -26,7 +26,7 @@ class HeatDummyApi(BaseOpenstackDummy):
 
         self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks")
-        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name>/<stack_id>")
+        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
         self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
         self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
 
@@ -124,20 +124,27 @@ class HeatCreateStack(Resource):
             return ex.message, 500
 
 class HeatShowStack(Resource):
-    def get(self, tenant_id, stack_name, stack_id):
+    def get(self, tenant_id, stack_name_or_id):
         global compute, ip, port
 
         logging.debug("HEAT: Show Stack")
         try:
-            stack = compute.stacks[stack_id]
-            if stack.stack_name != stack_name:
-                return Response('Stack names do not match.', 404)
+            stack = None
+            if stack_name_or_id in compute.stacks:
+                stack = compute.stacks[stack_name_or_id]
+            else:
+                for tmp_stack in compute.stacks.values():
+                    if tmp_stack.stack_name == stack_name_or_id:
+                        stack = tmp_stack
+            if stack is None:
+                return 'Could not resolve Stack - ID', 404
 
             return_stack = {
                             "stack": {
                                 "capabilities": [],
                                 "creation_time": stack.creation_time,
                                 "description": "desc of "+stack.stack_name,
+                                "disable_rollback": True,
                                 "id": stack.id,
                                 "links": [
                                     {
@@ -165,7 +172,8 @@ class HeatShowStack(Resource):
                                 "tags": ""
                             }
                         }
-            return Response(json.dumps(return_stack), status=200)
+
+            return Response(json.dumps(return_stack), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception("Heat: Show stack exception.")
@@ -192,14 +200,14 @@ class HeatUpdateStack(Resource):
             stack = Stack()
             stack.stack_name = old_stack.stack_name
             stack.id = old_stack.id
+            stack.creation_time = old_stack.creation_time
+            stack.update_time = str(datetime.now())
+            stack.status = "UPDATE_COMPLETE"
 
             reader = HeatParser()
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
             reader.parse_input(stack_dict['template'], stack, compute.dc.label)
-
-            stack.creation_time = str(datetime.now())
-            stack.status = "CREATE_COMPLETE"
 
             if not compute.update_stack(old_stack.id, stack):
                 return 'Could not update stack.', 400
