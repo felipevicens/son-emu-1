@@ -127,17 +127,25 @@ class NeutronListNetworks(Resource):
             if request.args.get('name'):
                 tmp_network = NeutronShowNetwork()
                 return tmp_network.get_network(request.args.get('name'), True)
-            if request.args.get('id'):
+            id_list = request.args.getlist('id')
+            if len(id_list) == 1:
                 tmp_network = NeutronShowNetwork()
                 return tmp_network.get_network(request.args.get('id'), True)
 
             network_list = list()
             network_dict = dict()
 
-            for stack in compute.stacks.values():
-                for net in stack.nets.values():
-                    tmp_network_dict = create_network_dict(net)
-                    network_list.append(tmp_network_dict)
+            if len(id_list) == 0:
+                for stack in compute.stacks.values():
+                    for net in stack.nets.values():
+                        tmp_network_dict = create_network_dict(net)
+                        network_list.append(tmp_network_dict)
+            else:
+                for stack in compute.stacks.values():
+                    for net in stack.nets.values():
+                        if net.id in id_list:
+                            tmp_network_dict = create_network_dict(net)
+                            network_list.append(tmp_network_dict)
 
             network_dict["networks"] = network_list
 
@@ -297,12 +305,11 @@ class NeutronListSubnets(Resource):
                             tmp_subnet_dict = create_subnet_dict(net)
                             subnet_list.append(tmp_subnet_dict)
             else:
-                for id in id_list:
-                    for stack in compute.stacks.values():
-                        for net in stack.nets.values():
-                            if net.subnet_id == id:
-                                tmp_subnet_dict = create_subnet_dict(net)
-                                subnet_list.append(tmp_subnet_dict)
+                for stack in compute.stacks.values():
+                    for net in stack.nets.values():
+                        if net.subnet_id in id_list:
+                            tmp_subnet_dict = create_subnet_dict(net)
+                            subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
 
@@ -475,17 +482,25 @@ class NeutronListPorts(Resource):
             if request.args.get('name'):
                 show_port = NeutronShowPort()
                 return show_port.get_port(request.args.get('name'), True)
-            if request.args.get('id'):
+            id_list = request.args.getlist('id')
+            if len(id_list) == 1:
                 show_port = NeutronShowPort()
                 return show_port.get_port(request.args.get('id'), True)
 
             port_list = list()
             port_dict = dict()
 
-            for stack in compute.stacks.values():
-                for net in stack.ports.values():
-                    tmp_port_dict = create_port_dict(net)
-                    port_list.append(tmp_port_dict)
+            if len(id_list) == 0:
+                for stack in compute.stacks.values():
+                    for port in stack.ports.values():
+                        tmp_port_dict = create_port_dict(port)
+                        port_list.append(tmp_port_dict)
+            else:
+                for stack in compute.stacks.values():
+                    for port in stack.ports.values():
+                        if port.id in id_list:
+                            tmp_port_dict = create_port_dict(port)
+                            port_list.append(tmp_port_dict)
 
             port_dict["ports"] = port_list
 
