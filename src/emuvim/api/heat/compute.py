@@ -1,10 +1,8 @@
 from resources import *
-from mininet.link import Link
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-SWITCH_ID = 0
 
 class HeatApiStackInvalidException(BaseException):
     def __init__(self, value):
@@ -40,13 +38,9 @@ class OpenstackCompute:
 
         stack = self.stacks[stackid]
 
-        # Start the servers first
+        # Create the networks first
         for server in stack.servers.values():
-            self._start_server(server)
-            #self._start_compute(server, stack)
-
-        # Then create the network
-        self._create_network(stack)
+            self._start_compute(server, stack)
 
     def delete_stack(self, stack_id):
         if self.dc is None:
@@ -58,7 +52,7 @@ class OpenstackCompute:
 
         stack = self.stacks[stack_id]
         for server in stack.servers.values():
-            self._stop_server(server.name)
+            self.dc.stopCompute(server.name)
 
         del self.stacks[stack_id]
 
@@ -88,42 +82,7 @@ class OpenstackCompute:
         self.stacks[new_stack.id] = new_stack
         return True
 
-    def _start_server(self, server):
-        d = self.dc.net.addDocker("%s" % (server.name),
-                                  dimage=server.image,
-                                  dcmd=server.command,
-                                  datacenter=self.dc,
-                                  flavor_name=server.flavor)
-        self.dc.containers[server.name] = d
-
-    def _stop_server(self, server_name):
-        self.dc.net.removeDocker("%s" % (server_name))
-        del self.containers[server_name]
-
-    def _create_network(self, stack):
-        """
-        First start the servers - otherwise we cannot connect links between switches and servers.
-        :param stack:
-        :return:
-        """
-        for router in stack.routers.values():
-            self._add_switch(router.name[:10])
-
-        for port in stack.ports.values():
-            for net in stack.nets.values():
-                if net.id == port.net_id:
-                    for server in stack.servers.values():
-                        for port_name in server.port_names:
-                            if port.name == port_name:
-                                for router in stack.routers.values():
-                                    for subnet_name in router.subnet_names:
-                                        if net.subnet_name == subnet_name:
-                                            self._add_link(self.dc.net.nameToNode[server.name],
-                                                           self.dc.net.nameToNode[router.name[:10]],
-                                                           str(server.name[:4] + router.name[:4]),
-                                                           port.ip_address)
-
-    def _start_compute(self, server, stack):  # deprecated
+    def _start_compute(self, server, stack):
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
         for port_name in server.port_names:
@@ -133,13 +92,3 @@ class OpenstackCompute:
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
-
-    def _add_switch(self, name):
-        global SWITCH_ID
-        SWITCH_ID += 1
-        self.dc.net.addSwitch(name, dpid=hex(SWITCH_ID))
-
-    def _add_link(self, start_name, destination_name, link_name, ip_address):
-        nw = {'ip': ip_address,
-              'id': link_name}
-        self.dc.net.addLink(start_name, destination_name, params1=nw, cls=Link, intfName1=link_name)
