@@ -24,9 +24,9 @@ class HeatDummyApi(BaseOpenstackDummy):
         self.api.add_resource(Shutdown, "/shutdown")
         self.api.add_resource(HeatListAPIVersions, "/")
         self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks") # create Stack (post)  list stack (get)
-        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
-        self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
-        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
+        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>","/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>")
+        self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>","/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>")
+        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>","/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>")
 
     def _start_flask(self):
         global compute
@@ -130,7 +130,7 @@ class HeatCreateStack(Resource):
             return ex.message, 500
 
 class HeatShowStack(Resource):
-    def get(self, tenant_id, stack_name_or_id):
+    def get(self, tenant_id, stack_name_or_id, stack_id=None):
         global compute, ip, port
 
         logging.debug("HEAT: Show Stack")
@@ -186,7 +186,7 @@ class HeatShowStack(Resource):
             return ex.message, 500
 
 class HeatUpdateStack(Resource):
-    def put(self, tenant_id, stack_name_or_id):
+    def put(self, tenant_id, stack_name_or_id, stack_id=None):
         global compute, ip, port
 
         logging.debug("Heat: Update Stack")
@@ -225,7 +225,7 @@ class HeatUpdateStack(Resource):
             return ex.message, 500
 
 class HeatDeleteStack(Resource):
-    def delete(self, tenant_id, stack_name_or_id):
+    def delete(self, tenant_id, stack_name_or_id, stack_id=None):
         global compute, ip, port
 
         logging.debug("Heat: Delete Stack")
