@@ -147,6 +147,7 @@ class HeatParser:
 
                 if router_name not in stack.routers:
                     stack.routers[router_name] = Router(router_name)
+                    stack.routers[router_name].id = str(uuid.uuid4())
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.subnet_name == subnet_name:
@@ -175,6 +176,8 @@ class HeatParser:
                 name = resource['properties']['name']
                 if name not in stack.routers:
                     stack.routers[name] = Router(name)
+
+                stack.routers[name].id = str(uuid.uuid4())
             except Exception as e:
                 print('Could not create Router: ' + e.message)
             return
