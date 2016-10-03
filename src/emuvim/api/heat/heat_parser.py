@@ -71,7 +71,7 @@ class HeatParser:
                 name = resource['properties']['name']
                 if name not in stack.nets:
                     stack.nets[name] = Net(name)
-                    stack.nets[name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
+                    stack.nets[name].id = str(uuid.uuid4())
 
             except Exception as e:
                 print('Could not create Net: ' + e.message)
@@ -82,7 +82,7 @@ class HeatParser:
                 net_name = resource['properties']['network']['get_resource']
                 if net_name not in stack.nets:
                     stack.nets[net_name] = Net(net_name)
-                    stack.nets[net_name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
+                    stack.nets[net_name].id = str(uuid.uuid4())
 
                 stack.nets[net_name].subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -98,12 +98,12 @@ class HeatParser:
                 name = resource['properties']['name']
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
-                    stack.ports[name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                    stack.ports[name].id = str(uuid.uuid4())
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == resource['properties']['network']['get_resource'] and \
                        tmp_net.subnet_id is not None:
-                        stack.ports[name].net_id = tmp_net.id
+                        stack.ports[name].net_name = tmp_net.name
                         stack.ports[name].ip_address = tmp_net.get_new_ip_address(name)
                         return
             except Exception as e:
@@ -128,7 +128,7 @@ class HeatParser:
                     port_name = port['port']['get_resource']
                     if port_name not in stack.ports:
                         stack.ports[port_name] = Port(port_name)
-                        stack.ports[port_name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                        stack.ports[port_name].id = str(uuid.uuid4())
 
                     stack.servers[shortened_name].port_names.append(port_name)
             except Exception as e:
@@ -163,7 +163,7 @@ class HeatParser:
                 floating_network_id = resource['properties']['floating_network_id']
                 if port_id not in stack.ports:
                     stack.ports[port_id] = Port(port_id)
-                    stack.ports[port_id].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                    stack.ports[port_id].id = str(uuid.uuid4())
 
                 stack.ports[port_id].floating_ip = floating_network_id
             except Exception as e:

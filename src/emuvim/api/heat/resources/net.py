@@ -12,6 +12,9 @@ class Net:
         self.start_end_dict = None
         self._issued_ip_addresses = dict()
 
+    def get_short_id(self):
+        return str(self.id)[:6]
+
     def get_new_ip_address(self, port_name):
         if self.start_end_dict is None:
             return None

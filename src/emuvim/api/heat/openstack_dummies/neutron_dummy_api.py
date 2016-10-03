@@ -459,7 +459,7 @@ class NeutronDeleteSubnet(Resource):
                         for server in stack.servers.values():
                             for port_name in server.port_names:
                                 port = stack.ports[port_name]
-                                if port.net_id == net.id:
+                                if port.net_name == net.name:
                                     port.ip_address = None
                                     compute.dc.net.removeLink(
                                         link=None,
@@ -571,7 +571,7 @@ class NeutronCreatePort(Resource):
                         else:
                             return 'Port name already exists.', 400
 
-                        port.net_id = net.id
+                        port.net_name = net.name
                         port.ip_address = net.get_new_ip_address(name)
 
                         if "admin_state_up" in port_dict["port"]:
@@ -633,9 +633,8 @@ class NeutronUpdatePort(Resource):
                         if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
                             old_name = port.name
                             port.name = port_dict["port"]["name"]
-                            for net in stack.nets.values():
-                                if port.net_id == net.id and port.ip_address is not None:
-                                    net.update_port_name_for_ip_address(port.ip_address, port.name)
+                            if port.net_name in stack.nets:
+                                stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
                             stack.ports[port.name] = stack.ports[old_name]
                             del stack.ports[old_name]
                         if "network_id" in port_dict["port"]:
@@ -668,9 +667,8 @@ class NeutronDeletePort(Resource):
                     if port.id == port_id:
                         port_name = port.name
 
-                        for net in stack.nets.values():
-                            if port.net_id == net.id and port.ip_address is not None:
-                                net.withdraw_ip_address(port.ip_address)
+                        if port.net_name in stack.nets:
+                            stack.nets[port.net_name].withdraw_ip_address(port.ip_address)
                         for server in stack.servers.values():
                             try:
                                 server.port_names.remove(port_name)
@@ -725,10 +723,8 @@ def create_port_dict(port):
     port_dict["device_owner"] = ""  # TODO do we have such things?
     tmp_subnet_id = None
     for stack in compute.stacks.values():
-        for net in stack.nets.values():
-            if net.id == port.net_id:
-                tmp_subnet_id = net.subnet_id
-                break
+        if port.net_name in stack.nets:
+            tmp_subnet_id = stack.nets[port.net_name].subnet_id
     tmp_ip_address = None
     if port.ip_address is not None:
         tmp_ip_address = port.ip_address.rsplit('/', 1)[0]
@@ -741,21 +737,25 @@ def create_port_dict(port):
     port_dict["id"] = port.id
     port_dict["mac_address"] = port.mac_address
     port_dict["name"] = port.name
-    port_dict["network_id"] = port.net_id
+    for stack in compute.stacks.values():
+        if port.net_name in stack.nets:
+            port_dict["network_id"] = stack.nets[port.net_name].id
+        else:
+            port_dict["network_id"] = None
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "cf1a5775e766426cb1968766d0191908"  # TODO find real tenant_id
     return port_dict
 
 
-def create_link(net_id):
+def create_link(net_name):
     for stack in compute.stacks.values():
         for server in stack.servers.values():
             for port_name in server.port_names:  # TODO new ports are currently not added to any server.ports dict
                 port = stack.ports[port_name]
-                if port.net_id == net_id:
+                if port.net_name == net_name:
                     compute.dc.net.addLink(
                         compute.dc.containers[server.name],
                         compute.dc.switch,
                         params1={"ip": str(port.ip_address)},
                         cls=Link,
-                        intfName1=port.net_id)
+                        intfName1=net_name)
