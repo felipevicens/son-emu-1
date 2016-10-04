@@ -82,7 +82,8 @@ class HeatCreateStack(Resource):
             reader = HeatParser()
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            reader.parse_input(stack_dict['template'], stack, compute.dc.label)
+            if not reader.parse_input(stack_dict['template'], stack, compute.dc.label):
+                return 'Could not create stack.', 400
 
 
             stack.creation_time = str(datetime.now())
@@ -213,7 +214,8 @@ class HeatUpdateStack(Resource):
             reader = HeatParser()
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            reader.parse_input(stack_dict['template'], stack, compute.dc.label)
+            if not reader.parse_input(stack_dict['template'], stack, compute.dc.label):
+                return 'Could not create stack.', 400
 
             if not compute.update_stack(old_stack.id, stack):
                 return 'Could not update stack.', 400

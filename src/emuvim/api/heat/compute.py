@@ -63,35 +63,54 @@ class OpenstackCompute:
         else:
             return False
 
+        # Update Stack IDs
+        for server in old_stack.servers.values():
+            if server.name in new_stack.servers:
+                new_stack.servers[server.name].id = server.id
+        for net in old_stack.nets.values():
+            if net.name in new_stack.nets:
+                new_stack.nets[net.name].id = net.id
+        for port in old_stack.ports.values():
+            if port.name in new_stack.ports:
+                new_stack.ports[port.name].id = port.id
+        for router in old_stack.routers.values():
+            if router.name in new_stack.routers:
+                new_stack.routers[router.name].id = router.id
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
                 if not server.compare_attributes(new_stack.servers[server.name]):
-                    self._stop_compute(server)
+                    self._stop_compute(server, old_stack)
                 else:
                     # Delete unused and changed links
                     for port_name in server.port_names:
                         if port_name in new_stack.ports:
-                            if not (old_stack.ports[port_name] == new_stack.ports[port_name]):
+                            if not old_stack.ports[port_name] == new_stack.ports[port_name]:
                                 my_links = self.dc.net.links
-                                for link in my_links:  # TODO dont delete all links ... just the one thats wrong
-                                    if link.intf1.node == self.dc.net.get(server.name) or \
-                                       link.intf2.node == self.dc.net.get(server.name):
-                                        self.dc.net.removeLink(link)
+                                for link in my_links:
+                                    net_short_id, port_short_id = str(link.intf1).split('-', 1)
+                                    tmp_net = old_stack.nets[old_stack.ports[port_name].net_name]
+                                    if old_stack.ports[port_name].get_short_id() == port_short_id and \
+                                       tmp_net.get_short_id() == net_short_id:
+                                        self.dc.net.removeLink(link=link)
 
                                         # Add changed link
                                         tmp_net = new_stack.nets[new_stack.ports[port_name].net_name]
                                         self._add_link(server.name,
-                                                       "%s.s1" % self.dc.name,
+                                                       self.dc.name + '.s1',
                                                        new_stack.ports[port_name].ip_address,
-                                                       str(tmp_net.get_short_id) +
-                                                       '-' + str(new_stack.ports[port_name].get_short_id))
+                                                       str(tmp_net.get_short_id()) +
+                                                       '-' + str(new_stack.ports[port_name].get_short_id()))
+                                        break
                         else:
                             my_links = self.dc.net.links
-                            for link in my_links:  # TODO dont delete all links ... just the one thats wrong
-                                if link.intf1.node == self.dc.net.get(server.name) or \
-                                   link.intf2.node == self.dc.net.get(server.name):
-                                    self.dc.net.removeLink(link)
+                            for link in my_links:
+                                net_short_id, port_short_id = str(link.intf1).split('-', 1)
+                                tmp_net = old_stack.nets[old_stack.ports[port_name].net_name]
+                                if old_stack.ports[port_name].get_short_id() == port_short_id and \
+                                   tmp_net.get_short_id() == net_short_id:
+                                    self.dc.net.removeLink(link=link)
 
                     # Create new links
                     for port_name in new_stack.servers[server.name].port_names:
@@ -99,8 +118,10 @@ class OpenstackCompute:
                             self._add_link(server.name,
                                            self.dc.name + '.s1',
                                            new_stack.ports[port_name].ip_address,
-                                           str(new_stack.nets[new_stack.ports[port_name].net_name].get_short_id) +
-                                           '-' + str(new_stack.ports[port_name].get_short_id))
+                                           str(new_stack.nets[new_stack.ports[port_name].net_name].get_short_id()) +
+                                           '-' + str(new_stack.ports[port_name].get_short_id()))
+            else:
+                self._stop_compute(server, old_stack)
 
         # Start all new servers
         for server in new_stack.servers.values():
@@ -116,19 +137,22 @@ class OpenstackCompute:
         network = list()
         for port_name in server.port_names:
             network_dict = dict()
-            network_dict['id'] = str(stack.nets[stack.ports[port_name].net_name].get_short_id()) +\
+            network_dict['id'] = str(stack.nets[stack.ports[port_name].net_name].get_short_id()) + \
                                  '-' + str(stack.ports[port_name].get_short_id())
             network_dict['ip'] = stack.ports[port_name].ip_address
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
-    def _stop_compute(self, server):
+    def _stop_compute(self, server, stack):
+        link_names = list()
+        for port_name in server.port_names:
+            link_names.append(str(stack.nets[stack.ports[port_name].net_name].get_short_id() +
+                                  '-' + stack.ports[port_name].get_short_id()))
         my_links = self.dc.net.links
         for link in my_links:
-            if link.intf1.node == self.dc.net.get(server.name) or \
-               link.intf2.node == self.dc.net.get(server.name):
-                self.dc.net.removeLink(link)
+            if str(link.intf1) in link_names:
+                self.dc.net.removeLink(link=link)
         self.dc.stopCompute(server.name)
 
     def _add_link(self, node_name, switch_name, ip_address, link_name):

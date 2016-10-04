@@ -1,5 +1,5 @@
 from __future__ import print_function  # TODO remove when print is no longer needed for debugging
-import yaml
+import re
 import sys
 import uuid
 from resources import *
@@ -15,9 +15,9 @@ class HeatParser:
         self.bufferResource = list()
 
     def parse_input(self, input_dict, stack, dc_label):
-        if not (str(input_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
+        if not self.check_template_version(str(input_dict['heat_template_version'])):
             print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
-            return
+            return False
 
         try:
             self.description = input_dict['description']
@@ -64,6 +64,7 @@ class HeatParser:
         if len(self.bufferResource) > 0:
             print(str(len(self.bufferResource)) +
                   ' classes could not be created, because the dependencies could not be found.')
+        return True
 
     def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
@@ -196,11 +197,17 @@ class HeatParser:
         shortened_name = shortened_name[0:max_size]
         return shortened_name
 
+    def check_template_version(self, version_string):
+        r = re.compile('\d{4}-\d{2}-\d{2}')
+        if not r.match(version_string):
+            return False
 
-if __name__ == '__main__':
-    inputFile = open('yamlTest2', 'r')
-    inp = inputFile.read()
-    inputFile.close()
-    stack = Stack()
-    x = HeatParser()
-    x.parse_input(inp, stack)
+        year, month, day = map(int, version_string.split('-', 2))
+        if year < 2015:
+            return False
+        if year == 2015:
+            if month < 04:
+                return False
+            if month == 04 and day < 30:
+                    return False
+        return True
