@@ -1,5 +1,5 @@
 from __future__ import print_function  # TODO remove when print is no longer needed for debugging
-import yaml
+import re
 import sys
 import uuid
 from resources import *
@@ -15,9 +15,9 @@ class HeatParser:
         self.bufferResource = list()
 
     def parse_input(self, input_dict, stack, dc_label):
-        if not (str(input_dict['heat_template_version']) == '2015-04-30'):  # TODO: change to versions equal or later then this date (to check that it is a HOT template)
+        if not self.check_template_version(str(input_dict['heat_template_version'])):
             print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
-            return
+            return False
 
         try:
             self.description = input_dict['description']
@@ -64,6 +64,7 @@ class HeatParser:
         if len(self.bufferResource) > 0:
             print(str(len(self.bufferResource)) +
                   ' classes could not be created, because the dependencies could not be found.')
+        return True
 
     def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
         if "OS::Neutron::Net" in resource['type']:
@@ -71,7 +72,7 @@ class HeatParser:
                 name = resource['properties']['name']
                 if name not in stack.nets:
                     stack.nets[name] = Net(name)
-                    stack.nets[name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
+                    stack.nets[name].id = str(uuid.uuid4())
 
             except Exception as e:
                 print('Could not create Net: ' + e.message)
@@ -82,7 +83,7 @@ class HeatParser:
                 net_name = resource['properties']['network']['get_resource']
                 if net_name not in stack.nets:
                     stack.nets[net_name] = Net(net_name)
-                    stack.nets[net_name].id = str(uuid.uuid4())[:15]  # str(len(stack.nets)-1)
+                    stack.nets[net_name].id = str(uuid.uuid4())
 
                 stack.nets[net_name].subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -98,12 +99,12 @@ class HeatParser:
                 name = resource['properties']['name']
                 if name not in stack.ports:
                     stack.ports[name] = Port(name)
-                    stack.ports[name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                    stack.ports[name].id = str(uuid.uuid4())
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == resource['properties']['network']['get_resource'] and \
                        tmp_net.subnet_id is not None:
-                        stack.ports[name].net_id = tmp_net.id
+                        stack.ports[name].net_name = tmp_net.name
                         stack.ports[name].ip_address = tmp_net.get_new_ip_address(name)
                         return
             except Exception as e:
@@ -128,7 +129,7 @@ class HeatParser:
                     port_name = port['port']['get_resource']
                     if port_name not in stack.ports:
                         stack.ports[port_name] = Port(port_name)
-                        stack.ports[port_name].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                        stack.ports[port_name].id = str(uuid.uuid4())
 
                     stack.servers[shortened_name].port_names.append(port_name)
             except Exception as e:
@@ -163,7 +164,7 @@ class HeatParser:
                 floating_network_id = resource['properties']['floating_network_id']
                 if port_id not in stack.ports:
                     stack.ports[port_id] = Port(port_id)
-                    stack.ports[port_id].id = str(uuid.uuid4())[:15]  # str(len(stack.ports)-1)
+                    stack.ports[port_id].id = str(uuid.uuid4())
 
                 stack.ports[port_id].floating_ip = floating_network_id
             except Exception as e:
@@ -196,11 +197,17 @@ class HeatParser:
         shortened_name = shortened_name[0:max_size]
         return shortened_name
 
+    def check_template_version(self, version_string):
+        r = re.compile('\d{4}-\d{2}-\d{2}')
+        if not r.match(version_string):
+            return False
 
-if __name__ == '__main__':
-    inputFile = open('yamlTest2', 'r')
-    inp = inputFile.read()
-    inputFile.close()
-    stack = Stack()
-    x = HeatParser()
-    x.parse_input(inp, stack)
+        year, month, day = map(int, version_string.split('-', 2))
+        if year < 2015:
+            return False
+        if year == 2015:
+            if month < 04:
+                return False
+            if month == 04 and day < 30:
+                    return False
+        return True
