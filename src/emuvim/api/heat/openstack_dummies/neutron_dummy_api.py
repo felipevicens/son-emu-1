@@ -2,16 +2,14 @@
 
 from flask_restful import Resource
 from flask import request, Response
-from flask import jsonify
 import logging
 import json
 import uuid
-import re
-from emuvim.api.heat.heat_parser import HeatParser
-from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from ..resources import Net, Port
 from mininet.link import Link
+from datetime import datetime
+
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -37,8 +35,6 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronShowSubnet, "/v2.0/subnets/<subnet_id>.json", "/v2.0/subnets/<subnet_id>")
         self.api.add_resource(NeutronCreateSubnet, "/v2.0/subnets.json", "/v2.0/subnets")
         self.api.add_resource(NeutronUpdateSubnet, "/v2.0/subnets/<subnet_id>.json", "/v2.0/subnets/<subnet_id>")
-        # 'neutron net-list' will always call for nets and then subnets, so a deletion of subnets
-        # (without the net class) could cause errors!!
         self.api.add_resource(NeutronDeleteSubnet, "/v2.0/subnets/<subnet_id>.json", "/v2.0/subnets/<subnet_id>")
         self.api.add_resource(NeutronListPorts, "/v2.0/ports.json", "/v2.0/ports")
         self.api.add_resource(NeutronShowPort, "/v2.0/ports/<port_id>.json", "/v2.0/ports/<port_id>")
@@ -56,7 +52,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
 
 class Shutdown(Resource):
     def get(self):
-        logging.debug(("%s is beeing shut doen") % (__name__))
+        logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
@@ -436,6 +432,8 @@ class NeutronUpdateSubnet(Resource):
                         if "enable_dhcp" in subnet_dict["subnet"]:
                             pass
 
+                        net.subnet_update_time = str(datetime.now())
+
                         subnet_dict = create_subnet_dict(net)
 
                         return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
@@ -692,7 +690,7 @@ def create_network_dict(network):
     network_dict["subnets"] = [network.subnet_id]  # TODO can we add subnets?
     network_dict["name"] = network.name
     network_dict["admin_state_up"] = True  # TODO is it always true?
-    network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here
+    network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here
     network_dict["id"] = network.id
     network_dict["shared"] = False  # TODO is it always false?
     return network_dict
@@ -702,15 +700,15 @@ def create_subnet_dict(network):
     subnet_dict = dict()
     subnet_dict["name"] = network.subnet_name
     subnet_dict["network_id"] = network.id
-    subnet_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"  # TODO what should go in here?
-    subnet_dict["created_at"] = "2016-09-02T17:20:00"
+    subnet_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here?
+    subnet_dict["created_at"] = network.subnet_creation_time
     subnet_dict["dns_nameservers"] = []
     subnet_dict["allocation_pools"] = [network.start_end_dict]
     subnet_dict["host_routers"] = []
     subnet_dict["gateway_ip"] = network.gateway_ip
     subnet_dict["ip_version"] = "4"  # TODO which versions do we support?
-    subnet_dict["cidr"] = network._cidr
-    subnet_dict["updated_at"] = "2016-09-02T17:20:00"
+    subnet_dict["cidr"] = network.get_cidr()
+    subnet_dict["updated_at"] = network.subnet_update_time
     subnet_dict["id"] = network.subnet_id  # TODO it is currently the gateway_ip. Where do we get the real id?
     subnet_dict["enable_dhcp"] = False  # TODO do we support DHCP?
     return subnet_dict
@@ -743,7 +741,7 @@ def create_port_dict(port):
         else:
             port_dict["network_id"] = None
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
-    port_dict["tenant_id"] = "cf1a5775e766426cb1968766d0191908"  # TODO find real tenant_id
+    port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
     return port_dict
 
 
