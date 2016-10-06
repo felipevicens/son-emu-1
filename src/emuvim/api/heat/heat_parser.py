@@ -3,6 +3,7 @@ import re
 import sys
 import uuid
 from resources import *
+from datetime import datetime
 
 
 class HeatParser:
@@ -88,7 +89,8 @@ class HeatParser:
                 stack.nets[net_name].subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
                     stack.nets[net_name].gateway_ip = resource['properties']['gateway_ip']
-                stack.nets[net_name].subnet_id = stack.nets[net_name].id  # TODO could there be a different number of subnets than nets?
+                stack.nets[net_name].subnet_id = stack.nets[net_name].id
+                stack.nets[net_name].subnet_creation_time = str(datetime.now())
                 stack.nets[net_name].set_cidr(resource['properties']['cidr'])
             except Exception as e:
                 print('Could not create Subnet: ' + e.message)

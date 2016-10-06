@@ -1,14 +1,16 @@
 import re
 
 class Net:
-    def __init__(self, name, id=None, subnet_name=None, subnet_id=None, segmentation_id=None, cidr=None):
+    def __init__(self, name):
         self.name = name
-        self.id = id                            # currently only a consecutively numbered
-        self.subnet_name = subnet_name
-        self.subnet_id = subnet_id
+        self.id = id
+        self.subnet_name = None
+        self.subnet_id = None
+        self.subnet_creation_time = None
+        self.subnet_update_time = None
         self.gateway_ip = None
-        self.segmentation_id = segmentation_id  # not set
-        self._cidr = cidr
+        self.segmentation_id = None  # not set
+        self._cidr = None
         self.start_end_dict = None
         self._issued_ip_addresses = dict()
 
@@ -55,6 +57,9 @@ class Net:
         self.start_end_dict = self.calculate_start_and_end_dict(cidr)
         self._cidr = cidr
         return True
+
+    def get_cidr(self):
+        return self._cidr
 
     def calculate_start_and_end_dict(self, cidr):
         address, suffix = cidr.rsplit('/', 1)
