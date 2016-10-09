@@ -24,6 +24,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['nova'] = list()
         self.openstack_endpoints['neutron'] = list()
         self.openstack_endpoints['heat'] = list()
+        self.openstack_endpoints['chain'] = list()
         self.rest_threads = list()
         self.openstack_networks = list()
 
@@ -34,6 +35,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['neutron'].append(NeutronDummyApi(self.ip, self.port + 4696))
         self.openstack_endpoints['nova'].append(NovaDummyApi(self.ip, self.port + 3774))
         self.openstack_endpoints['heat'].append(HeatDummyApi(self.ip, self.port + 3004))
+        self.openstack_endpoints['chain'].append(ChainDummyApi(self.ip, self.port -1000))
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
