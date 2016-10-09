@@ -8,6 +8,7 @@ from openstack_dummies import *
 import compute
 import heat_parser
 import network
+import requests
 
 from resources import Stack
 
@@ -25,7 +26,6 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['heat'] = list()
         self.rest_threads = list()
         self.openstack_networks = list()
-
 
     def connect_datacenter(self, dc):
         self.compute.dc = dc
@@ -51,18 +51,27 @@ class OpenstackApiEndpoint():
                 endpoint.compute = self.compute
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
+                thread.name = endpoint.__class__
                 thread.start()
         #self.deploy_simulation() #TODO start a simulation
+
+    def stop(self):
+        for component in self.openstack_endpoints.values():
+            for endpoint in component:
+                url = "http://"+endpoint.ip+":"+str(endpoint.port)+"/shutdown"
+                requests.get(url)
 
     def read_heat_file(self):
         stack = Stack()
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
-        reader.parse_input(inp, stack, self.compute.dc.label)
+        if not reader.parse_input(inp, stack, self.compute.dc.label):
+            return False
         logging.debug(stack)
         self.compute.add_stack(stack)
         self.compute.deploy_stack(stack.id)
+        return True
 
 if __name__ == "__main__":
     ha = OpenstackApiEndpoint("localhost", 5000)

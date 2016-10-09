@@ -24,6 +24,7 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         ip = in_ip
         port = in_port
         self.api.add_resource(KeystoneListVersions, "/")
+        self.api.add_resource(Shutdown, "/shutdown")
         self.api.add_resource(KeystoneShowAPIv2, "/v2.0")
         self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
 
@@ -34,6 +35,14 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         compute = self.compute
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+class Shutdown(Resource):
+    def get(self):
+        logging.debug(("%s is beeing shut doen") % (__name__))
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 
 class KeystoneListVersions(Resource):

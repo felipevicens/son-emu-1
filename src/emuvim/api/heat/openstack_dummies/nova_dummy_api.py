@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 from flask_restful import Resource
-from flask import Response
+from flask import Response, request
 from flask import jsonify
 import logging
 import json
@@ -14,6 +16,7 @@ class NovaDummyApi(BaseOpenstackDummy):
     def __init__(self, inc_ip, inc_port):
         super(NovaDummyApi, self).__init__(inc_ip, inc_port)
         self.api.add_resource(NovaVersionsList, "/")
+        self.api.add_resource(Shutdown, "/shutdown")
         self.api.add_resource(NovaVersionShow, "/v2.1/<id>")
         self.api.add_resource(NovaListServersApi, "/v2.1/<id>/servers")
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail")
@@ -36,6 +39,13 @@ class NovaDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+class Shutdown(Resource):
+    def get(self):
+        logging.debug(("%s is beeing shut doen") % (__name__))
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 class NovaVersionsList(Resource):
     def get(self, id):
