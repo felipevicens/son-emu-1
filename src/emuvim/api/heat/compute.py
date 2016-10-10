@@ -140,6 +140,7 @@ class OpenstackCompute:
             network_dict['id'] = str(stack.nets[stack.ports[port_name].net_name].get_short_id()) + \
                                  '-' + str(stack.ports[port_name].get_short_id())
             network_dict['ip'] = stack.ports[port_name].ip_address
+            network_dict[network_dict['id']] = stack.nets[stack.ports[port_name].net_name].name
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)

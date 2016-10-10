@@ -90,11 +90,17 @@ class ChainVnf(Resource):
             #print compute.dc.net[dst_vnf].__dict__
 
             # check if which interface to chain on
+            dst_intfs = None
+            src_intfs = None
+
             for intfs in compute.dc.net[src_vnf].intfs.values():
-                print intfs.__dict__
-            for intfs in compute.dc.net[dst_vnf].intfs.values():
-                print intfs.__dict__
-            os_net.network_action_start(src_vnf, dst_vnf)
+                for dintfs in compute.dc.net[dst_vnf].intfs.values():
+                    if intfs.params[intfs.name] == dintfs.params[dintfs.name]:
+                        src_intfs = intfs.name
+                        dst_intfs = dintfs.name
+
+            os_net.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
+                                        vnf_dst_interface=dst_intfs, bidirectional=True)
         except Exception as e:
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
@@ -106,7 +112,8 @@ class ChainVnfInterfaces(Resource):
         if src_vnf not in compute.dc.net or dst_vnf not in compute.dc.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
         try:
-            os_net.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs, vnf_dst_interface=dst_intfs)
+            os_net.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
+                                        vnf_dst_interface=dst_intfs, bidirectional=True)
         except Exception as e:
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
@@ -118,7 +125,7 @@ class UnchainVnf(Resource):
         if src_vnf not in compute.dc.net or dst_vnf not in compute.dc.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
         try:
-            os_net.network_action_start(src_vnf, dst_vnf)
+            os_net.network_action_start(src_vnf, dst_vnf, bidirectional=True)
         except Exception as e:
             logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
             return Response(u"Error deleting the chain", status=500, mimetype="application/json")
