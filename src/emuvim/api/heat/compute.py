@@ -70,6 +70,10 @@ class OpenstackCompute:
         for net in old_stack.nets.values():
             if net.name in new_stack.nets:
                 new_stack.nets[net.name].id = net.id
+            for subnet in new_stack.nets.values():
+                if subnet.subnet_name == net.subnet_name:
+                    subnet.subnet_id = net.subnet_id
+                    break
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
