@@ -41,6 +41,9 @@ class OpenstackApiEndpoint():
 
     def connect_dc_network(self, dc_network):
         self.openstack_network = network.OpenstackNet(dc_network)
+        for ep in self.openstack_endpoints.values():
+            for e in ep:
+                e.set_os_net(self.openstack_network)
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
