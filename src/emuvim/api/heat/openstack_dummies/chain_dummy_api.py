@@ -16,19 +16,20 @@ class ChainDummyApi(BaseOpenstackDummy):
     def __init__(self, inc_ip, inc_port):
         super(ChainDummyApi, self).__init__(inc_ip, inc_port)
         self.api.add_resource(ChainVersionsList, "/")
-        self.api.add_resource(ChainVnf, "/v1/<src_vnf>/chain/<dst_vnf>")
+        self.api.add_resource(ChainVnf, "/v1/chain/<src_vnf>/<dst_vnf>")
+        self.api.add_resource(UnchainVnf, "/v1/unchain/<src_vnf>/<dst_vnf>")
         self.compute = None
         global ip, port
         ip = self.ip
         port = self.port
 
-        def _start_flask(self):
-            global compute
+    def _start_flask(self):
+        global compute
 
-            logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
-            compute = self.compute
-            if self.app is not None:
-                self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+        logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
+        compute = self.compute
+        if self.app is not None:
+            self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
 class ChainVersionsList(Resource):
@@ -65,4 +66,13 @@ class ChainVersionsList(Resource):
 
 class ChainVnf(Resource):
     def get(self, src_vnf, dst_vnf):
+        global compute
+        if src_vnf not in compute.dc.net or dst_vnf not in compute.dc.net:
+            return Response(u"At least one VNF does not exist", status=501, mimetype="application/json")
+        compute.dc.net.st
+        pass
+
+class UnchainVnf(Resource):
+    def get(self, src_vnf, dst_vnf):
+        global compute
         pass

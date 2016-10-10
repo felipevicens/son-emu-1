@@ -26,7 +26,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['heat'] = list()
         self.openstack_endpoints['chain'] = list()
         self.rest_threads = list()
-        self.openstack_networks = list()
+        self.openstack_network = None
 
     def connect_datacenter(self, dc):
         self.compute.dc = dc
@@ -40,8 +40,7 @@ class OpenstackApiEndpoint():
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
     def connect_dc_network(self, dc_network):
-        tmp_network = network.OpenstackNet(dc_network)
-        self.openstack_networks.append(tmp_network)
+        self.openstack_network = network.OpenstackNet(dc_network)
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
@@ -51,6 +50,7 @@ class OpenstackApiEndpoint():
         for component in self.openstack_endpoints.values():
             for endpoint in component:
                 endpoint.compute = self.compute
+                endpoint.os_net = self.openstack_network
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
                 thread.name = endpoint.__class__

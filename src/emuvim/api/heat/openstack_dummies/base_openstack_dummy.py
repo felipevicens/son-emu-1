@@ -13,6 +13,7 @@ class BaseOpenstackDummy(Resource):
         self.ip = listenip
         self.port = port
         self.compute = None
+        self.os_net = None
 
         # setup Flask
         self.app = Flask(__name__)
