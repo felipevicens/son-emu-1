@@ -32,10 +32,10 @@ class OpenstackApiEndpoint():
         self.compute.dc = dc
 
         self.openstack_endpoints['keystone'].append(KeystoneDummyApi(self.ip, self.port))
-        self.openstack_endpoints['neutron'].append(NeutronDummyApi(self.ip, self.port + 4696))
-        self.openstack_endpoints['nova'].append(NovaDummyApi(self.ip, self.port + 3774))
-        self.openstack_endpoints['heat'].append(HeatDummyApi(self.ip, self.port + 3004))
-        self.openstack_endpoints['chain'].append(ChainDummyApi(self.ip, self.port -1000))
+        self.openstack_endpoints['neutron'].append(NeutronDummyApi(self.ip, self.port + 4696, self.compute))
+        self.openstack_endpoints['nova'].append(NovaDummyApi(self.ip, self.port + 3774, self.compute))
+        self.openstack_endpoints['heat'].append(HeatDummyApi(self.ip, self.port + 3004, self.compute))
+        self.openstack_endpoints['chain'].append(ChainDummyApi(self.ip, self.port - 1000, self.compute))
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 

@@ -5,7 +5,9 @@ import logging
 from flask import Flask
 from flask_restful import Api,Resource
 
+
 logging.basicConfig(level=logging.INFO)
+
 
 class BaseOpenstackDummy(Resource):
     def __init__(self, listenip, port):
@@ -17,7 +19,6 @@ class BaseOpenstackDummy(Resource):
         # setup Flask
         self.app = Flask(__name__)
         self.api = Api(self.app)
-
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
