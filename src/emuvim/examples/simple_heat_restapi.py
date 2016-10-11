@@ -39,11 +39,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 def create_topology1():
-    net = DCNetwork(monitor=True, enable_learning=True)
-    dc1 = net.addDatacenter("datacenter1")
-    dc2 = net.addDatacenter("datacenter2")
-    dc3 = net.addDatacenter("datacenter3")
-    dc4 = net.addDatacenter("datacenter4")
+    net = DCNetwork(monitor=True, enable_learning=False)
+    dc1 = net.addDatacenter("dc1")
+    dc2 = net.addDatacenter("dc2")
+    dc3 = net.addDatacenter("dc3")
+    dc4 = net.addDatacenter("dc4")
 
     heatapi1 = OpenstackApiEndpoint("0.0.0.0", 5001)
     heatapi2 = OpenstackApiEndpoint("0.0.0.0", 5002)
@@ -54,6 +54,12 @@ def create_topology1():
     heatapi2.connect_datacenter(dc2)
     heatapi3.connect_datacenter(dc3)
     heatapi4.connect_datacenter(dc4)
+
+    s1 = net.addSwitch("s1")
+    net.addLink(dc1, s1, delay="10ms")
+    net.addLink(dc2, s1, delay="20ms")
+    net.addLink(dc3, s1, delay="30ms")
+    net.addLink(dc4, s1, delay="40ms")
     # heatapirun API endpoint server (in another thread, don't block)
     heatapi1.start()
     heatapi2.start()
