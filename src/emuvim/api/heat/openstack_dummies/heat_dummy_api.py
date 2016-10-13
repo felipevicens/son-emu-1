@@ -135,6 +135,7 @@ class HeatCreateStack(Resource):
             logging.exception("Heat: List Stack exception.")
             return ex.message, 500
 
+
 class HeatShowStack(Resource):
 
     def __init__(self, api):
@@ -193,6 +194,7 @@ class HeatShowStack(Resource):
             logging.exception("Heat: Show stack exception.")
             return ex.message, 500
 
+
 class HeatUpdateStack(Resource):
 
     def __init__(self, api):
@@ -234,6 +236,7 @@ class HeatUpdateStack(Resource):
         except Exception as ex:
             logging.exception("Heat: Update Stack exception")
             return ex.message, 500
+
 
 class HeatDeleteStack(Resource):
 

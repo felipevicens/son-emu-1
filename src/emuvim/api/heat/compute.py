@@ -47,13 +47,9 @@ class OpenstackCompute:
         if self.dc is None:
             return False
 
-        tmp_links = list(self.dc.net.links)
-        for link in tmp_links:
-            self.dc.net.removeLink(link=link)
-
-        stack = self.stacks[stack_id]
-        for server in stack.servers.values():
-            self.dc.stopCompute(server.name)
+        # Stop all servers and their links of this stack
+        for server in self.stacks[stack_id].servers.values():
+            self._stop_compute(server, self.stacks[stack_id])
 
         del self.stacks[stack_id]
 
