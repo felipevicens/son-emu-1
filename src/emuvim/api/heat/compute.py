@@ -47,13 +47,9 @@ class OpenstackCompute:
         if self.dc is None:
             return False
 
-        tmp_links = list(self.dc.net.links)
-        for link in tmp_links:
-            self.dc.net.removeLink(link=link)
-
-        stack = self.stacks[stack_id]
-        for server in stack.servers.values():
-            self.dc.stopCompute(server.name)
+        # Stop all servers and their links of this stack
+        for server in self.stacks[stack_id].servers.values():
+            self._stop_compute(server, self.stacks[stack_id])
 
         del self.stacks[stack_id]
 
@@ -70,6 +66,10 @@ class OpenstackCompute:
         for net in old_stack.nets.values():
             if net.name in new_stack.nets:
                 new_stack.nets[net.name].id = net.id
+            for subnet in new_stack.nets.values():
+                if subnet.subnet_name == net.subnet_name:
+                    subnet.subnet_id = net.subnet_id
+                    break
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
@@ -140,6 +140,7 @@ class OpenstackCompute:
             network_dict['id'] = str(stack.nets[stack.ports[port_name].net_name].get_short_id()) + \
                                  '-' + str(stack.ports[port_name].get_short_id())
             network_dict['ip'] = stack.ports[port_name].ip_address
+            network_dict[network_dict['id']] = stack.nets[stack.ports[port_name].net_name].name
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)

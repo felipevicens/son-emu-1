@@ -9,30 +9,21 @@ import uuid
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from datetime import datetime, timedelta
 
-compute = None
-ip = None
-port = None
+
 logging.basicConfig(level=logging.INFO)
 
 
 class KeystoneDummyApi(BaseOpenstackDummy):
     def __init__(self, in_ip, in_port):
-        global compute, ip, port
-
         super(KeystoneDummyApi, self).__init__(in_ip, in_port)
-        compute = self.compute
-        ip = in_ip
-        port = in_port
-        self.api.add_resource(KeystoneListVersions, "/")
+
+        self.api.add_resource(KeystoneListVersions, "/", resource_class_kwargs={'api': self})
         self.api.add_resource(Shutdown, "/shutdown")
-        self.api.add_resource(KeystoneShowAPIv2, "/v2.0")
-        self.api.add_resource(KeystoneGetToken, "/v2.0/tokens")
+        self.api.add_resource(KeystoneShowAPIv2, "/v2.0", resource_class_kwargs={'api': self})
+        self.api.add_resource(KeystoneGetToken, "/v2.0/tokens", resource_class_kwargs={'api': self})
 
     def _start_flask(self):
-        global compute
-
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
-        compute = self.compute
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
@@ -46,7 +37,9 @@ class Shutdown(Resource):
 
 
 class KeystoneListVersions(Resource):
-    global ip, port
+
+    def __init__(self, api):
+        self.api = api
 
     def get(self):
         logging.debug("API CALL: Keystone - List Versions")
@@ -57,7 +50,7 @@ class KeystoneListVersions(Resource):
                 "id": "v2.0",
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
                         "rel": "self"
                     }
                 ],
@@ -76,13 +69,15 @@ class KeystoneListVersions(Resource):
 
 
 class KeystoneShowAPIv2(Resource):
-    global ip, port
+
+    def __init__(self, api):
+        self.api = api
 
     def get(self):
         logging.debug("API CALL: Show API v2.0 details")
 
-        neutrnon_port = port + 4696
-        heat_port = port + 3004
+        neutrnon_port = self.api.port + 4696
+        heat_port = self.api.port + 3004
 
         resp = dict()
         resp['version'] = {
@@ -96,27 +91,27 @@ class KeystoneShowAPIv2(Resource):
                 "id": "v2.0",
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/tokens" % (ip, port),
+                        "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/networks" % (ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutrnon_port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/subnets" % (ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutrnon_port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/ports" % (ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutrnon_port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (ip, heat_port),
+                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
                         "rel": "self"
                     }
                 ]
@@ -127,7 +122,9 @@ class KeystoneShowAPIv2(Resource):
 
 
 class KeystoneGetToken(Resource):
-    global ip, port
+
+    def __init__(self, api):
+        self.api = api
 
     def post(self):
         # everything is hardcoded here
@@ -169,11 +166,11 @@ class KeystoneGetToken(Resource):
             ret['access']['serviceCatalog'] = [{
                 "endpoints": [
                     {
-                        "adminURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id']),
+                        "adminURL": "http://%s:%s/v2.1/%s" % (self.api.ip, self.api.port + 3774, user['id']),
                         "region": "RegionOne",
-                        "internalURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id']),
+                        "internalURL": "http://%s:%s/v2.1/%s" % (self.api.ip, self.api.port + 3774, user['id']),
                         "id": "2dad48f09e2a447a9bf852bcd93548ef",
-                        "publicURL": "http://%s:%s/v2.1/%s" % (ip, port + 3774, user['id'])
+                        "publicURL": "http://%s:%s/v2.1/%s" % (self.api.ip, self.api.port + 3774, user['id'])
                     }
                 ],
                 "endpoints_links": [],
@@ -183,11 +180,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v2.0" % (ip, port),
+                            "adminURL": "http://%s:%s/v2.0" % (self.api.ip, self.api.port),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v2.0" % (ip, port),
+                            "internalURL": "http://%s:%s/v2.0" % (self.api.ip, self.api.port),
                             "id": "2dad48f09e2a447a9bf852bcd93543fc",
-                            "publicURL": "http://%s:%s/v2" % (ip, port)
+                            "publicURL": "http://%s:%s/v2" % (self.api.ip, self.api.port)
                         }
                     ],
                     "endpoints_links": [],
@@ -197,11 +194,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/" % (ip, port + 4696),
+                            "adminURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/" % (ip, port + 4696),
+                            "internalURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
                             "id": "2dad48f09e2a447a9bf852bcd93548cf",
-                            "publicURL": "http://%s:%s/" % (ip, port + 4696)
+                            "publicURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696)
                         }
                     ],
                     "endpoints_links": [],
@@ -211,11 +208,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id']),
+                            "adminURL": "http://%s:%s/v1/%s" % (self.api.ip, self.api.port + 3004, user['id']),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id']),
+                            "internalURL": "http://%s:%s/v1/%s" % (self.api.ip, self.api.port + 3004, user['id']),
                             "id": "2dad48f09e2a447a9bf852bcd93548bf",
-                            "publicURL": "http://%s:%s/v1/%s" % (ip, port + 3004, user['id'])
+                            "publicURL": "http://%s:%s/v1/%s" % (self.api.ip, self.api.port + 3004, user['id'])
                         }
                     ],
                     "endpoints_links": [],

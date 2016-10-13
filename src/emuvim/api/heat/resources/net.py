@@ -21,7 +21,8 @@ class Net:
         if self.start_end_dict is None:
             return None
 
-        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 1  # First address as network address not usable
+        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
+                                                                        # Second one is for gateways only
         int_end_ip = self.ip_2_int(self.start_end_dict['end']) - 1      # Last address for broadcasts
         while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
             int_start_ip+=1
