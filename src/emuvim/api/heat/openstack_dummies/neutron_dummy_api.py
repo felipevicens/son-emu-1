@@ -250,8 +250,11 @@ class NeutronUpdateNetwork(Resource):
                             pass  # tmp_network_dict["shared"] = False
 
                         network_dict = create_network_dict(net)
+                        tmp_dict = dict()
+                        tmp_dict["network"] = network_dict
 
-                        return Response(json.dumps(network_dict), status=200, mimetype='application/json')
+
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
 
@@ -436,9 +439,10 @@ class NeutronUpdateSubnet(Resource):
                         if "enable_dhcp" in subnet_dict["subnet"]:
                             pass
 
-                        subnet_dict = create_subnet_dict(net)
-
-                        return Response(json.dumps(subnet_dict), status=200, mimetype='application/json')
+                        tmp_subnet_dict = create_subnet_dict(net)
+                        tmp_dict = dict()
+                        tmp_dict["subnet"] = tmp_subnet_dict
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
 
@@ -645,9 +649,11 @@ class NeutronUpdatePort(Resource):
                         if "tenant_id" in port_dict["port"]:
                             pass
 
-                        port_dict = create_port_dict(port)
+                        tmp_port_dict = create_port_dict(port)
+                        tmp_dict = dict()
+                        tmp_dict["port"] = tmp_port_dict
 
-                        return Response(json.dumps(port_dict), status=200, mimetype='application/json')
+                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Port not found.', 404
 

@@ -48,10 +48,10 @@ class Shutdown(Resource):
         func()
 
 class NovaVersionsList(Resource):
-    def get(self, id):
+    def get(self):
         global compute, ip, port
         try:
-            resp = """[
+            resp = """
                 {
                     "versions": [
                         {
