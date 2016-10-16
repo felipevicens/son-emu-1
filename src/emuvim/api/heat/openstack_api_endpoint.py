@@ -24,23 +24,26 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['nova'] = list()
         self.openstack_endpoints['neutron'] = list()
         self.openstack_endpoints['heat'] = list()
+        self.openstack_endpoints['chain'] = list()
         self.rest_threads = list()
-        self.openstack_networks = list()
-
+        self.openstack_network = None
 
     def connect_datacenter(self, dc):
         self.compute.dc = dc
 
         self.openstack_endpoints['keystone'].append(KeystoneDummyApi(self.ip, self.port))
-        self.openstack_endpoints['neutron'].append(NeutronDummyApi(self.ip, self.port + 4696))
-        self.openstack_endpoints['nova'].append(NovaDummyApi(self.ip, self.port + 3774))
-        self.openstack_endpoints['heat'].append(HeatDummyApi(self.ip, self.port + 3004))
+        self.openstack_endpoints['neutron'].append(NeutronDummyApi(self.ip, self.port + 4696, self.compute))
+        self.openstack_endpoints['nova'].append(NovaDummyApi(self.ip, self.port + 3774, self.compute))
+        self.openstack_endpoints['heat'].append(HeatDummyApi(self.ip, self.port + 3004, self.compute))
+        self.openstack_endpoints['chain'].append(ChainDummyApi(self.ip, self.port - 1000, self.compute))
         logging.info \
             ("Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
     def connect_dc_network(self, dc_network):
-        tmp_network = network.OpenstackNet(dc_network)
-        self.openstack_networks.append(tmp_network)
+        self.openstack_network = network.OpenstackNet(dc_network)
+        for ep in self.openstack_endpoints.values():
+            for e in ep:
+                e.set_os_net(self.openstack_network)
         # monitor.net = DCnetwork # TODO add the monitor part
 
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
@@ -50,6 +53,7 @@ class OpenstackApiEndpoint():
         for component in self.openstack_endpoints.values():
             for endpoint in component:
                 endpoint.compute = self.compute
+                endpoint.os_net = self.openstack_network
                 thread = threading.Thread(target=endpoint._start_flask, args=())
                 thread.daemon = True
                 thread.name = endpoint.__class__
@@ -62,16 +66,17 @@ class OpenstackApiEndpoint():
                 url = "http://"+endpoint.ip+":"+str(endpoint.port)+"/shutdown"
                 requests.get(url)
 
-
     def read_heat_file(self):
         stack = Stack()
         inputFile = open('yamlTest2', 'r')
         inp = inputFile.read()
         reader = heat_parser.HeatParser()
-        reader.parse_input(inp, stack, self.compute.dc.label)
+        if not reader.parse_input(inp, stack, self.compute.dc.label):
+            return False
         logging.debug(stack)
         self.compute.add_stack(stack)
         self.compute.deploy_stack(stack.id)
+        return True
 
 if __name__ == "__main__":
     ha = OpenstackApiEndpoint("localhost", 5000)

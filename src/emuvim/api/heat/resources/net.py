@@ -1,23 +1,29 @@
 import re
 
 class Net:
-    def __init__(self, name, id=None, subnet_name=None, subnet_id=None, segmentation_id=None, cidr=None):
+    def __init__(self, name):
         self.name = name
-        self.id = id                            # currently only a consecutively numbered
-        self.subnet_name = subnet_name
-        self.subnet_id = subnet_id
+        self.id = id
+        self.subnet_name = None
+        self.subnet_id = None
+        self.subnet_creation_time = None
+        self.subnet_update_time = None
         self.gateway_ip = None
-        self.segmentation_id = segmentation_id  # not set
-        self._cidr = cidr
+        self.segmentation_id = None  # not set
+        self._cidr = None
         self.start_end_dict = None
         self._issued_ip_addresses = dict()
+
+    def get_short_id(self):
+        return str(self.id)[:6]
 
     def get_new_ip_address(self, port_name):
         if self.start_end_dict is None:
             return None
 
-        int_start_ip = self.ip_2_int(self.start_end_dict['start'])
-        int_end_ip = self.ip_2_int(self.start_end_dict['end'])
+        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
+                                                                        # Second one is for gateways only
+        int_end_ip = self.ip_2_int(self.start_end_dict['end']) - 1      # Last address for broadcasts
         while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
             int_start_ip+=1
 
@@ -46,9 +52,15 @@ class Net:
             return True
         if not self.check_cidr_format(cidr):
             return False
+
+        if len(self._issued_ip_addresses) > 0:
+            self.reset_issued_ip_addresses()
         self.start_end_dict = self.calculate_start_and_end_dict(cidr)
         self._cidr = cidr
         return True
+
+    def get_cidr(self):
+        return self._cidr
 
     def calculate_start_and_end_dict(self, cidr):
         address, suffix = cidr.rsplit('/', 1)

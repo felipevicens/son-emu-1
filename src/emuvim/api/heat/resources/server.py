@@ -9,6 +9,14 @@ class Server:
         self.command = command
         self.port_names = list()
 
+    def compare_attributes(self, other):
+        if self.name == other.name and self.full_name == other.full_name and \
+                                       self.flavor == other.flavor and \
+                                       self.image == other.image and \
+                                       self.command == other.command:
+            return True
+        return False
+
     def __eq__(self, other):
         if self.name == other.name and self.full_name == other.full_name and\
                                        self.flavor == other.flavor and \

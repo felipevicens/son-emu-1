@@ -10,34 +10,35 @@ from datetime import datetime, timedelta
 from emuvim.api.heat.heat_parser import HeatParser
 
 
-compute = None
-ip = None
-port = None
 class HeatDummyApi(BaseOpenstackDummy):
 
-    def __init__(self, in_ip, in_port):
-        global compute, ip, port
+    def __init__(self, in_ip, in_port, compute):
         super(HeatDummyApi, self).__init__(in_ip, in_port)
-        compute = None
-        ip = in_ip
-        port = in_port
+        self.compute = compute
+
         self.api.add_resource(Shutdown, "/shutdown")
-        self.api.add_resource(HeatListAPIVersions, "/")
-        self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks") # create Stack (post)  list stack (get)
-        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
-        self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
-        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>")
+        self.api.add_resource(HeatListAPIVersions, "/",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(HeatCreateStack, "/v1/<tenant_id>/stacks",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(HeatShowStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>",
+                              "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(HeatUpdateStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>",
+                              "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(HeatDeleteStack, "/v1/<tenant_id>/stacks/<stack_name_or_id>",
+                              "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
+                              resource_class_kwargs={'api': self})
 
     def _start_flask(self):
-        global compute
-
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
-        compute = self.compute
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
 class Shutdown(Resource):
+
     def get(self):
         logging.debug(("%s is beeing shut doen") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -45,8 +46,11 @@ class Shutdown(Resource):
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
 
+
 class HeatListAPIVersions(Resource):
-    global ip, port
+
+    def __init__(self, api):
+        self.api = api
 
     def get(self):
         logging.debug("API CALL: Heat - List API Versions")
@@ -58,7 +62,7 @@ class HeatListAPIVersions(Resource):
                 "id": "v1.0",
                 "links": [
                     {
-                        "href": "http://%s:%d/v2.0" % (ip, port),
+                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
                         "rel": "self"
                     }
                 ]
@@ -66,24 +70,28 @@ class HeatListAPIVersions(Resource):
 
         return Response(json.dumps(resp), status=200, mimetype="application/json")
 
-class HeatCreateStack(Resource):
-    global compute, ip, port
-    def post(self, tenant_id):
 
+class HeatCreateStack(Resource):
+
+    def __init__(self, api):
+        self.api = api
+
+    def post(self, tenant_id):
         logging.debug("HEAT: Create Stack")
 
         try:
             stack_dict = request.json
-            for stack in compute.stacks.values():
+            for stack in self.api.compute.stacks.values():
                 if stack.stack_name == stack_dict['stack_name']:
                     return [], 409
             stack = Stack()
             stack.stack_name = stack_dict['stack_name']
             reader = HeatParser()
+
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            reader.parse_input(stack_dict['template'], stack, compute.dc.label)
-
+            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+                return 'Could not create stack.', 400
 
             stack.creation_time = str(datetime.now())
             stack.status = "CREATE_COMPLETE"
@@ -92,12 +100,12 @@ class HeatCreateStack(Resource):
                                      "links": [
                                         {
                                             "href": "http://%s:%s/v1/%s/stacks/%s"
-                                                    %(ip, port, tenant_id, stack.id),
+                                                    %(self.api.ip, self.api.port, tenant_id, stack.id),
                                             "rel": "self"
                                         } ]}}
 
-            compute.add_stack(stack)
-            compute.deploy_stack(stack.id)
+            self.api.compute.add_stack(stack)
+            self.api.compute.deploy_stack(stack.id)
             return Response(json.dumps(return_dict), status=200, mimetype="application/json")
 
         except Exception as ex:
@@ -105,13 +113,11 @@ class HeatCreateStack(Resource):
             return ex.message, 500
 
     def get(self, tenant_id):
-        global compute
-
         logging.debug("HEAT: Stack List")
         try:
             return_stacks = dict()
             return_stacks['stacks'] = list()
-            for stack in compute.stacks.values():
+            for stack in self.api.compute.stacks.values():
                 return_stacks['stacks'].append(
                                 {"creation_time": stack.creation_time,
                                   "description":"desc of "+stack.id,
@@ -129,17 +135,20 @@ class HeatCreateStack(Resource):
             logging.exception("Heat: List Stack exception.")
             return ex.message, 500
 
-class HeatShowStack(Resource):
-    def get(self, tenant_id, stack_name_or_id):
-        global compute, ip, port
 
+class HeatShowStack(Resource):
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self, tenant_id, stack_name_or_id, stack_id=None):
         logging.debug("HEAT: Show Stack")
         try:
             stack = None
-            if stack_name_or_id in compute.stacks:
-                stack = compute.stacks[stack_name_or_id]
+            if stack_name_or_id in self.api.compute.stacks:
+                stack = self.api.compute.stacks[stack_name_or_id]
             else:
-                for tmp_stack in compute.stacks.values():
+                for tmp_stack in self.api.compute.stacks.values():
                     if tmp_stack.stack_name == stack_name_or_id:
                         stack = tmp_stack
             if stack is None:
@@ -155,7 +164,7 @@ class HeatShowStack(Resource):
                                 "links": [
                                     {
                                         "href": "http://%s:%s/v1/%s/stacks/%s"
-                                                %(ip, port, tenant_id, stack.id),
+                                                %(self.api.ip, self.api.port, tenant_id, stack.id),
                                         "rel": "self"
                                     }
                                 ],
@@ -185,17 +194,20 @@ class HeatShowStack(Resource):
             logging.exception("Heat: Show stack exception.")
             return ex.message, 500
 
-class HeatUpdateStack(Resource):
-    def put(self, tenant_id, stack_name_or_id):
-        global compute, ip, port
 
+class HeatUpdateStack(Resource):
+
+    def __init__(self, api):
+        self.api = api
+
+    def put(self, tenant_id, stack_name_or_id, stack_id=None):
         logging.debug("Heat: Update Stack")
         try:
             old_stack = None
-            if stack_name_or_id in compute.stacks:
-                old_stack = compute.stacks[stack_name_or_id]
+            if stack_name_or_id in self.api.compute.stacks:
+                old_stack = self.api.compute.stacks[stack_name_or_id]
             else:
-                for tmp_stack in compute.stacks.values():
+                for tmp_stack in self.api.compute.stacks.values():
                     if tmp_stack.stack_name == stack_name_or_id:
                         old_stack = tmp_stack
             if old_stack is None:
@@ -213,9 +225,10 @@ class HeatUpdateStack(Resource):
             reader = HeatParser()
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            reader.parse_input(stack_dict['template'], stack, compute.dc.label)
+            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+                return 'Could not create stack.', 400
 
-            if not compute.update_stack(old_stack.id, stack):
+            if not self.api.compute.update_stack(old_stack.id, stack):
                 return 'Could not update stack.', 400
 
             return Response(status=202, mimetype="application/json")
@@ -224,19 +237,22 @@ class HeatUpdateStack(Resource):
             logging.exception("Heat: Update Stack exception")
             return ex.message, 500
 
-class HeatDeleteStack(Resource):
-    def delete(self, tenant_id, stack_name_or_id):
-        global compute, ip, port
 
+class HeatDeleteStack(Resource):
+
+    def __init__(self, api):
+        self.api = api
+
+    def delete(self, tenant_id, stack_name_or_id, stack_id=None):
         logging.debug("Heat: Delete Stack")
         try:
-            if stack_name_or_id in compute.stacks:
-                compute.delete_stack(stack_name_or_id)
+            if stack_name_or_id in self.api.compute.stacks:
+                self.api.compute.delete_stack(stack_name_or_id)
                 return Response('Deleted Stack: ' + stack_name_or_id, 204)
 
-            for stack in compute.stacks.values():
+            for stack in self.api.compute.stacks.values():
                 if stack.stack_name == stack_name_or_id:
-                    compute.delete_stack(stack.id)
+                    self.api.compute.delete_stack(stack.id)
                     return Response('Deleted Stack: ' + stack_name_or_id, 204)
 
         except Exception as ex:
