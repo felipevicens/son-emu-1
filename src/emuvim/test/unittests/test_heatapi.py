@@ -131,7 +131,7 @@ class testRestApi(ApiBaseHeat):
 
 
 
-"""
+
     def testNeutronDummy(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open("test_heatapi_template_create_stack.json").read()
@@ -379,7 +379,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
 
-"""
+
 
 
 

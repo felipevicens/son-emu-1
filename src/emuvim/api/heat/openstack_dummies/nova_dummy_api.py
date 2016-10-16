@@ -50,7 +50,7 @@ class NovaVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         try:
             resp = """
                 {
