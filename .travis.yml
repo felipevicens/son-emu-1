@@ -4,7 +4,8 @@ language: python
 python:
   - "2.7"
 before_install:
-  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src
+  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src
+  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim
   - sudo apt-get update
   - sudo dpkg -l | grep postgres
   - sudo apt-get install --reinstall dpkg
