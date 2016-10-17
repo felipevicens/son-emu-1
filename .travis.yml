@@ -8,6 +8,9 @@ python:
 virtualenv:
   system_site_packages: true
 
+env:
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+
 before_install:
   - sudo apt-get update
   - sudo dpkg -l | grep postgres
