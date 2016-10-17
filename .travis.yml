@@ -7,7 +7,7 @@ python:
 
 virtualenv:
   system_site_packages: true
-  
+
 before_install:
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
@@ -32,7 +32,7 @@ install:
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
 
 script:
-  - python src/emuvim/test/unittests/test_heatapi.py
+  - sudo python src/emuvim/test/unittests/test_heatapi.py
 
 
 
