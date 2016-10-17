@@ -21,7 +21,7 @@ install:
   - cd ~/son-emu
 
 script:
-  - ﻿export PYTHONPATH=$PYTHONPATH:/media/sf_son-emu/src
+  - sudo export PYTHONPATH=$PYTHONPATH:/media/sf_son-emu/src
   - sudo python src/emuvim/test/unittests/test_heatapi.py
 
 
