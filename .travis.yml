@@ -20,9 +20,11 @@ before_install:
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
   - sudo git clone https://github.com/mpeuster/containernet.git
-  - sudo cd containernet/ansible/
+  - cd containernet/ansible/
+  - pwd
+  - sudo pwd
   - sudo ansible-playbook -i "localhost," -c local install.yml
-  - sudo cd
+  - cd
   - sudo git clone https://github.com/hafer1992/son-emu.git
   - sudo cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
