@@ -9,9 +9,7 @@ virtualenv:
   system_site_packages: true
 
 env:
-  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/
-  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
-  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
 
 before_install:
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
@@ -36,12 +34,12 @@ install:
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd ~/son-emu
   - pwd
-  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
-  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
-  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
+  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
+  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
 
 script:
-  - sudo -E python src/emuvim/test/unittests/test_heatapi.py
+  - sudo PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/ python src/emuvim/test/unittests/test_heatapi.py
 
 
 
