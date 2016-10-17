@@ -19,17 +19,17 @@ before_install:
   - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
-  - git clone https://github.com/mpeuster/containernet.git
-  - cd containernet/ansible/
+  - sudo git clone https://github.com/mpeuster/containernet.git
+  - sudo cd containernet/ansible/
   - sudo ansible-playbook -i "localhost," -c local install.yml
-  - cd
-  - git clone https://github.com/hafer1992/son-emu.git
-  - cd ~/son-emu/ansible
+  - sudo cd
+  - sudo git clone https://github.com/hafer1992/son-emu.git
+  - sudo cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
-  - cd ~/son-emu
-  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
-  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
-  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+  - sudo cd ~/son-emu
+  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
+  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
+  - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
 
 script:
   - sudo -E python src/emuvim/test/unittests/test_heatapi.py
