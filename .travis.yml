@@ -1,30 +1,35 @@
 sudo: required
 dist: trusty
 language: python
+
 python:
   - "2.7"
+
+virtualenv:
+  system_site_packages: true
+
+env:
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+
 before_install:
   - sudo apt-get update
-  - sudo apt-get --purge remove postgres
+  - sudo dpkg -l | grep postgres
+  - sudo apt-get install --reinstall dpkg
+  - sudo apt-get remove postgresql-9.1 postgresql-9.2 postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-common postgresql-9.1-postgis-2.2-scripts postgresql-9.2-postgis-2.2-scripts postgresql-9.3-postgis-2.2-scripts postgresql-9.4-postgis-2.2-scripts postgresql-9.5-postgis-2.2-scripts postgresql-client postgresql-client-9.3 postgresql-client-9.5 postgresql-client-common postgresql-common postgresql-9.1-postgis-2.2 postgresql-9.2-postgis-2.2 postgresql-9.3-postgis-2.2 postgresql-9.4-postgis-2.2 postgresql-9.5-postgis-2.2
   - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
-  - git clone https://github.com/mpeuster/containernet.git
+  - sudo git clone https://github.com/mpeuster/containernet.git
   - cd containernet/ansible/
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd
-  - git clone https://github.com/hafer1992/son-emu.git
+  - sudo git clone https://github.com/hafer1992/son-emu.git
   - cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd ~/son-emu
 
 script:
-
-  - sudo python src/emuvim/examples/simple_heat_restapi_single_dc_travis.py &
-  - son-emu-cli compute start -d datacenter1 -n vnf1
-  - son-emu-cli compute start -d datacenter1 -n vnf2
-  - son-emu-cli compute list
-
+  - sudo PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/ python src/emuvim/test/unittests/test_heatapi.py
 
 
 
