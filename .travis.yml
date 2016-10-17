@@ -14,7 +14,6 @@ before_install:
   - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
-  - sudo su
   - git clone https://github.com/mpeuster/containernet.git
   - cd containernet/ansible/
   - sudo ansible-playbook -i "localhost," -c local install.yml
