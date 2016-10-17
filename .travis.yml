@@ -5,9 +5,7 @@ python:
   - "2.7"
 before_install:
   - sudo apt-get update
-  - sudo aptitude -y full-upgrade
-  - sudo apt-get -y -f -qq dist-upgrade
-  - sudo apt-get -y -f -qq upgrade
+  - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
   - git clone https://github.com/mpeuster/containernet.git
