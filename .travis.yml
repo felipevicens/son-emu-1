@@ -32,7 +32,7 @@ install:
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
 
 script:
-  - sudo python src/emuvim/test/unittests/test_heatapi.py
+  - sudo -E python src/emuvim/test/unittests/test_heatapi.py
 
 
 
