@@ -5,7 +5,8 @@ python:
   - "2.7"
 before_install:
   - sudo apt-get update
-  - sudo apt-get --purge remove postgres
+  - sudo dpkg -l | grep postgres
+  - sudo apt-get remove postgres
   - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
   - sudo apt-get install ansible git aptitude python-heatclient
 install:
