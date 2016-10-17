@@ -8,6 +8,11 @@ python:
 virtualenv:
   system_site_packages: true
 
+env:
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+
 before_install:
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
   - export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
@@ -26,9 +31,11 @@ install:
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd
   - sudo git clone https://github.com/hafer1992/son-emu.git
-  - sudo cd ~/son-emu/ansible
+  - cd ~/son-emu/ansible
+  - pwd
   - sudo ansible-playbook -i "localhost," -c local install.yml
-  - sudo cd ~/son-emu
+  - cd ~/son-emu
+  - pwd
   - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/
   - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/
   - sudo export PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
