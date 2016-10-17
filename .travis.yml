@@ -4,6 +4,7 @@ language: python
 python:
   - "2.7"
 before_install:
+  - export PYTHONPATH=$PYTHONPATH:~/son-emu/src
   - sudo apt-get update
   - sudo dpkg -l | grep postgres
   - sudo apt-get install --reinstall dpkg
@@ -21,7 +22,6 @@ install:
   - cd ~/son-emu
 
 script:
-  - sudo export PYTHONPATH=$PYTHONPATH:/media/sf_son-emu/src
   - sudo python src/emuvim/test/unittests/test_heatapi.py
 
 
