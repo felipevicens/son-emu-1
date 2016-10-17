@@ -38,6 +38,7 @@ from emuvim.dcemulator.node import EmulatorCompute
 import ast
 import requests
 import simplejson as json
+import os
 
 
 class testRestApi(ApiBaseHeat):
@@ -62,7 +63,7 @@ class testRestApi(ApiBaseHeat):
 
     def testNovaDummy(self):
         headers = {'Content-type': 'application/json'}
-        test_heatapi_template_create_stack = open("test_heatapi_template_create_stack.json").read()
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),
                       headers=headers)
@@ -134,7 +135,7 @@ class testRestApi(ApiBaseHeat):
 
     def testNeutronDummy(self):
         headers = {'Content-type': 'application/json'}
-        test_heatapi_template_create_stack = open("test_heatapi_template_create_stack.json").read()
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),
                                             headers=headers)
@@ -295,7 +296,7 @@ class testRestApi(ApiBaseHeat):
 
     def testKeystomeDummy(self):
         headers = {'Content-type': 'application/json'}
-        test_heatapi_keystone_get_token = open("test_heatapi_keystone_get_token.json").read()
+        test_heatapi_keystone_get_token = open(os.path.join(os.path.dirname(__file__), "test_heatapi_keystone_get_token.json")).read()
         print(" ")
 
         print('->>>>>>> testKeystoneListVersions ->>>>>>>>>>>>>>>')
@@ -324,8 +325,8 @@ class testRestApi(ApiBaseHeat):
 
     def testHeatDummy(self):
         headers = {'Content-type': 'application/json'}
-        test_heatapi_template_create_stack = open("test_heatapi_template_create_stack.json").read()
-        test_heatapi_template_update_stack = open("test_heatapi_template_update_stack.json").read()
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
+        test_heatapi_template_update_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_update_stack.json")).read()
         print(" ")
 
         print('->>>>>>> testHeatListAPIVersionsStack ->>>>>>>>>>>>>>>')
