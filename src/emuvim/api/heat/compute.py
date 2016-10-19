@@ -93,12 +93,11 @@ class OpenstackCompute:
                                     tmp_net = old_stack.nets[old_stack.ports[port_name].net_name]
                                     if old_stack.ports[port_name].get_short_id() == port_short_id and \
                                        tmp_net.get_short_id() == net_short_id:
-                                        self.dc.net.removeLink(link=link)
+                                        self._remove_link(server.name, link)
 
                                         # Add changed link
                                         tmp_net = new_stack.nets[new_stack.ports[port_name].net_name]
                                         self._add_link(server.name,
-                                                       self.dc.name + '.s1',
                                                        new_stack.ports[port_name].ip_address,
                                                        str(tmp_net.get_short_id()) +
                                                        '-' + str(new_stack.ports[port_name].get_short_id()))
@@ -110,13 +109,12 @@ class OpenstackCompute:
                                 tmp_net = old_stack.nets[old_stack.ports[port_name].net_name]
                                 if old_stack.ports[port_name].get_short_id() == port_short_id and \
                                    tmp_net.get_short_id() == net_short_id:
-                                    self.dc.net.removeLink(link=link)
+                                    self._remove_link(server.name, link)
 
                     # Create new links
                     for port_name in new_stack.servers[server.name].port_names:
                         if port_name not in server.port_names:
                             self._add_link(server.name,
-                                           self.dc.name + '.s1',
                                            new_stack.ports[port_name].ip_address,
                                            str(new_stack.nets[new_stack.ports[port_name].net_name].get_short_id()) +
                                            '-' + str(new_stack.ports[port_name].get_short_id()))
@@ -153,12 +151,22 @@ class OpenstackCompute:
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
-                self.dc.net.removeLink(link=link)
+                self._remove_link(server.name, link)
         self.dc.stopCompute(server.name)
 
-    def _add_link(self, node_name, switch_name, ip_address, link_name):
+    def _add_link(self, node_name, ip_address, link_name):
         node = self.dc.net.get(node_name)
-        switch = self.dc.net.get(switch_name)
         nw = {'ip': ip_address,
               'id': link_name}
-        self.dc.net.addLink(node, switch, params1=nw, cls=Link, intfName1=link_name)
+        self.dc.net.addLink(node, self.dc.switch, params1=nw, cls=Link, intfName1=link_name)
+
+    def _remove_link(self, server_name, link):
+        self.dc.switch.detach(link.intf1)
+        self.dc.switch.detach(link.intf2)
+        self.dc.net.removeLink(link=link)
+        self.dc.net.DCNetwork_graph.remove_edge(server_name, self.dc.switch.name)
+        self.dc.net.DCNetwork_graph.remove_edge(self.dc.switch.name, server_name)
+        for intf_key in self.dc.net[server_name].intfs.keys():
+            if self.dc.net[server_name].intfs[intf_key].link == link:
+                self.dc.net[server_name].intfs[intf_key].delete()
+                del self.dc.net[server_name].intfs[intf_key]
