@@ -54,9 +54,9 @@ class HeatParser:
             self.handle_resource(resource, stack, dc_label)
 
         # This loop tries to create all classes which had unresolved dependencies.
-        number_of_iterations = 5
-        while len(self.bufferResource) > 0 and number_of_iterations > 0:
-            number_of_iterations -= 1
+        unresolved_resources_last_round = len(self.bufferResource)+1
+        while len(self.bufferResource) > 0 and unresolved_resources_last_round > len(self.bufferResource):
+            unresolved_resources_last_round = len(self.bufferResource)
             number_of_items = len(self.bufferResource)
             while number_of_items > 0:
                 self.handle_resource(self.bufferResource.pop(0), stack, dc_label)
@@ -65,6 +65,7 @@ class HeatParser:
         if len(self.bufferResource) > 0:
             print(str(len(self.bufferResource)) +
                   ' classes could not be created, because the dependencies could not be found.')
+            return False
         return True
 
     def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?

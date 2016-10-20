@@ -1,5 +1,5 @@
 
-class Server:
+class Server(object):
     def __init__(self,name, id=None, flavor=None, image=None, command=None, nw_list=None):
         self.name = name
         self.full_name = None
