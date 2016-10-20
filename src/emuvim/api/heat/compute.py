@@ -12,7 +12,8 @@ class HeatApiStackInvalidException(BaseException):
     def __str__(self):
         return repr(self.value)
 
-class OpenstackCompute:
+
+class OpenstackCompute(object):
     def __init__(self):
         self.dc = None
         self.stacks = dict()
@@ -100,7 +101,8 @@ class OpenstackCompute:
                                         self._add_link(server.name,
                                                        new_stack.ports[port_name].ip_address,
                                                        str(tmp_net.get_short_id()) +
-                                                       '-' + str(new_stack.ports[port_name].get_short_id()))
+                                                       '-' + str(new_stack.ports[port_name].get_short_id()),
+                                                       new_stack.ports[port_name].net_name)
                                         break
                         else:
                             my_links = self.dc.net.links
@@ -117,7 +119,8 @@ class OpenstackCompute:
                             self._add_link(server.name,
                                            new_stack.ports[port_name].ip_address,
                                            str(new_stack.nets[new_stack.ports[port_name].net_name].get_short_id()) +
-                                           '-' + str(new_stack.ports[port_name].get_short_id()))
+                                           '-' + str(new_stack.ports[port_name].get_short_id()),
+                                           new_stack.ports[port_name].net_name)
             else:
                 self._stop_compute(server, old_stack)
 
@@ -154,11 +157,14 @@ class OpenstackCompute:
                 self._remove_link(server.name, link)
         self.dc.stopCompute(server.name)
 
-    def _add_link(self, node_name, ip_address, link_name):
+    def _add_link(self, node_name, ip_address, link_name, net_name):
         node = self.dc.net.get(node_name)
-        nw = {'ip': ip_address,
-              'id': link_name}
-        self.dc.net.addLink(node, self.dc.switch, params1=nw, cls=Link, intfName1=link_name)
+        params = {'params1': {'ip': ip_address,
+                              'id': link_name,
+                              link_name: net_name},
+                  'intfName1': link_name,
+                  'cls': Link}
+        self.dc.net.addLink(node, self.dc.switch, **params)
 
     def _remove_link(self, server_name, link):
         self.dc.switch.detach(link.intf1)
