@@ -125,7 +125,7 @@ class HeatParser:
                     stack.servers[shortened_name] = Server(shortened_name)
 
                 stack.servers[shortened_name].full_name = compute_name
-                stack.servers[shortened_name].command = '/bin/bash'
+                stack.servers[shortened_name].command = resource['properties'].get('command','/bin/bash')
                 stack.servers[shortened_name].image = resource['properties']['image']
                 stack.servers[shortened_name].flavor = resource['properties']['flavor']
                 for port in nw_list:
