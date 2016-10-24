@@ -2,6 +2,7 @@ from __future__ import print_function  # TODO remove when print is no longer nee
 import re
 import sys
 import uuid
+import logging
 from resources import *
 from datetime import datetime
 
@@ -20,35 +21,11 @@ class HeatParser:
             print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
             return False
 
-        try:
-            self.description = input_dict['description']
-        except KeyError as e:
-            self.description = None
-            #print('No ' + e.message + ' found.')
-
-        try:
-            self.parameter_groups = input_dict['parameter_groups']
-        except KeyError as e:
-            self.parameter_groups = None
-            #print('No ' + e.message + ' found.')
-
-        try:
-            self.parameters = input_dict['parameters']
-        except KeyError as e:
-            self.parameters = None
-            #print('No ' + e.message + ' found.')
-
-        try:
-            self.resources = input_dict['resources']
-        except KeyError as e:
-            self.resources = None
-            #print('No ' + e.message + ' found.')
-
-        try:
-            self.outputs = input_dict['outputs']
-        except KeyError as e:
-            self.outputs = None
-            #print('No ' + e.message + ' found.')
+        self.description = input_dict.get('description', None)
+        self.parameter_groups = input_dict.get('parameter_groups', None)
+        self.parameters = input_dict.get('parameters', None)
+        self.resources = input_dict.get('resources', None)
+        self.outputs = input_dict.get('outputs', None)
 
         for resource in self.resources.values():
             self.handle_resource(resource, stack, dc_label)
@@ -125,7 +102,7 @@ class HeatParser:
                     stack.servers[shortened_name] = Server(shortened_name)
 
                 stack.servers[shortened_name].full_name = compute_name
-                stack.servers[shortened_name].command = '/bin/bash'
+                stack.servers[shortened_name].command = resource['properties'].get('command','/bin/sh')
                 stack.servers[shortened_name].image = resource['properties']['image']
                 stack.servers[shortened_name].flavor = resource['properties']['flavor']
                 for port in nw_list:
