@@ -85,15 +85,13 @@ class ChainVnf(Resource):
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
 
         try:
-            #print compute.dc.net[src_vnf].__dict__
-            #print compute.dc.net[dst_vnf].__dict__
-
             # check if which interface to chain on
             dst_intfs = None
             src_intfs = None
 
             for intfs in self.api.compute.dc.net[src_vnf].intfs.values():
                 for dintfs in self.api.compute.dc.net[dst_vnf].intfs.values():
+                    # if both are in the same network they can be chained
                     if intfs.params[intfs.name] == dintfs.params[dintfs.name]:
                         src_intfs = intfs.name
                         dst_intfs = dintfs.name
