@@ -28,9 +28,6 @@ class ChainDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
-    def set_os_net(self, net):
-        self.os_net = net
-
 class Shutdown(Resource):
     def get(self):
         logging.debug(("%s is beeing shut doen") % (__name__))

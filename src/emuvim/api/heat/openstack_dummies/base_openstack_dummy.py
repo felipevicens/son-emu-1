@@ -25,6 +25,5 @@ class BaseOpenstackDummy(Resource):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
-    #TODO: this method should be abstract!
     def set_os_net(self, net):
         self.os_net = net
