@@ -33,6 +33,16 @@ class Net:
         self._issued_ip_addresses[int_start_ip] = port_name
         return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
+    def get_in_ip_address(self, port_name):
+        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2
+        self._issued_ip_addresses[int_start_ip] = port_name
+        return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+
+    def get_out_ip_address(self, port_name):
+        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 3
+        self._issued_ip_addresses[int_start_ip] = port_name
+        return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+
     def withdraw_ip_address(self, ip_address):
         address, suffix = ip_address.rsplit('/', 1)
         int_ip_address = self.ip_2_int(address)
