@@ -28,7 +28,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "ubuntu:trusty"
+      image: "sonatanfv/sonata-fw-vnf"
       name: "firewall-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:
@@ -89,7 +89,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "ubuntu:trusty"
+      image: "sonatanfv/sonata-iperf3-vnf"
       name: "iperf-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:
@@ -151,7 +151,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: "m1.small"
-      image: "ubuntu:trusty"
+      image: "sonatanfv/sonata-empty-vnf"
       name: "tcpdump-vnf:vdu01:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
       networks:
       - port:

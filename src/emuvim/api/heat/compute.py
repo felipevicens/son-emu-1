@@ -1,7 +1,8 @@
 from resources import *
 from mininet.link import Link
 import logging
-
+import threading
+from docker import Client as DockerClient
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -130,6 +131,7 @@ class OpenstackCompute(object):
     def _start_compute(self, server, stack):
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
+
         for port_name in server.port_names:
             network_dict = dict()
             network_dict['id'] = stack.ports[port_name].intf_name
@@ -138,6 +140,15 @@ class OpenstackCompute(object):
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        config = c.dcinfo.get("Config", dict())
+        env = config.get("Env", list())
+        for env_var in env:
+            if "SON_EMU_CMD=" in env_var:
+                cmd = str(env_var.split("=")[1])
+                # execute command in new thread to ensure that GK is not blocked by VNF
+                t = threading.Thread(target=c.cmdPrint, args=(cmd,))
+                t.daemon = True
+                t.start()
 
     def _stop_compute(self, server, stack):
         link_names = list()
