@@ -90,7 +90,8 @@ class OpenstackCompute(object):
                             if not old_stack.ports.get(port_name) == new_stack.ports.get(port_name):
                                 my_links = self.dc.net.links
                                 for link in my_links:
-                                    if str(link.intf1) == new_stack.ports[port_name].intf_name:   # TODO now there are multiple links with the same intf1 name!!!! get aroud this!
+                                    if str(link.intf1) == old_stack.ports[port_name].intf_name and \
+                                       str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
                                         # Add changed link
@@ -102,8 +103,10 @@ class OpenstackCompute(object):
                         else:
                             my_links = self.dc.net.links
                             for link in my_links:
-                                if str(link.intf1) == new_stack.ports[port_name].intf_name:  # TODO now there are multiple links with the same intf1 name!!!! get aroud this!
+                                if str(link.intf1) == old_stack.ports[port_name].intf_name and \
+                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                     self._remove_link(server.name, link)
+                                    break
 
                     # Create new links
                     for port_name in new_stack.servers[server.name].port_names:
@@ -157,8 +160,10 @@ class OpenstackCompute(object):
         self.dc.net.addLink(node, self.dc.switch, **params)
 
     def _remove_link(self, server_name, link):
-        self.dc.switch.detach(link.intf1)
         self.dc.switch.detach(link.intf2)
+        del self.dc.switch.intfs[self.dc.switch.ports[link.intf2]]
+        del self.dc.switch.ports[link.intf2]
+        del self.dc.switch.nameToIntf[link.intf2.name]
         self.dc.net.removeLink(link=link)
         self.dc.net.DCNetwork_graph.remove_edge(server_name, self.dc.switch.name)
         self.dc.net.DCNetwork_graph.remove_edge(self.dc.switch.name, server_name)

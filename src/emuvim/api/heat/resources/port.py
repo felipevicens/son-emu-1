@@ -11,8 +11,10 @@ class Port:
     def set_name(self, name):
         self.name = name
         splitted_name = name.split(':')
-        if len(splitted_name) >= 4:
-            self.intf_name = splitted_name[2][:4] + '-' + splitted_name[3][:4]
+        if len(splitted_name) >= 3:
+            self.intf_name = splitted_name[0][:4] + '-' + \
+                             splitted_name[1][:4] + '-' + \
+                             splitted_name[2][:4]
         else:
             self.intf_name = name
 
