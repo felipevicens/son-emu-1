@@ -93,8 +93,10 @@ class ChainVnf(Resource):
                         src_intfs = intfs.name
                         dst_intfs = dintfs.name
 
-            self.api.os_net.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
+            cookie = self.api.os_net.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                  vnf_dst_interface=dst_intfs, bidirectional=True)
+            resp = { 'cookie' : cookie}
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
