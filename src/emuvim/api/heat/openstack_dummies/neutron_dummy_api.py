@@ -663,7 +663,7 @@ class NeutronUpdatePort(Resource):
                             port.mac_address = port_dict["port"]["mac_address"]
                         if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
                             old_name = port.name
-                            port.name = port_dict["port"]["name"]
+                            port.set_name(port_dict["port"]["name"])
                             if port.net_name in stack.nets:
                                 stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
                             stack.ports[port.name] = stack.ports[old_name]
