@@ -33,6 +33,7 @@ from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
 from emuvim.api.zerorpc.compute import ZeroRpcApiEndpoint
 from emuvim.api.heat.resources import *
 from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
+from emuvim.api.heat.manage import OpenstackManage
 from emuvim.api.zerorpc.network import ZeroRpcApiEndpointDCNetwork
 
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +50,13 @@ def create_topology1():
     heatapi2 = OpenstackApiEndpoint("0.0.0.0", 5002)
     heatapi3 = OpenstackApiEndpoint("0.0.0.0", 5003)
     heatapi4 = OpenstackApiEndpoint("0.0.0.0", 5004)
+
+    manage = OpenstackManage()
+    manage.add_endpoint(heatapi1)
+    manage.add_endpoint(heatapi2)
+    manage.add_endpoint(heatapi3)
+    manage.add_endpoint(heatapi4)
+
     # connect data centers to this endpoint
     heatapi1.connect_datacenter(dc1)
     heatapi2.connect_datacenter(dc2)
