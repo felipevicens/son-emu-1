@@ -146,8 +146,9 @@ class ChainVnfInterfaces(Resource):
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
         try:
-            self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
+            cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                 vnf_dst_interface=dst_intfs, bidirectional=True)
+            return Response(json.dumps(cookie), status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
             return Response(u"Error deleting the chain", status=500, mimetype="application/json")
