@@ -15,12 +15,11 @@ class OpenstackManage(object):
         self.net = None
 
         # we want one global chain api. this should not be datacenter dependent!
-        chain = chain_api.ChainApi(ip, port, self)
-        thread = threading.Thread(target=chain._start_flask, args=())
+        self.chain = chain_api.ChainApi(ip, port, self)
+        thread = threading.Thread(target=self.chain._start_flask, args=())
         thread.daemon = True
-        thread.name = chain.__class__
+        thread.name = self.chain.__class__
         thread.start()
-        self.add_endpoint(chain)
 
     def add_endpoint(self, ep):
         key = "%s:%s" % (ep.ip, ep.port)

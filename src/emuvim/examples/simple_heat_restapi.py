@@ -28,13 +28,8 @@ partner consortium (www.sonata-nfv.eu).
 import logging
 from mininet.log import setLogLevel
 from emuvim.dcemulator.net import DCNetwork
-from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
-
-from emuvim.api.zerorpc.compute import ZeroRpcApiEndpoint
-from emuvim.api.heat.resources import *
 from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
 from emuvim.api.heat.manage import OpenstackManage
-from emuvim.api.zerorpc.network import ZeroRpcApiEndpointDCNetwork
 
 logging.basicConfig(level=logging.INFO)
 
