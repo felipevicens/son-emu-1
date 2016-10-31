@@ -1,8 +1,9 @@
-from resources import *
-from mininet.link import Link
 import logging
 import threading
-from docker import Client as DockerClient
+
+from mininet.link import Link
+from resources import *
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -32,7 +33,7 @@ class OpenstackCompute(object):
         return True
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
-        flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit )
+        flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.id] = flavor
 
     def deploy_stack(self, stackid):
@@ -129,6 +130,12 @@ class OpenstackCompute(object):
         return True
 
     def _start_compute(self, server, stack):
+        """ Starts a new compute object (docker container) inside the emulator
+        Should only be called by stack modifications and not directly.
+        :param server: emuvim.api.heat.resources.server
+        :param stack: emuvim.api.heat.resources.stack
+        :return:
+        """
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
 
@@ -140,6 +147,9 @@ class OpenstackCompute(object):
             network.append(network_dict)
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+
+        # Start the real emulator command now as specified in the dockerfile
+        # ENV SON_EMU_CMD
         config = c.dcinfo.get("Config", dict())
         env = config.get("Env", list())
         for env_var in env:

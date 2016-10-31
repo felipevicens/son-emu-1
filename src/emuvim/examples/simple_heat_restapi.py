@@ -28,12 +28,8 @@ partner consortium (www.sonata-nfv.eu).
 import logging
 from mininet.log import setLogLevel
 from emuvim.dcemulator.net import DCNetwork
-from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
-
-from emuvim.api.zerorpc.compute import ZeroRpcApiEndpoint
-from emuvim.api.heat.resources import *
 from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
-from emuvim.api.zerorpc.network import ZeroRpcApiEndpointDCNetwork
+from emuvim.api.heat.manage import OpenstackManage
 
 logging.basicConfig(level=logging.INFO)
 
@@ -49,6 +45,7 @@ def create_topology1():
     heatapi2 = OpenstackApiEndpoint("0.0.0.0", 5002)
     heatapi3 = OpenstackApiEndpoint("0.0.0.0", 5003)
     heatapi4 = OpenstackApiEndpoint("0.0.0.0", 5004)
+
     # connect data centers to this endpoint
     heatapi1.connect_datacenter(dc1)
     heatapi2.connect_datacenter(dc2)
