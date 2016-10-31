@@ -46,12 +46,6 @@ def create_topology1():
     heatapi3 = OpenstackApiEndpoint("0.0.0.0", 5003)
     heatapi4 = OpenstackApiEndpoint("0.0.0.0", 5004)
 
-    manage = OpenstackManage()
-    manage.add_endpoint(heatapi1)
-    manage.add_endpoint(heatapi2)
-    manage.add_endpoint(heatapi3)
-    manage.add_endpoint(heatapi4)
-
     # connect data centers to this endpoint
     heatapi1.connect_datacenter(dc1)
     heatapi2.connect_datacenter(dc2)

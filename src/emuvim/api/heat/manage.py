@@ -4,8 +4,16 @@ import threading
 
 logging.basicConfig(level=logging.DEBUG)
 
-
 class OpenstackManage(object):
+
+    # openstackmanage is a singleton!
+    __instance = None
+
+    def __new__(cls):
+        if OpenstackManage.__instance is None:
+            OpenstackManage.__instance = object.__new__(cls)
+        return OpenstackManage.__instance
+
     def __init__(self, ip = "0.0.0.0", port = 4000):
         self.endpoints = dict()
         self.cookies = set()
@@ -15,16 +23,17 @@ class OpenstackManage(object):
         self.net = None
 
         # we want one global chain api. this should not be datacenter dependent!
-        self.chain = chain_api.ChainApi(ip, port, self)
-        thread = threading.Thread(target=self.chain._start_flask, args=())
-        thread.daemon = True
-        thread.name = self.chain.__class__
-        thread.start()
+        if not hasattr(self,"chain"):
+            self.chain = chain_api.ChainApi(ip, port, self)
+        if not hasattr(self, "thread"):
+            self.thread = threading.Thread(target=self.chain._start_flask, args=())
+            self.thread.daemon = True
+            self.thread.name = self.chain.__class__
+            self.thread.start()
 
     def add_endpoint(self, ep):
         key = "%s:%s" % (ep.ip, ep.port)
         self.endpoints[key] = ep
-        ep.manage = self
 
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
         try:

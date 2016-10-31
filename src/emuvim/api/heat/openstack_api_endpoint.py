@@ -8,6 +8,7 @@ from openstack_dummies import *
 import compute
 import heat_parser
 import requests
+from manage import OpenstackManage
 
 from resources import Stack
 
@@ -25,7 +26,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['heat'] = HeatDummyApi(self.ip, self.port + 3004, self.compute)
         self.openstack_endpoints['monitor'] = MonitorDummyApi(self.ip, self.port - 2000, self.compute)
         self.rest_threads = list()
-        self.manage = None
+        self.manage = OpenstackManage()
 
     def connect_datacenter(self, dc):
         self.compute.dc = dc
