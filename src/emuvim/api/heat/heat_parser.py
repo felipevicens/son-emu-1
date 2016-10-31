@@ -86,9 +86,9 @@ class HeatParser:
                        tmp_net.subnet_id is not None:
                         stack.ports[name].net_name = tmp_net.name
                         name_part = name.split(':')
-                        if name_part[2] == 'in':
+                        if name_part[2] == 'input' or name_part[2] == 'in':
                             stack.ports[name].ip_address = tmp_net.get_in_ip_address(name)
-                        elif name_part[2] == 'out':
+                        elif name_part[2] == 'output' or name_part[2] == 'out':
                             stack.ports[name].ip_address = tmp_net.get_out_ip_address(name)
                         else:
                             stack.ports[name].ip_address = tmp_net.get_new_ip_address(name)

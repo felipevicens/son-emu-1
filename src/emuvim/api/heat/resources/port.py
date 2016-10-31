@@ -12,9 +12,18 @@ class Port:
         self.name = name
         splitted_name = name.split(':')
         if len(splitted_name) >= 3:
-            self.intf_name = splitted_name[0][:4] + '-' + \
-                             splitted_name[1][:4] + '-' + \
-                             splitted_name[2][:4]
+            if splitted_name[2] == 'input' or splitted_name[2] == 'in':
+                self.intf_name = splitted_name[0][:4] + '-' + \
+                                 splitted_name[1][:4] + '-' + \
+                                 'in'
+            elif splitted_name[2] == 'output' or splitted_name[2] == 'out':
+                self.intf_name = splitted_name[0][:4] + '-' + \
+                                 splitted_name[1][:4] + '-' + \
+                                 'out'
+            else:
+                self.intf_name = splitted_name[0][:4] + '-' + \
+                                 splitted_name[1][:4] + '-' + \
+                                 splitted_name[2][:4]
         else:
             self.intf_name = name
 
