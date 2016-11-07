@@ -1,7 +1,7 @@
 ---
 heat_template_version: '2015-04-30'
 resources:
-  firewall-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+  firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Nova::Server
     properties:
       flavor:
@@ -10,89 +10,89 @@ resources:
         ram: 2048
         storage: 20
       image: ubuntu:trusty
-      name: firewall-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       networks:
       - port:
-          get_resource: firewall-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: firewall-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: firewall-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+          get_resource: firewall1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: firewall-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
         get_resource: sonata-demo:mgmt:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+  firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: firewall-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: firewall-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: firewall1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: firewall-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: firewall-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: firewall1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router:
+        get_resource: sonata-demo:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      subnet:
+        get_resource: firewall1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: firewall-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: firewall1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: firewall-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: firewall-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: firewall1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router:
+        get_resource: sonata-demo:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      subnet:
+        get_resource: firewall1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: firewall-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: firewall1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  firewall1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: firewall-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: firewall1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: firewall-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:vdu01:cp02:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: firewall-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  firewall-vnf:vdu01:cp03:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: firewall-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  floating:firewall-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: firewall1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  floating:firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network_id: decd89e2-1681-427e-ac24-6e9f1abb1715
       port_id:
-        get_resource: firewall-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  floating:iperf-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  floating:iperf1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network_id: decd89e2-1681-427e-ac24-6e9f1abb1715
       port_id:
-        get_resource: iperf-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  floating:tcpdump-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  floating:tcpdump1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network_id: decd89e2-1681-427e-ac24-6e9f1abb1715
       port_id:
-        get_resource: tcpdump-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: tcpdump1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Nova::Server
     properties:
       flavor:
@@ -101,86 +101,83 @@ resources:
         ram: 2048
         storage: 20
       image: ubuntu:trusty
-      name: iperf-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       networks:
       - port:
-          get_resource: iperf-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: iperf1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: iperf-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: iperf1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: iperf-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+          get_resource: iperf1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: iperf-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
         get_resource: sonata-demo:mgmt:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+  iperf1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: iperf-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: iperf-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: iperf-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: iperf-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: iperf-vnf:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:input-2-iperf:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: iperf1:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:input-2-iperf:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.2.0/29
       gateway_ip: 192.1.0.1
-      name: iperf-vnf:input-2-iperf:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:input-2-iperf:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: iperf-vnf:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:input-2-iperf:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: iperf-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: iperf1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: iperf-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: iperf-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router:
+        get_resource: sonata-demo:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      subnet:
+        get_resource: iperf1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: iperf-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: iperf1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  iperf1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: iperf-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: iperf1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: iperf-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:vdu01:cp02:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: iperf-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  iperf-vnf:vdu01:cp03:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: iperf-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  sonata-demo:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: iperf1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  sonata-demo:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Router
     properties:
-      name: sonata-demo:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: sonata-demo:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  sonata-demo:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+    type: OS::Neutron::Router
+    properties:
+      name: sonata-demo:iperf-2-firewall:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
   sonata-demo:mgmt:internal:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::RouterInterface
     properties:
@@ -199,11 +196,7 @@ resources:
       name: sonata-demo:mgmt:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
         get_resource: sonata-demo:mgmt:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  sonata-demo:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::Router
-    properties:
-      name: sonata-demo:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+  tcpdump1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Nova::Server
     properties:
       flavor:
@@ -212,80 +205,73 @@ resources:
         ram: 2048
         storage: 20
       image: ubuntu:trusty
-      name: tcpdump-vnf:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       networks:
       - port:
-          get_resource: tcpdump-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: tcpdump1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: tcpdump-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+          get_resource: tcpdump1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       - port:
-          get_resource: tcpdump-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+          get_resource: tcpdump1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: tcpdump-vnf:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
         get_resource: sonata-demo:mgmt:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+  tcpdump1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: tcpdump-vnf:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: tcpdump1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Port
     properties:
-      name: tcpdump-vnf:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: tcpdump-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: tcpdump1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router:
+        get_resource: sonata-demo:firewall-2-tcpdump:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      subnet:
+        get_resource: tcpdump1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: tcpdump1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: tcpdump-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: tcpdump1:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: tcpdump-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: tcpdump1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.1.0/29
       gateway_ip: 192.1.0.1
-      name: tcpdump-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: tcpdump-vnf:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+        get_resource: tcpdump1:output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Net
     properties:
-      name: tcpdump-vnf:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:tcpdump-2-output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
+      name: tcpdump1:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+  tcpdump1:tcpdump-2-output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
     type: OS::Neutron::Subnet
     properties:
       cidr: 192.0.2.0/29
       gateway_ip: 192.1.0.1
-      name: tcpdump-vnf:tcpdump-2-output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+      name: tcpdump1:tcpdump-2-output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
       network:
-        get_resource: tcpdump-vnf:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:vdu01:cp02:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: tcpdump-vnf:input:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-  tcpdump-vnf:vdu01:cp03:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router:
-        get_resource: sonata-demo:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
-      subnet:
-        get_resource: tcpdump-vnf:output:subnet:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        get_resource: tcpdump1:tcpdump-2-output:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
 
