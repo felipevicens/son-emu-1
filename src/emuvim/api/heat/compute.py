@@ -1,8 +1,8 @@
+from mininet.link import Link
+from resources import *
 import logging
 import threading
 
-from mininet.link import Link
-from resources import *
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -24,12 +24,27 @@ class OpenstackCompute(object):
         self.flavors = dict()
 
     def add_stack(self, stack):
-        self.check_stack(stack)
+        if not self.check_stack(stack):
+            raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
 
-    # TODO check the stack
     def check_stack(self, stack):
-        # raise HeatApiStackInvalidException("Stack did not pass validity checks")
+        for server in stack.servers.values():
+            for port_name in server.port_names:
+                if port_name not in stack.ports:
+                    return False
+        for port in stack.ports.values():
+            if port.net_name not in stack.nets:
+                return False
+        for router in stack.routers.values():
+            for subnet_name in router.subnet_names:
+                found = False
+                for net in stack.nets.values():
+                    if net.subnet_name == subnet_name:
+                        found = True
+                        break
+                if not found:
+                    return False
         return True
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
@@ -58,6 +73,8 @@ class OpenstackCompute(object):
 
     def update_stack(self, old_stack_id, new_stack):
         if old_stack_id in self.stacks:
+            if not self.check_stack(new_stack):
+                return False
             old_stack = self.stacks[old_stack_id]
         else:
             return False

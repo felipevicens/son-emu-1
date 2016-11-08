@@ -1,11 +1,7 @@
-# -*- coding: utf-8 -*-
-
 from flask_restful import Resource
 from flask import Response, request
-from flask import jsonify
-import logging
-import json
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
+import logging
 
 
 class MonitorDummyApi(BaseOpenstackDummy):
@@ -24,6 +20,7 @@ class MonitorDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
 class Shutdown(Resource):
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
@@ -31,6 +28,7 @@ class Shutdown(Resource):
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
+
 
 class MonitorVersionsList(Resource):
 

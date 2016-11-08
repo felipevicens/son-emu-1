@@ -2,7 +2,9 @@ import logging
 import chain_api
 import threading
 
+
 logging.basicConfig(level=logging.DEBUG)
+
 
 class OpenstackManage(object):
 

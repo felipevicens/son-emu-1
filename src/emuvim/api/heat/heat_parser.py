@@ -1,10 +1,9 @@
 from __future__ import print_function  # TODO remove when print is no longer needed for debugging
+from resources import *
+from datetime import datetime
 import re
 import sys
 import uuid
-import logging
-from resources import *
-from datetime import datetime
 
 
 class HeatParser:
@@ -45,7 +44,7 @@ class HeatParser:
             return False
         return True
 
-    def handle_resource(self, resource, stack, dc_label):   # TODO are all resource references complete?
+    def handle_resource(self, resource, stack, dc_label):
         if "OS::Neutron::Net" in resource['type']:
             try:
                 name = resource['properties']['name']
