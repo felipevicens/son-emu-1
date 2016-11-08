@@ -2,13 +2,13 @@
 
 from flask_restful import Resource
 from flask import request, Response
-import logging
-import json
-import uuid
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from ..resources import Net, Port
 from mininet.link import Link
 from datetime import datetime
+import logging
+import json
+import uuid
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -723,7 +723,7 @@ class NeutronDeletePort(Resource):
 def create_network_dict(network):
     network_dict = dict()
     network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-    network_dict["subnets"] = [network.subnet_id]  # TODO can we add subnets?
+    network_dict["subnets"] = [network.subnet_id]
     network_dict["name"] = network.name
     network_dict["admin_state_up"] = True  # TODO is it always true?
     network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here
@@ -742,10 +742,10 @@ def create_subnet_dict(network):
     subnet_dict["allocation_pools"] = [network.start_end_dict]
     subnet_dict["host_routers"] = []
     subnet_dict["gateway_ip"] = network.gateway_ip
-    subnet_dict["ip_version"] = "4"  # TODO which versions do we support?
+    subnet_dict["ip_version"] = "4"
     subnet_dict["cidr"] = network.get_cidr()
     subnet_dict["updated_at"] = network.subnet_update_time
-    subnet_dict["id"] = network.subnet_id  # TODO it is currently the gateway_ip. Where do we get the real id?
+    subnet_dict["id"] = network.subnet_id
     subnet_dict["enable_dhcp"] = False  # TODO do we support DHCP?
     return subnet_dict
 

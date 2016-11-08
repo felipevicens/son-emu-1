@@ -1,16 +1,9 @@
+from manage import OpenstackManage
+from openstack_dummies import *
 import logging
 import threading
-import time
-
-from flask import Flask
-from flask_restful import Api,Resource
-from openstack_dummies import *
 import compute
-import heat_parser
 import requests
-from manage import OpenstackManage
-
-from resources import Stack
 
 
 class OpenstackApiEndpoint():
@@ -48,7 +41,6 @@ class OpenstackApiEndpoint():
             thread.daemon = True
             thread.name = component.__class__
             thread.start()
-        #self.deploy_simulation() #TODO start a simulation
 
     def stop(self):
         for component in self.openstack_endpoints.values():

@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
-
-from flask_restful import Resource
-from flask import Response, request
-from flask import jsonify
-import logging
-import json
 from flask import Flask
 from flask_restful import Api, Resource
+from flask import Response
+import logging
+import json
 
 
 class ChainApi(Resource):

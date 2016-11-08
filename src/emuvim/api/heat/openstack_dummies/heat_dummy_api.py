@@ -1,13 +1,11 @@
-# -*- coding: UTF-8 -*-
-
-from flask import request,jsonify, Response
-from flask_restful import Api,Resource
-import logging
-import json
+from flask import request, Response
+from flask_restful import Resource
 from emuvim.api.heat.resources import Stack
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
-from datetime import datetime, timedelta
+from datetime import datetime
 from emuvim.api.heat.heat_parser import HeatParser
+import logging
+import json
 
 
 class HeatDummyApi(BaseOpenstackDummy):

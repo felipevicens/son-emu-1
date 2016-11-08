@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-
 from flask_restful import Resource
 from flask import Response, request
-from flask import jsonify
+from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
 import json
-from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 
 
 class NovaDummyApi(BaseOpenstackDummy):

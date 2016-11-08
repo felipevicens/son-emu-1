@@ -1,13 +1,8 @@
-# -*- coding: UTF-8 -*-
-
 from flask_restful import Resource
 from flask import request, Response
-from flask import jsonify
+from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
 import json
-import uuid
-from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
-from datetime import datetime, timedelta
 
 
 logging.basicConfig(level=logging.INFO)
