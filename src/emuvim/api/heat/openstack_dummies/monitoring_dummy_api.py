@@ -2,6 +2,7 @@ from flask_restful import Resource
 from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
+import json
 
 
 class MonitorDummyApi(BaseOpenstackDummy):
@@ -71,14 +72,16 @@ class MonitorVnf(Resource):
         self.api = api
 
     def get(self, vnf_name):
+        if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
+            vnf_name = 'mn.' + vnf_name
         # vnf does not exist
-        if vnf_name not in self.api.compute.dc.net:
-            return Response(u"MonitorAPI: VNF %s does not exist", status=500, mimetype="application/json")
+        if vnf_name[3:] not in self.api.compute.dc.net:
+            return Response(u"MonitorAPI: VNF %s does not exist\n", status=500, mimetype="application/json")
 
         try:
+            monitoring_dict = self.api.compute.monitor_container(vnf_name)
 
-
-            return Response(u"blablalbalbal", status=200, mimetype="application/json")
+            return Response(json.dumps(monitoring_dict)+'\n', status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
-            return Response(u"Error setting up the chain", status=500, mimetype="application/json")
+            return Response(u"Error setting up the chain\n", status=500, mimetype="application/json")
