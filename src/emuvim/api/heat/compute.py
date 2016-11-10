@@ -1,7 +1,12 @@
 from mininet.link import Link
 from resources import *
+from docker import Client
+from docker.utils import kwargs_from_env
 import logging
 import threading
+import re
+import os
+import subprocess
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -209,3 +214,73 @@ class OpenstackCompute(object):
             if self.dc.net[server_name].intfs[intf_key].link == link:
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
+
+    # Creates the monitoring data with 'docker stats'
+    def monitor_container(self, container_name):
+        c = Client(**(kwargs_from_env()))
+        detail = c.inspect_container(container_name)
+
+        if bool(detail["State"]["Running"]):
+            container_id = detail['Id']
+
+            docker_stat = subprocess.Popen(["docker", "stats", "--no-stream"], stdout=subprocess.PIPE)
+            output = docker_stat.communicate()[0]
+
+            for line in output.split('\n'):
+                if line.split(' ')[0] == container_id[:12]:
+                    return self.create_monitoring_dict(line)
+        else:
+            return None
+        return None
+
+    # Creates a dict for one container, out of the 'docker stats' output.
+    def create_monitoring_dict(self, docker_stats_line):
+        if docker_stats_line is None:
+            return None
+        split_line = docker_stats_line.split()
+        if len(split_line) < 19:
+            return None
+
+        out_dict = dict()
+        out_dict['CPU'] = split_line[1]
+        out_dict['MEM_usage'] = split_line[2] + ' ' + split_line[3]
+        out_dict['MEM_limit'] = split_line[5] + ' ' + split_line[6]
+        out_dict['MEM_%'] = split_line[7]
+        out_dict['NET_in'] = split_line[8] + ' ' + split_line[9]
+        out_dict['NET_out'] = split_line[11] + ' ' + split_line[12]
+        out_dict['PIDS'] = split_line[18]
+        return out_dict
+
+    # One way to go - not so nice, because we currently only get the seconds, the process was running
+    def display_cpu(self, container_name):
+        c = Client(**(kwargs_from_env()))
+        detail = c.inspect_container(container_name)
+
+        if bool(detail["State"]["Running"]):
+            container_id = detail['Id']
+            cpu_usage = {}
+            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.stat', 'r') as f:
+                for line in f:
+                    m = re.search(r"(system|user)\s+(\d+)", line)
+                    if m:
+                        cpu_usage[m.group(1)] = int(m.group(2))  # CPU usage in seconds (or 100 Sec) since the start
+
+            cpu = cpu_usage["system"] + cpu_usage["user"]
+            user_ticks = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
+            print(float(cpu) / user_ticks)
+        else:
+            print(0)
+
+    # Bytes of memory used from the docker container
+    def display_memory(args, container_name):
+        c = Client(**(kwargs_from_env()))
+        detail = c.inspect_container(container_name)
+        if bool(detail["State"]["Running"]):
+            container_id = detail['Id']
+            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.stat', 'r') as f:
+                for line in f:
+                    m = re.search(r"total_rss\s+(\d+)", line)
+                    if m:
+                        print(m.group(1))  # in Bytes! For MiB div by 1024*1024!
+                        return
+        print(0)
