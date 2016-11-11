@@ -80,6 +80,8 @@ class MonitorVnf(Resource):
 
         try:
             monitoring_dict = self.api.compute.monitor_container(vnf_name)
+            self.api.compute.display_cpu(vnf_name)
+            self.api.compute.display_memory(vnf_name)
 
             return Response(json.dumps(monitoring_dict)+'\n', status=200, mimetype="application/json")
         except Exception as e:

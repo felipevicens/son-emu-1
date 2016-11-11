@@ -7,6 +7,7 @@ import threading
 import re
 import os
 import subprocess
+import time
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -223,11 +224,11 @@ class OpenstackCompute(object):
         if bool(detail["State"]["Running"]):
             container_id = detail['Id']
 
-            docker_stat = subprocess.Popen(["docker", "stats", "--no-stream"], stdout=subprocess.PIPE)
+            docker_stat = subprocess.Popen(['docker', 'stats', '--no-stream', container_name], stdout=subprocess.PIPE)
             output = docker_stat.communicate()[0]
 
             for line in output.split('\n'):
-                if line.split(' ')[0] == container_id[:12]:
+                if line.split()[0] == container_name:
                     return self.create_monitoring_dict(line)
         else:
             return None
@@ -243,7 +244,7 @@ class OpenstackCompute(object):
 
         out_dict = dict()
         out_dict['CPU'] = split_line[1]
-        out_dict['MEM_usage'] = split_line[2] + ' ' + split_line[3]
+        out_dict['MEM_used'] = split_line[2] + ' ' + split_line[3]
         out_dict['MEM_limit'] = split_line[5] + ' ' + split_line[6]
         out_dict['MEM_%'] = split_line[7]
         out_dict['NET_in'] = split_line[8] + ' ' + split_line[9]
@@ -258,16 +259,24 @@ class OpenstackCompute(object):
 
         if bool(detail["State"]["Running"]):
             container_id = detail['Id']
-            cpu_usage = {}
-            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.stat', 'r') as f:
-                for line in f:
-                    m = re.search(r"(system|user)\s+(\d+)", line)
-                    if m:
-                        cpu_usage[m.group(1)] = int(m.group(2))  # CPU usage in seconds (or 100 Sec) since the start
+            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
+                first_timer = time.time()
+                line = f.readline()
+                first_cpu_usage = int(line)
 
-            cpu = cpu_usage["system"] + cpu_usage["user"]
-            user_ticks = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
-            print(float(cpu) / user_ticks)
+            time.sleep(1)
+
+            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
+                second_timer = time.time()
+                line = f.readline()
+                second_cpu_usage = int(line)
+
+            time_div = 1000000000 * (second_timer - first_timer)
+            usage_div = second_cpu_usage - first_cpu_usage
+
+            system_load = usage_div / time_div
+
+            print(system_load)
         else:
             print(0)
 
@@ -277,10 +286,15 @@ class OpenstackCompute(object):
         detail = c.inspect_container(container_name)
         if bool(detail["State"]["Running"]):
             container_id = detail['Id']
-            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.stat', 'r') as f:
-                for line in f:
-                    m = re.search(r"total_rss\s+(\d+)", line)
-                    if m:
-                        print(m.group(1))  # in Bytes! For MiB div by 1024*1024!
-                        return
+            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
+                memory = int(f.readline())
+                print(memory)
         print(0)
+
+    def docker_PIDS(self, container_name):
+        c = Client(**(kwargs_from_env()))
+        detail = c.inspect_container(container_name)
+        if bool(detail["State"]["Running"]):
+            container_id = detail['Id']
+            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.stat', 'r') as f:
+                return len(f.read().split('\n'))
