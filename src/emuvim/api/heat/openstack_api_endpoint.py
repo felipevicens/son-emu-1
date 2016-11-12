@@ -7,6 +7,7 @@ import requests
 
 
 class OpenstackApiEndpoint():
+    dc_apis = []
 
     def __init__(self, listenip, port):
         self.ip = listenip
@@ -20,6 +21,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['monitor'] = MonitorDummyApi(self.ip, self.port - 2000, self.compute)
         self.rest_threads = list()
         self.manage = OpenstackManage()
+        OpenstackApiEndpoint.dc_apis.append(self)
 
     def connect_datacenter(self, dc):
         self.compute.dc = dc

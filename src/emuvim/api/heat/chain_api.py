@@ -19,6 +19,8 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfInterfaces, "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(ChainVnfDcStackInterfaces, "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
+                              resource_class_kwargs={'api': self})
         self.api.add_resource(LoadBalancer, "/v1/lb/<name>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHost, "/v1/lb/<name>",
@@ -149,6 +151,109 @@ class ChainVnfInterfaces(Resource):
             logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
             return Response(u"Error deleting the chain", status=500, mimetype="application/json")
 
+class ChainVnfDcStackInterfaces(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def put(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+
+        # search for real names
+        real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
+        if type(real_names) is not tuple:
+            # something went wrong
+            return real_names
+
+        container_src, container_dst, interface_src, interface_dst = real_names
+
+        try:
+            cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
+                                                          vnf_dst_interface=interface_dst, bidirectional=True)
+            resp = {'cookie': cookie}
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+        except Exception as e:
+            logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
+            return Response(u"Error setting up the chain", status=500, mimetype="application/json")
+
+    def delete(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+
+        # search for real names
+        real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
+        if type(real_names) is not tuple:
+            # something went wrong, real_names is a Response object
+            return real_names
+
+        container_src, container_dst, interface_src, interface_dst = real_names
+
+        try:
+            cookie = self.api.manage.network_action_stop(container_src, container_dst, vnf_src_interface=interface_src,
+                                                vnf_dst_interface=interface_dst, bidirectional=True)
+            return Response(json.dumps(cookie), status=200, mimetype="application/json")
+        except Exception as e:
+            logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
+            return Response(u"Error deleting the chain", status=500, mimetype="application/json")
+
+    # Tries to find real container and interface names according to heat template names
+    # Returns a tuple of 4 or a Response object
+    def _findNames(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+        # search for datacenters
+        if src_dc not in self.api.manage.net.dcs or dst_dc not in self.api.manage.net.dcs:
+            return Response(u"At least one DC does not exist", status=500, mimetype="application/json")
+        dc_src = self.api.manage.net.dcs[src_dc]
+        dc_dst = self.api.manage.net.dcs[dst_dc]
+        # search for related OpenStackAPIs
+        api_src = None
+        api_dst = None
+        from openstack_api_endpoint import OpenstackApiEndpoint
+        for api in OpenstackApiEndpoint.dc_apis:
+            if api.compute.dc == dc_src:
+                api_src = api
+            if api.compute.dc == dc_dst:
+                api_dst = api
+        if api_src is None or api_dst is None:
+            return Response(u"At least one OpenStackAPI does not exist", status=500, mimetype="application/json")
+        # search for stacks
+        stack_src = None
+        stack_dst = None
+        for stack in api_src.compute.stacks.values():
+            if stack.stack_name == src_stack:
+                stack_src = stack
+        for stack in api_dst.compute.stacks.values():
+            if stack.stack_name == dst_stack:
+                stack_dst = stack
+        if stack_src is None or stack_dst is None:
+            return Response(u"At least one Stack does not exist", status=500, mimetype="application/json")
+        # search for servers
+        server_src = None
+        server_dst = None
+        for server in stack_src.servers.values():
+            if server.template_name == src_vnf:
+                server_src = server
+                break
+        for server in stack_dst.servers.values():
+            if server.template_name == dst_vnf:
+                server_dst = server
+                break
+        if server_src is None or server_dst is None:
+            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+
+        container_src = server_src.name
+        container_dst = server_dst.name
+
+        # search for ports
+        port_src = None
+        port_dst = None
+        if src_intfs in server_src.port_names:
+            port_src = stack_src.ports[src_intfs]
+        if dst_intfs in server_dst.port_names:
+            port_dst = stack_dst.ports[dst_intfs]
+        if port_src is None or port_dst is None:
+            return Response(u"At least one Port does not exist", status=500, mimetype="application/json")
+
+        interface_src = port_src.intf_name
+        interface_dst = port_dst.intf_name
+
+        return container_src, container_dst, interface_src, interface_dst
 
 class LoadBalancer(Resource):
     def __init__(self, api):
