@@ -107,6 +107,7 @@ class HeatParser:
                     stack.servers[shortened_name] = Server(shortened_name)
 
                 stack.servers[shortened_name].full_name = compute_name
+                stack.servers[shortened_name].template_name = str(resource['properties']['name'])
                 stack.servers[shortened_name].command = resource['properties'].get('command','/bin/sh')
                 stack.servers[shortened_name].image = resource['properties']['image']
                 stack.servers[shortened_name].flavor = resource['properties']['flavor']

@@ -3,6 +3,7 @@ class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
         self.set_name(name)
         self.id = None
+        self.template_name = name
         self.ip_address = ip_address
         self.mac_address = mac_address  # not set
         self.floating_ip = floating_ip
