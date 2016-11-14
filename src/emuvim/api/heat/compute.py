@@ -4,8 +4,6 @@ from docker import Client
 from docker.utils import kwargs_from_env
 import logging
 import threading
-import re
-import os
 import subprocess
 import time
 
@@ -252,49 +250,68 @@ class OpenstackCompute(object):
         out_dict['PIDS'] = split_line[18]
         return out_dict
 
-    # One way to go - not so nice, because we currently only get the seconds, the process was running
-    def display_cpu(self, container_name):
+
+    def docker_container_id(self, container_name):
         c = Client(**(kwargs_from_env()))
         detail = c.inspect_container(container_name)
-
         if bool(detail["State"]["Running"]):
-            container_id = detail['Id']
-            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
-                first_timer = time.time()
-                line = f.readline()
-                first_cpu_usage = int(line)
+            return detail['Id']
+        return None
 
-            time.sleep(1)
+    # One way to go - not so nice, because we currently only get the seconds, the process was running
+    def docker_cpu(self, container_id):
+        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
+            first_timer = time.time()
+            line = f.readline()
+            first_cpu_usage = int(line)
 
-            with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
-                second_timer = time.time()
-                line = f.readline()
-                second_cpu_usage = int(line)
+        time.sleep(1)
 
-            time_div = 1000000000 * (second_timer - first_timer)
-            usage_div = second_cpu_usage - first_cpu_usage
+        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
+            second_timer = time.time()
+            line = f.readline()
+            second_cpu_usage = int(line)
 
-            system_load = usage_div / time_div
+        time_div = 1000000000 * (second_timer - first_timer)
+        usage_div = second_cpu_usage - first_cpu_usage
 
-            print(system_load)
-        else:
-            print(0)
+        return usage_div / time_div
 
     # Bytes of memory used from the docker container
-    def display_memory(args, container_name):
-        c = Client(**(kwargs_from_env()))
-        detail = c.inspect_container(container_name)
-        if bool(detail["State"]["Running"]):
-            container_id = detail['Id']
-            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
-                memory = int(f.readline())
-                print(memory)
-        print(0)
+    def docker_mem_used(args, container_id):
+        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
+            return int(f.readline())
 
-    def docker_PIDS(self, container_name):
-        c = Client(**(kwargs_from_env()))
-        detail = c.inspect_container(container_name)
-        if bool(detail["State"]["Running"]):
-            container_id = detail['Id']
-            with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.stat', 'r') as f:
-                return len(f.read().split('\n'))
+    # Bytes of memory the docker container could use
+    def docker_max_mem(self, container_id):
+        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.limit_in_bytes', 'r') as f:
+            mem_limit = int(f.readline())
+        with open('/proc/meminfo', 'r') as f:
+            line = f.readline().split()
+            sys_value = int(line[1])
+            unit = line[2]
+            if unit == 'kB':
+                sys_value *= 1024
+            if unit == 'MB':
+                sys_value *= 1024*1024
+
+        if sys_value < mem_limit:
+            return sys_value
+        else:
+            return mem_limit
+
+    # Network read in Bytes
+    def docker_net_i(self, container_id):
+        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
+            return f.readline().split() # TODO only get the number
+
+    # Network write in Bytes
+    def docker_net_o(self, container_id):
+        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
+            line = f.readline()
+            return f.readline().split() # TODO only get the number
+
+    # Number of PIDS of that docker container
+    def docker_PIDS(self, container_id):
+        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
+            return len(f.read().split('\n'))
