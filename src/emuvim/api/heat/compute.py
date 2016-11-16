@@ -26,6 +26,7 @@ class OpenstackCompute(object):
         self.computeUnits = dict()
         self.routers = dict()
         self.flavors = dict()
+        self.images= dict()
 
     def add_stack(self, stack):
         if not self.check_stack(stack):
