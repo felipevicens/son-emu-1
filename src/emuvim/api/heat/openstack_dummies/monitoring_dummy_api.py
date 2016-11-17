@@ -80,22 +80,19 @@ class MonitorVnf(Resource):
             return Response(u"MonitorAPI: VNF %s does not exist\n", status=500, mimetype="application/json")
 
         try:
-            monitoring_dict = self.api.compute.monitor_container(vnf_name)
-
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
             out_dict['CPU_%'] = self.api.compute.docker_cpu(docker_id)
             out_dict['MEM_used'] = self.api.compute.docker_mem_used(docker_id)
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-            out_dict['NET_in'] = self.api.compute.docker_net_i(docker_id)
-            out_dict['NET_out'] = self.api.compute.docker_net_o(docker_id)
+            out_dict.update(self.api.compute.docker_net_io(docker_id))
+            out_dict['BLOCK_in'] = self.api.compute.docker_block_i(docker_id)
+            out_dict['BLOCK_out'] = self.api.compute.docker_block_o(docker_id)
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
-            out_dict['SYS_time'] = long(time.time()) * 1000000000
+            out_dict['SYS_time'] = long(time.time() * 1000000000)
 
-            print(docker_id)
-            print(out_dict)
-            return Response(json.dumps(monitoring_dict)+'\n', status=200, mimetype="application/json")
+            return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
