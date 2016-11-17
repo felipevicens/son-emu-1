@@ -9,6 +9,7 @@ from datetime import datetime
 import logging
 import json
 import uuid
+import copy
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -155,15 +156,15 @@ class NeutronListNetworks(Resource):
             network_dict = dict()
 
             if len(id_list) == 0:
-                for stack in self.api.compute.stacks.values():
-                    for net in stack.nets.values():
-                        tmp_network_dict = create_network_dict(net)
+                for net in self.api.compute.nets.values():
+                    tmp_network_dict = create_network_dict(net)
+                    if tmp_network_dict not in network_list:
                         network_list.append(tmp_network_dict)
             else:
-                for stack in self.api.compute.stacks.values():
-                    for net in stack.nets.values():
-                        if net.id in id_list:
-                            tmp_network_dict = create_network_dict(net)
+                for net in self.api.compute.nets.values():
+                    if net.id in id_list:
+                        tmp_network_dict = create_network_dict(net)
+                        if tmp_network_dict not in network_list:
                             network_list.append(tmp_network_dict)
 
             network_dict["networks"] = network_list
@@ -186,19 +187,17 @@ class NeutronShowNetwork(Resource):
     def get_network(self, network_id, as_list):
         logging.debug("API CALL: Neutron - Show network")
         try:
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.id == network_id:
-                        tmp_network_dict = create_network_dict(net)
-                        tmp_dict = dict()
-                        if as_list:
-                            tmp_dict["networks"] = [tmp_network_dict]
-                        else:
-                            tmp_dict["network"] = tmp_network_dict
+            if network_id not in self.api.compute.nets:
+                return 'Network not found.', 404
+            net = self.api.compute.nets[network_id]
+            tmp_network_dict = create_network_dict(net)
+            tmp_dict = dict()
+            if as_list:
+                tmp_dict["networks"] = [tmp_network_dict]
+            else:
+                tmp_dict["network"] = tmp_network_dict
 
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
-
-            return 'Network not found.', 404
+            return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Show network exception.")
@@ -216,8 +215,9 @@ class NeutronCreateNetwork(Resource):
             network_dict = request.json
             name = network_dict['network']['name']
             net = self.api.compute.create_network(name)
+            network_dict['network']['id'] = net.id
 
-            return Response(json.dumps({'network': net}), status=201, mimetype='application/json')
+            return Response(json.dumps(network_dict), status=201, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
             return ex.message, 500
@@ -234,6 +234,7 @@ class NeutronUpdateNetwork(Resource):
             if network_id in self.api.compute.nets:
                 net = self.api.compute.nets[network_id]
                 network_dict = request.json
+                old_net = copy.copy(net)
 
                 if "status" in network_dict["network"]:
                     net.status = network_dict["network"]["status"]
@@ -248,8 +249,13 @@ class NeutronUpdateNetwork(Resource):
                 if "shared" in network_dict["network"]:
                     pass  # tmp_network_dict["shared"] = False
 
+                # silent delete of the networks
+                self.api.compute.nets.pop(old_net.id, None)
+                self.api.compute.nets.pop(old_net.name, None)
+                self.api.compute.stacks.pop(old_net.id, None)
 
-                return Response(json.dumps({'network': net}), status=200, mimetype='application/json')
+
+                return Response(json.dumps(network_dict), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
 
@@ -484,6 +490,11 @@ class NeutronDeleteSubnet(Resource):
                         net.start_end_dict = None
                         net.reset_issued_ip_addresses()
 
+                        # silent delete of the networks
+                        self.api.compute.nets.pop(net.subnet_id, None)
+                        self.api.compute.nets.pop(net.subnet_name, None)
+                        self.api.compute.stacks.pop(net.subnet_id, None)
+
                         return 'Subnet ' + str(subnet_id) + ' deleted.', 204
 
             return 'Could not find subnet.', 404
@@ -576,46 +587,43 @@ class NeutronCreatePort(Resource):
                 name = 'MEINNNZZZZZZ' +\
                        str(len(self.api.compute.stacks[self.api.compute.stacks.keys()[0]].ports)-1)  # TODO add some real name
             net_id = port_dict['port']['network_id']
+
+            if net_id not in self.compute.nets:
+                return 'Could not find network.', 404
+            if name in self.compute.ports:
+                return 'Port name already exists.', 400
+
+            port = self.api.compute.create_port(name)
+            net = self.api.compute.nets[net_id]
+
+            port.net_name = net.name
+            port.ip_address = net.get_new_ip_address(name)
+
+            if "admin_state_up" in port_dict["port"]:
+                pass
+            if "device_id" in port_dict["port"]:
+                pass
+            if "device_owner" in port_dict["port"]:
+                pass
+            if "fixed_ips" in port_dict["port"]:
+                pass
+            if "id" in port_dict["port"]:
+                port.id = port_dict["port"]["id"]
+            else:
+                port.id = str(uuid.uuid4())
+            if "mac_address" in port_dict["port"]:
+                port.mac_address = port_dict["port"]["mac_address"]
+            if "status" in port_dict["port"]:
+                pass
+            if "tenant_id" in port_dict["port"]:
+                pass
+
             for stack in self.api.compute.stacks.values():
                 for net in stack.nets.values():
                     if net.id == net_id:
-                        port = None
-                        if name not in stack.ports:
-                            port = Port(name)
-                            stack.ports[name] = port
-                        else:
-                            return 'Port name already exists.', 400
+                        stack.ports[name] = port
 
-                        port.net_name = net.name
-                        port.ip_address = net.get_new_ip_address(name)
-
-                        if "admin_state_up" in port_dict["port"]:
-                            pass
-                        if "device_id" in port_dict["port"]:
-                            pass
-                        if "device_owner" in port_dict["port"]:
-                            pass
-                        if "fixed_ips" in port_dict["port"]:
-                            pass
-                        if "id" in port_dict["port"]:
-                            stack.ports[name].id = port_dict["port"]["id"]
-                        else:
-                            stack.ports[name].id = str(uuid.uuid4())
-                        if "mac_address" in port_dict["port"]:
-                            stack.ports[name].mac_address = port_dict["port"]["mac_address"]
-                        if "status" in port_dict["port"]:
-                            pass
-                        if "tenant_id" in port_dict["port"]:
-                            pass
-
-                        tmp_port_dict = create_port_dict(stack.ports[name], self.api.compute)
-                        tmp_dict = dict()
-                        tmp_dict["port"] = tmp_port_dict
-
-                        return Response(json.dumps(tmp_dict), status=201, mimetype='application/json')
-
-            return 'Could not find network.', 404
-
+            return Response(json.dumps({'port': port}), status=201, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
             return ex.message, 500
@@ -629,45 +637,47 @@ class NeutronUpdatePort(Resource):
     def put(self, port_id):
         logging.debug("API CALL: Neutron - Update port")
         try:
-            for stack in self.api.compute.stacks.values():
-                for port in stack.ports.values():
+            port_dict = request.json
+            port = self.api.compute.ports[port_dict["port"]]
+            old_port = copy.copy(port)
+
+            stack = None
+            for s in self.api.compute.stacks.values():
+                for port in s.ports.values():
                     if port.id == port_id:
-                        port_dict = request.json
+                        stack = s
+            if "admin_state_up" in port_dict["port"]:
+                pass
+            if "device_id" in port_dict["port"]:
+                pass
+            if "device_owner" in port_dict["port"]:
+                pass
+            if "fixed_ips" in port_dict["port"]:
+                pass
+            if "id" in port_dict["port"]:
+                port.id = port_dict["port"]["id"]
+            if "mac_address" in port_dict["port"]:
+                port.mac_address = port_dict["port"]["mac_address"]
+            if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
+                old_name = port.name
+                port.set_name(port_dict["port"]["name"])
+                if stack is not None and port.net_name in stack.nets:
+                    stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
+                stack.ports[port.name] = stack.ports[old_name]
+            if "network_id" in port_dict["port"]:
+                pass
+            if "status" in port_dict["port"]:
+                pass
+            if "tenant_id" in port_dict["port"]:
+                pass
 
-                        if "admin_state_up" in port_dict["port"]:
-                            pass
-                        if "device_id" in port_dict["port"]:
-                            pass
-                        if "device_owner" in port_dict["port"]:
-                            pass
-                        if "fixed_ips" in port_dict["port"]:
-                            pass
-                        if "id" in port_dict["port"]:
-                            port.id = port_dict["port"]["id"]
-                        if "mac_address" in port_dict["port"]:
-                            port.mac_address = port_dict["port"]["mac_address"]
-                        if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
-                            old_name = port.name
-                            port.set_name(port_dict["port"]["name"])
-                            if port.net_name in stack.nets:
-                                stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
-                            stack.ports[port.name] = stack.ports[old_name]
-                            del stack.ports[old_name]
-                        if "network_id" in port_dict["port"]:
-                            pass
-                        if "status" in port_dict["port"]:
-                            pass
-                        if "tenant_id" in port_dict["port"]:
-                            pass
+            # update the keys
+            self.api.compute.ports.pop(old_port.id, None)
+            self.api.compute.nets.pop(old_port.name, None)
+            stack.ports.pop(old_port.name, None)
 
-                        tmp_port_dict = create_port_dict(port, self.api.compute)
-                        tmp_dict = dict()
-                        tmp_dict["port"] = tmp_port_dict
 
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
-
-            return 'Port not found.', 404
-
+            return Response(json.dumps({'port': port}), status=200, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Update port exception.")
             return ex.message, 500
@@ -681,24 +691,26 @@ class NeutronDeletePort(Resource):
     def delete(self, port_id):
         logging.debug("API CALL: Neutron - Delete port")
         try:
-            for stack in self.api.compute.stacks.values():
-                for port in stack.ports.values():
+            stack = None
+            for s in self.api.compute.stacks.values():
+                for port in s.ports.values():
                     if port.id == port_id:
-                        port_name = port.name
+                        stack = s
+            port = self.api.compute.ports[port_id]
+            if port.net_name in stack.nets:
+                stack.nets[port.net_name].withdraw_ip_address(port.ip_address)
+            for server in stack.servers.values():
+                try:
+                    server.port_names.remove(port.name)
+                except ValueError:
+                    pass
 
-                        if port.net_name in stack.nets:
-                            stack.nets[port.net_name].withdraw_ip_address(port.ip_address)
-                        for server in stack.servers.values():
-                            try:
-                                server.port_names.remove(port_name)
-                            except ValueError:
-                                pass
+            # update the keys
+            self.api.compute.ports.pop(port.id, None)
+            self.api.compute.nets.pop(port.name, None)
+            stack.ports.pop(port.name, None)
 
-                        del stack.ports[port_name]
-
-                        return 'Port ' + port_id + ' deleted.', 204
-
-            return 'Could not find port.', 404
+            return 'Port ' + port_id + ' deleted.', 204
 
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")

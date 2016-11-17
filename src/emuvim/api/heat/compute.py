@@ -198,19 +198,19 @@ class OpenstackCompute(object):
 
 
     def create_network(self, name):
-        if name in self.compute.nets:
+        if name in self.nets:
             raise Exception("Network with name %s already exists." % name)
         network = Net(name)
         network.id = str(uuid.uuid4())
-        self.compute.nets[network.id] = self.compute.nets[name] = network
-        return net
+        self.nets[network.id] = self.nets[name] = network
+        return network
 
     def create_port(self, name):
-        if name in self.compute.ports:
+        if name in self.ports:
             raise Exception("Port with name %s already exists." % name)
         port = Port(name)
         port.id = str(uuid.uuid4())
-        self.compute.ports[port.id] = self.compute.ports[name] = port
+        self.ports[port.id] = self.ports[name] = port
 
         return port
 
