@@ -7,12 +7,13 @@ import uuid
 
 
 class HeatParser:
-    def __init__(self):
+    def __init__(self, compute):
         self.description = None
         self.parameter_groups = None
         self.parameters = None
         self.resources = None
         self.outputs = None
+        self.compute = compute
         self.bufferResource = list()
 
     def parse_input(self, input_dict, stack, dc_label):
@@ -47,10 +48,7 @@ class HeatParser:
     def handle_resource(self, resource, stack, dc_label):
         if "OS::Neutron::Net" in resource['type']:
             try:
-                name = resource['properties']['name']
-                if name not in stack.nets:
-                    stack.nets[name] = Net(name)
-                    stack.nets[name].id = str(uuid.uuid4())
+                stack.nets[resource['properties']['name']] = self.compute.create_network(resource['properties']['name'])
 
             except Exception as e:
                 print('Could not create Net: ' + e.message)
@@ -59,9 +57,8 @@ class HeatParser:
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
             try:
                 net_name = resource['properties']['network']['get_resource']
-                if net_name not in stack.nets:
-                    stack.nets[net_name] = Net(net_name)
-                    stack.nets[net_name].id = str(uuid.uuid4())
+                stack.nets[resource['properties']['name']] = self.compute.create_network(
+                        resource['properties']['name'])
 
                 stack.nets[net_name].subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -76,9 +73,7 @@ class HeatParser:
         if 'OS::Neutron::Port' in resource['type']:
             try:
                 name = resource['properties']['name']
-                if name not in stack.ports:
-                    stack.ports[name] = Port(name)
-                    stack.ports[name].id = str(uuid.uuid4())
+                stack.ports[name] = self.compute.create_port(name)
 
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == resource['properties']['network']['get_resource'] and \

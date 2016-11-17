@@ -7,7 +7,7 @@ import threading
 import subprocess
 import time
 import re
-
+import uuid
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -28,6 +28,8 @@ class OpenstackCompute(object):
         self.routers = dict()
         self.flavors = dict()
         self.images= dict()
+        self.nets = dict()
+        self.ports = dict()
 
     def add_stack(self, stack):
         if not self.check_stack(stack):
@@ -193,6 +195,24 @@ class OpenstackCompute(object):
             if str(link.intf1) in link_names:
                 self._remove_link(server.name, link)
         self.dc.stopCompute(server.name)
+
+
+    def create_network(self, name):
+        if name in self.compute.nets:
+            raise Exception("Network with name %s already exists." % name)
+        network = Net(name)
+        network.id = str(uuid.uuid4())
+        self.compute.nets[network.id] = self.compute.nets[name] = network
+        return net
+
+    def create_port(self, name):
+        if name in self.compute.ports:
+            raise Exception("Port with name %s already exists." % name)
+        port = Port(name)
+        port.id = str(uuid.uuid4())
+        self.compute.ports[port.id] = self.compute.ports[name] = port
+
+        return port
 
     def _add_link(self, node_name, ip_address, link_name, net_name):
         node = self.dc.net.get(node_name)

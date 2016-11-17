@@ -213,22 +213,11 @@ class NeutronCreateNetwork(Resource):
     def post(self):
         logging.debug("API CALL: Neutron - Create network")
         try:
-            for stack in self.api.compute.stacks.values():  # TODO which stack should i use to create the network???
-                network_dict = request.json
-                name = network_dict['network']['name']
-                if name not in stack.nets:
-                    stack.nets[name] = Net(name)
-                    stack.nets[name].id = str(uuid.uuid4())
-                else:
-                    return 'Network already exists.', 400
+            network_dict = request.json
+            name = network_dict['network']['name']
+            net = self.api.compute.create_network(name)
 
-                tmp_network_dict = create_network_dict(stack.nets[name])
-                tmp_dict = dict()
-                tmp_dict["network"] = tmp_network_dict
-
-                return Response(json.dumps(tmp_dict), status=201, mimetype='application/json')
-
-            return 'No Stack found to create the Network.', 404
+            return Response(json.dumps({'network': net}), status=201, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
             return ex.message, 500
@@ -242,33 +231,25 @@ class NeutronUpdateNetwork(Resource):
     def put(self, network_id): # TODO currently only the name will be changed
         logging.debug("API CALL: Neutron - Update network")
         try:
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.id == network_id:
-                        network_dict = request.json
+            if network_id in self.api.compute.nets:
+                net = self.api.compute.nets[network_id]
+                network_dict = request.json
 
-                        if "status" in network_dict["network"]:
-                            pass  # tmp_network_dict["status"] = "ACTIVE"
-                        if "subnets" in network_dict["network"]:
-                            pass  # tmp_network_dict["subnets"] = None
-                        if "name" in network_dict["network"] and net.name != network_dict["network"]["name"]:
-                            old_name = net.name
-                            net.name = network_dict["network"]["name"]
-                            stack.nets[net.name] = stack.nets[old_name]
-                            del stack.nets[old_name]
-                        if "admin_state_up" in network_dict["network"]:
-                            pass  # tmp_network_dict["admin_state_up"] = True
-                        if "tenant_id" in network_dict["network"]:
-                            pass  # tmp_network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"
-                        if "shared" in network_dict["network"]:
-                            pass  # tmp_network_dict["shared"] = False
-
-                        network_dict = create_network_dict(net)
-                        tmp_dict = dict()
-                        tmp_dict["network"] = network_dict
+                if "status" in network_dict["network"]:
+                    net.status = network_dict["network"]["status"]
+                if "subnets" in network_dict["network"]:
+                    pass  # tmp_network_dict["subnets"] = None
+                if "name" in network_dict["network"] and net.name != network_dict["network"]["name"]:
+                    net.name = network_dict["network"]["name"]
+                if "admin_state_up" in network_dict["network"]:
+                    pass  # tmp_network_dict["admin_state_up"] = True
+                if "tenant_id" in network_dict["network"]:
+                    pass  # tmp_network_dict["tenant_id"] = "c1210485b2424d48804aad5d39c61b8f"
+                if "shared" in network_dict["network"]:
+                    pass  # tmp_network_dict["shared"] = False
 
 
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
+                return Response(json.dumps({'network': net}), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
 
@@ -285,21 +266,24 @@ class NeutronDeleteNetwork(Resource):
     def delete(self, network_id):
         logging.debug("API CALL: Neutron - Delete network")
         try:
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.id == network_id:
-                        delete_subnet = NeutronDeleteSubnet(self.api)
-                        response_string, response_id = delete_subnet.delete(net.subnet_id)
+            if network_id not in self.api.compute.nets:
+                return 'Could not find network. (' + network_id + ')', 404
 
-                        if response_id != 204 and response_id != 404:
-                            return response_string, response_id
+            net = self.api.compute.nets[network_id]
+            delete_subnet = NeutronDeleteSubnet(self.api)
+            response_string, response_id = delete_subnet.delete(net.subnet_id)
 
-                        net_name = net.name
-                        del stack.nets[net_name]
+            if response_id != 204 and response_id != 404:
+                return response_string, response_id
 
-                        return 'Network ' + str(network_id) + ' deleted.', 204
+            # silent delete of the networks
+            self.api.compute.nets.pop(net.id, None)
+            self.api.compute.nets.pop(net.name, None)
+            self.api.compute.stacks.pop(net.id, None)
 
-            return 'Could not find network. (' + network_id + ')', 404
+            return 'Network ' + str(network_id) + ' deleted.', 204
+
+
 
         except Exception as ex:
             logging.exception("Neutron: Delete network exception.")
@@ -434,6 +418,7 @@ class NeutronUpdateSubnet(Resource):
     def put(self, subnet_id):
         logging.debug("API CALL: Neutron - Update subnet")
         try:
+            # old behavior but should be fine
             for stack in self.api.compute.stacks.values():
                 for net in stack.nets.values():
                     if net.subnet_id == subnet_id:
