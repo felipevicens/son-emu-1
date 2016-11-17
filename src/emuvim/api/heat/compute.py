@@ -6,6 +6,7 @@ import logging
 import threading
 import subprocess
 import time
+import re
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -300,18 +301,42 @@ class OpenstackCompute(object):
         else:
             return mem_limit
 
-    # Network read in Bytes
-    def docker_net_i(self, container_id):
-        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            return f.readline().split() # TODO only get the number
+    # Network traffic of all network interfaces within the controller
+    def docker_net_io(self, container_name):
+        c = Client(**(kwargs_from_env()))
+        command = c.exec_create(container_name, 'ifconfig')
+        ifconfig = c.exec_start(command['Id'])
 
-    # Network write in Bytes
-    def docker_net_o(self, container_id):
+        in_bytes = 0
+        m = re.findall('RX bytes:(\d+)', str(ifconfig))
+        if m:
+            for number in m:
+                in_bytes += int(number)
+        else:
+            in_bytes = None
+
+        out_bytes = 0
+        m = re.findall('TX bytes:(\d+)', str(ifconfig))
+        if m:
+            for number in m:
+                out_bytes += int(number)
+        else:
+            out_bytes = None
+
+        return {'NET_in': in_bytes, 'NET_out': out_bytes}
+
+    # Disk - read in Bytes
+    def docker_block_i(self, container_id):
+        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
+            return f.readline().split()  # [2]  # TODO why does it sometimes not have all 3 values?
+
+    # Disk - write in Bytes
+    def docker_block_o(self, container_id):
         with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
             line = f.readline()
-            return f.readline().split() # TODO only get the number
+            return f.readline().split()  # [2]  # TODO why does it sometimes not have all 3 values?
 
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return len(f.read().split('\n'))
+            return len(f.read().split('\n'))-1
