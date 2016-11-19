@@ -99,7 +99,7 @@ class HeatParser:
                         return
             except Exception as e:
                 logging.warning('Could not create Port: ' + e.message)
-                self.bufferResource.append(resource)
+            self.bufferResource.append(resource)
             return
 
         if 'OS::Nova::Server' in resource['type']:
