@@ -4,7 +4,9 @@ from datetime import datetime
 import re
 import sys
 import uuid
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 class HeatParser:
     def __init__(self, compute):
@@ -26,6 +28,8 @@ class HeatParser:
         self.parameters = input_dict.get('parameters', None)
         self.resources = input_dict.get('resources', None)
         self.outputs = input_dict.get('outputs', None)
+        # clear bufferResources
+        self.bufferResource = list()
 
         for resource in self.resources.values():
             self.handle_resource(resource, stack, dc_label)
@@ -48,48 +52,54 @@ class HeatParser:
     def handle_resource(self, resource, stack, dc_label):
         if "OS::Neutron::Net" in resource['type']:
             try:
-                stack.nets[resource['properties']['name']] = self.compute.create_network(resource['properties']['name'])
-
+                if self.compute.find_network_by_name_or_id(resource['properties']['name']) is None:
+                    stack.nets[resource['properties']['name']] = \
+                        self.compute.create_network(resource['properties']['name'])
             except Exception as e:
-                print('Could not create Net: ' + e.message)
+                logging.warning('Could not create Net: ' + e.message)
             return
 
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
             try:
                 net_name = resource['properties']['network']['get_resource']
-                stack.nets[resource['properties']['name']] = self.compute.create_network(
-                        resource['properties']['name'])
+                net = self.compute.find_network_by_name_or_id(net_name)
+                if net is None:
+                    net = self.compute.create_network(net_name)
+                    stack.nets[net_name] = net
 
-                stack.nets[net_name].subnet_name = resource['properties']['name']
+
+                net.subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
-                    stack.nets[net_name].gateway_ip = resource['properties']['gateway_ip']
-                stack.nets[net_name].subnet_id = stack.nets[net_name].id
-                stack.nets[net_name].subnet_creation_time = str(datetime.now())
-                stack.nets[net_name].set_cidr(resource['properties']['cidr'])
+                    net.gateway_ip = resource['properties']['gateway_ip']
+                net.subnet_id = resource['properties'].get('id', str(uuid.uuid4()))
+                net.subnet_creation_time = str(datetime.now())
+                net.set_cidr(resource['properties']['cidr'])
             except Exception as e:
-                print('Could not create Subnet: ' + e.message)
+                logging.warning('Could not create Subnet: ' + e.message)
             return
 
         if 'OS::Neutron::Port' in resource['type']:
             try:
-                name = resource['properties']['name']
-                stack.ports[name] = self.compute.create_port(name)
-
+                port_name = resource['properties']['name']
+                port = self.compute.find_port_by_name_or_id(port_name)
+                if port is None:
+                    port = self.compute.create_port(port_name)
+                stack.ports[port_name] = port
                 for tmp_net in stack.nets.values():
                     if tmp_net.name == resource['properties']['network']['get_resource'] and \
-                       tmp_net.subnet_id is not None:
-                        stack.ports[name].net_name = tmp_net.name
-                        name_part = name.split(':')
+                                    tmp_net.subnet_id is not None:
+                        port.net_name = tmp_net.name
+                        name_part = port.name.split(':')
                         if name_part[2] == 'input' or name_part[2] == 'in':
-                            stack.ports[name].ip_address = tmp_net.get_in_ip_address(name)
+                            port.ip_address = tmp_net.get_in_ip_address(port.name)
                         elif name_part[2] == 'output' or name_part[2] == 'out':
-                            stack.ports[name].ip_address = tmp_net.get_out_ip_address(name)
+                            port.ip_address = tmp_net.get_out_ip_address(port.name)
                         else:
-                            stack.ports[name].ip_address = tmp_net.get_new_ip_address(name)
+                            port.ip_address = tmp_net.get_new_ip_address(port.name)
                         return
             except Exception as e:
-                print('Could not create Port: ' + e.message)
-            self.bufferResource.append(resource)
+                logging.warning('Could not create Port: ' + e.message)
+                self.bufferResource.append(resource)
             return
 
         if 'OS::Nova::Server' in resource['type']:
@@ -99,7 +109,7 @@ class HeatParser:
                                  self.shorten_server_name(str(resource['properties']['name']), stack)
                 nw_list = resource['properties']['networks']
                 if shortened_name not in stack.servers:
-                    stack.servers[shortened_name] = Server(shortened_name)
+                    stack.servers[shortened_name] = self.compute.create_server(shortened_name)
 
                 stack.servers[shortened_name].full_name = compute_name
                 stack.servers[shortened_name].template_name = str(resource['properties']['name'])
@@ -108,13 +118,16 @@ class HeatParser:
                 stack.servers[shortened_name].flavor = resource['properties']['flavor']
                 for port in nw_list:
                     port_name = port['port']['get_resource']
-                    if port_name not in stack.ports:
-                        stack.ports[port_name] = Port(port_name)
-                        stack.ports[port_name].id = str(uuid.uuid4())
-
+                    # just create a port
+                    # we don't know which network it belongs to yet, but the resource will appear later in a valid
+                    # template
+                    port = self.compute.find_port_by_name_or_id(port_name)
+                    if port is None:
+                        self.compute.create_port(port_name)
                     stack.servers[shortened_name].port_names.append(port_name)
+                return
             except Exception as e:
-                print('Could not create Server: ' + e.message)
+                logging.warning('Could not create Server: ' + e.message)
             return
 
         if 'OS::Neutron::RouterInterface' in resource['type']:
@@ -135,7 +148,7 @@ class HeatParser:
                         stack.routers[router_name].add_subnet(subnet_name)
                         return
             except Exception as e:
-                print('Could not create RouterInterface: ' + e.__repr__())
+                logging.warning('Could not create RouterInterface: ' + e.__repr__())
             self.bufferResource.append(resource)
             return
 
@@ -149,7 +162,7 @@ class HeatParser:
 
                 stack.ports[port_id].floating_ip = floating_network_id
             except Exception as e:
-                print('Could not create FloatingIP: ' + e.message)
+                logging.warning('Could not create FloatingIP: ' + e.message)
             return
 
         if 'OS::Neutron::Router' in resource['type']:
@@ -161,7 +174,7 @@ class HeatParser:
                 print('Could not create Router: ' + e.message)
             return
 
-        print('Could not determine resource type!')
+        logging.warning('Could not determine resource type!')
         return
 
     def shorten_server_name(self, server_name, stack):

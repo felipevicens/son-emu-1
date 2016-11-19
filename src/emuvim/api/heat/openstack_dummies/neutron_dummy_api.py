@@ -157,13 +157,13 @@ class NeutronListNetworks(Resource):
 
             if len(id_list) == 0:
                 for net in self.api.compute.nets.values():
-                    tmp_network_dict = create_network_dict(net)
+                    tmp_network_dict = net.create_network_dict()
                     if tmp_network_dict not in network_list:
                         network_list.append(tmp_network_dict)
             else:
                 for net in self.api.compute.nets.values():
                     if net.id in id_list:
-                        tmp_network_dict = create_network_dict(net)
+                        tmp_network_dict = net.create_network_dict()
                         if tmp_network_dict not in network_list:
                             network_list.append(tmp_network_dict)
 
@@ -187,10 +187,11 @@ class NeutronShowNetwork(Resource):
     def get_network(self, network_id, as_list):
         logging.debug("API CALL: Neutron - Show network")
         try:
-            if network_id not in self.api.compute.nets:
+            net = self.api.compute.find_network_by_name_or_id(network_id)
+            if net is None:
                 return 'Network not found.', 404
-            net = self.api.compute.nets[network_id]
-            tmp_network_dict = create_network_dict(net)
+
+            tmp_network_dict = net.create_network_dict()
             tmp_dict = dict()
             if as_list:
                 tmp_dict["networks"] = [tmp_network_dict]
@@ -249,12 +250,6 @@ class NeutronUpdateNetwork(Resource):
                 if "shared" in network_dict["network"]:
                     pass  # tmp_network_dict["shared"] = False
 
-                # silent delete of the networks
-                self.api.compute.nets.pop(old_net.id, None)
-                self.api.compute.nets.pop(old_net.name, None)
-                self.api.compute.stacks.pop(old_net.id, None)
-
-
                 return Response(json.dumps(network_dict), status=200, mimetype='application/json')
 
             return 'Network not found.', 404
@@ -282,15 +277,9 @@ class NeutronDeleteNetwork(Resource):
             if response_id != 204 and response_id != 404:
                 return response_string, response_id
 
-            # silent delete of the networks
-            self.api.compute.nets.pop(net.id, None)
-            self.api.compute.nets.pop(net.name, None)
-            self.api.compute.stacks.pop(net.id, None)
+            self.api.compute.delete_network(network_id)
 
             return 'Network ' + str(network_id) + ' deleted.', 204
-
-
-
         except Exception as ex:
             logging.exception("Neutron: Delete network exception.")
             return ex.message, 500
@@ -316,17 +305,15 @@ class NeutronListSubnets(Resource):
             subnet_dict = dict()
 
             if len(id_list) == 0:
-                for stack in self.api.compute.stacks.values():
-                    for net in stack.nets.values():
-                        if net.subnet_id is not None:
-                            tmp_subnet_dict = create_subnet_dict(net)
-                            subnet_list.append(tmp_subnet_dict)
+                for net in self.api.compute.nets.values():
+                    if net.subnet_id is not None:
+                        tmp_subnet_dict = net.create_subnet_dict()
+                        subnet_list.append(tmp_subnet_dict)
             else:
-                for stack in self.api.compute.stacks.values():
-                    for net in stack.nets.values():
-                        if net.subnet_id in id_list:
-                            tmp_subnet_dict = create_subnet_dict(net)
-                            subnet_list.append(tmp_subnet_dict)
+                for net in self.api.compute.nets.values():
+                    if net.subnet_id in id_list:
+                        tmp_subnet_dict = net.create_subnet_dict()
+                        subnet_list.append(tmp_subnet_dict)
 
             subnet_dict["subnets"] = subnet_list
 
@@ -348,16 +335,15 @@ class NeutronShowSubnet(Resource):
     def get_subnet(self, subnet_id, as_list):
         logging.debug("API CALL: Neutron - Show subnet")
         try:
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.subnet_id == subnet_id:
-                        tmp_subnet_dict = create_subnet_dict(net)
-                        tmp_dict = dict()
-                        if as_list:
-                            tmp_dict["subnets"] = [tmp_subnet_dict]
-                        else:
-                            tmp_dict["subnet"] = tmp_subnet_dict
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
+            for net in self.api.compute.nets.values():
+                if net.subnet_id == subnet_id:
+                    tmp_subnet_dict = net.create_subnet_dict()
+                    tmp_dict = dict()
+                    if as_list:
+                        tmp_dict["subnets"] = [tmp_subnet_dict]
+                    else:
+                        tmp_dict["subnet"] = tmp_subnet_dict
+                    return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Subnet not found. (' + subnet_id + ')', 404
 
@@ -375,41 +361,36 @@ class NeutronCreateSubnet(Resource):
         logging.debug("API CALL: Neutron - Create subnet")
         try:
             subnet_dict = request.json
-            net_id = subnet_dict['subnet']['network_id']
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.id == net_id:
-                        if net.subnet_id is not None:
-                            return 'Only one subnet per network is supported', 409
+            net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
 
-                        if "cidr" in subnet_dict["subnet"]:
-                            if not net.set_cidr(subnet_dict["subnet"]["cidr"]):
-                                return 'Wrong CIDR format.', 400
-                        else:
-                            return 'No CIDR found.', 400
-                        if "name" in subnet_dict["subnet"]:
-                            net.subnet_name = subnet_dict["subnet"]["name"]
-                        if "tenant_id" in subnet_dict["subnet"]:
-                            pass
-                        if "allocation_pools" in subnet_dict["subnet"]:
-                            pass
-                        if "gateway_ip" in subnet_dict["subnet"]:
-                            net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
-                        if "ip_version" in subnet_dict["subnet"]:
-                            pass
-                        if "id" in subnet_dict["subnet"]:
-                            net.subnet_id = subnet_dict["subnet"]["id"]
-                        else:
-                            net.subnet_id = str(uuid.uuid4())
-                        if "enable_dhcp" in subnet_dict["subnet"]:
-                            pass
+            if net is None:
+                return 'Could not find network.', 404
 
-                        tmp_subnet_dict = create_subnet_dict(net)
-                        tmp_dict = dict()
-                        tmp_dict["subnet"] = tmp_subnet_dict
-                        return Response(json.dumps(tmp_dict), status=201, mimetype='application/json')
+            net.subnet_name = subnet_dict["subnet"].get('name', str(net.name) + '-sub')
+            if net.subnet_id is not None:
+                return 'Only one subnet per network is supported', 409
 
-            return 'Could not find network.', 404
+            if "cidr" in subnet_dict["subnet"]:
+                if not net.set_cidr(subnet_dict["subnet"]["cidr"]):
+                    return 'Wrong CIDR format.', 400
+            else:
+                return 'No CIDR found.', 400
+            if "tenant_id" in subnet_dict["subnet"]:
+                pass
+            if "allocation_pools" in subnet_dict["subnet"]:
+                pass
+            if "gateway_ip" in subnet_dict["subnet"]:
+                net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
+            if "ip_version" in subnet_dict["subnet"]:
+                pass
+            if "id" in subnet_dict["subnet"]:
+                net.subnet_id = subnet_dict["subnet"]["id"]
+            else:
+                net.subnet_id = str(uuid.uuid4())
+            if "enable_dhcp" in subnet_dict["subnet"]:
+                pass
+
+            return Response(json.dumps({'subnet': net.create_network_dict()}), status=201, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
@@ -424,36 +405,32 @@ class NeutronUpdateSubnet(Resource):
     def put(self, subnet_id):
         logging.debug("API CALL: Neutron - Update subnet")
         try:
-            # old behavior but should be fine
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.subnet_id == subnet_id:
-                        subnet_dict = request.json
+            for net in self.api.compute.nets.values():
+                if net.subnet_id == subnet_id:
+                    subnet_dict = request.json
 
-                        if "name" in subnet_dict["subnet"]:
-                            net.subnet_name = subnet_dict["subnet"]["name"]
-                        if "network_id" in subnet_dict["subnet"]:
-                            net.id = subnet_dict["subnet"]["network_id"]
-                        if "tenant_id" in subnet_dict["subnet"]:
-                            pass
-                        if "allocation_pools" in subnet_dict["subnet"]:
-                            pass
-                        if "gateway_ip" in subnet_dict["subnet"]:
-                            net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
-                        if "ip_version" in subnet_dict["subnet"]:
-                            pass
-                        if "cidr" in subnet_dict["subnet"]:
-                            net.set_cidr(subnet_dict["subnet"]["cidr"])
-                        if "id" in subnet_dict["subnet"]:
-                            net.subnet_id = subnet_dict["subnet"]["id"]
-                        if "enable_dhcp" in subnet_dict["subnet"]:
-                            pass
+                    if "name" in subnet_dict["subnet"]:
+                        net.subnet_name = subnet_dict["subnet"]["name"]
+                    if "network_id" in subnet_dict["subnet"]:
+                        net.id = subnet_dict["subnet"]["network_id"]
+                    if "tenant_id" in subnet_dict["subnet"]:
+                        pass
+                    if "allocation_pools" in subnet_dict["subnet"]:
+                        pass
+                    if "gateway_ip" in subnet_dict["subnet"]:
+                        net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
+                    if "ip_version" in subnet_dict["subnet"]:
+                        pass
+                    if "cidr" in subnet_dict["subnet"]:
+                        net.set_cidr(subnet_dict["subnet"]["cidr"])
+                    if "id" in subnet_dict["subnet"]:
+                        net.subnet_id = subnet_dict["subnet"]["id"]
+                    if "enable_dhcp" in subnet_dict["subnet"]:
+                        pass
 
-                        net.subnet_update_time = str(datetime.now())
-                        tmp_subnet_dict = create_subnet_dict(net)
-                        tmp_dict = dict()
-                        tmp_dict["subnet"] = tmp_subnet_dict
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
+                    net.subnet_update_time = str(datetime.now())
+                    tmp_dict = { 'subnet': net.create_subnet_dict()}
+                    return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
 
             return 'Network not found.', 404
@@ -471,29 +448,24 @@ class NeutronDeleteSubnet(Resource):
     def delete(self, subnet_id):
         logging.debug("API CALL: Neutron - Delete subnet")
         try:
-            for stack in self.api.compute.stacks.values():
-                for net in stack.nets.values():
-                    if net.subnet_id == subnet_id:
-                        for server in stack.servers.values():
-                            for port_name in server.port_names:
-                                port = stack.ports[port_name]
-                                if port.net_name == net.name:
-                                    port.ip_address = None
-                                    self.api.compute.dc.net.removeLink(
-                                        link=None,
-                                        node1=self.api.compute.dc.containers[server.name],
-                                        node2=self.api.compute.dc.switch)
+            for net in self.api.compute.nets.values():
+                if net.subnet_id == subnet_id:
+                    for server in self.api.compute.computeUnits.values():
+                        for port_name in server.port_names:
+                            port = self.api.compute.find_port_by_name_or_id(port_name)
+                            if port.net_name == net.name:
+                                port.ip_address = None
+                                self.api.compute.dc.net.removeLink(
+                                    link=None,
+                                    node1=self.api.compute.dc.containers[server.name],
+                                    node2=self.api.compute.dc.switch)
+                                port.net_name = None
 
-                        net.subnet_id = None
-                        net.subnet_name = None
-                        net.set_cidr(None)
-                        net.start_end_dict = None
-                        net.reset_issued_ip_addresses()
-
-                        # silent delete of the networks
-                        self.api.compute.nets.pop(net.subnet_id, None)
-                        self.api.compute.nets.pop(net.subnet_name, None)
-                        self.api.compute.stacks.pop(net.subnet_id, None)
+                            net.subnet_id = None
+                            net.subnet_name = None
+                            net.set_cidr(None)
+                            net.start_end_dict = None
+                            net.reset_issued_ip_addresses()
 
                         return 'Subnet ' + str(subnet_id) + ' deleted.', 204
 
@@ -523,16 +495,14 @@ class NeutronListPorts(Resource):
             port_dict = dict()
 
             if len(id_list) == 0:
-                for stack in self.api.compute.stacks.values():
-                    for port in stack.ports.values():
+                for port in self.api.compute.ports.values():
+                    tmp_port_dict = create_port_dict(port, self.api.compute)
+                    port_list.append(tmp_port_dict)
+            else:
+                for port in self.api.compute.ports.values():
+                    if port.id in id_list:
                         tmp_port_dict = create_port_dict(port, self.api.compute)
                         port_list.append(tmp_port_dict)
-            else:
-                for stack in self.api.compute.stacks.values():
-                    for port in stack.ports.values():
-                        if port.id in id_list:
-                            tmp_port_dict = create_port_dict(port, self.api.compute)
-                            port_list.append(tmp_port_dict)
 
             port_dict["ports"] = port_list
 
@@ -554,16 +524,14 @@ class NeutronShowPort(Resource):
     def get_port(self, port_id, as_list):
         logging.debug("API CALL: Neutron - Show port")
         try:
-            for stack in self.api.compute.stacks.values():
-                for port in stack.ports.values():
-                    if port.id == port_id:
-                        tmp_port_dict = create_port_dict(port, self.api.compute)
-                        tmp_dict = dict()
-                        if as_list:
-                            tmp_dict["ports"] = [tmp_port_dict]
-                        else:
-                            tmp_dict["port"] = tmp_port_dict
-                        return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            tmp_port_dict = create_port_dict(port, self.api.compute)
+            tmp_dict = dict()
+            if as_list:
+                tmp_dict["ports"] = [tmp_port_dict]
+            else:
+                tmp_dict["port"] = tmp_port_dict
+            return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
             return 'Port not found. (' + port_id + ')', 404
 
@@ -584,8 +552,10 @@ class NeutronCreatePort(Resource):
             if 'name' in port_dict['port']:
                 name = port_dict['port']['name']
             else:
-                name = 'MEINNNZZZZZZ' +\
-                       str(len(self.api.compute.stacks[self.api.compute.stacks.keys()[0]].ports)-1)  # TODO add some real name
+                return Response("Ports need a name.", status=500)
+
+            if self.api.compute.find_port_by_name_or_id(name):
+                return Response("Port with name %s already exists." % name, status=500)
             net_id = port_dict['port']['network_id']
 
             if net_id not in self.compute.nets:
@@ -623,7 +593,7 @@ class NeutronCreatePort(Resource):
                     if net.id == net_id:
                         stack.ports[name] = port
 
-            return Response(json.dumps({'port': port}), status=201, mimetype='application/json')
+            return Response(json.dumps({'port': create_port_dict(port, self.api.compute)}), status=201, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
             return ex.message, 500
@@ -638,7 +608,7 @@ class NeutronUpdatePort(Resource):
         logging.debug("API CALL: Neutron - Update port")
         try:
             port_dict = request.json
-            port = self.api.compute.ports[port_dict["port"]]
+            port = self.api.compute.find_port_by_name_or_id[port_id]
             old_port = copy.copy(port)
 
             stack = None
@@ -661,9 +631,10 @@ class NeutronUpdatePort(Resource):
             if "name" in port_dict["port"] and port_dict["port"]["name"] != port.name:
                 old_name = port.name
                 port.set_name(port_dict["port"]["name"])
-                if stack is not None and port.net_name in stack.nets:
-                    stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
-                stack.ports[port.name] = stack.ports[old_name]
+                if stack is not None:
+                    if port.net_name in stack.nets:
+                        stack.nets[port.net_name].update_port_name_for_ip_address(port.ip_address, port.name)
+                    stack.ports[port.name] = stack.ports[old_name]
             if "network_id" in port_dict["port"]:
                 pass
             if "status" in port_dict["port"]:
@@ -673,11 +644,10 @@ class NeutronUpdatePort(Resource):
 
             # update the keys
             self.api.compute.ports.pop(old_port.id, None)
-            self.api.compute.nets.pop(old_port.name, None)
-            stack.ports.pop(old_port.name, None)
+            if stack is not None:
+                stack.ports.pop(old_port.name, None)
 
-
-            return Response(json.dumps({'port': port}), status=200, mimetype='application/json')
+            return Response(json.dumps({'port': create_port_dict(port, self.api.compute)}), status=200, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Update port exception.")
             return ex.message, 500
@@ -696,19 +666,18 @@ class NeutronDeletePort(Resource):
                 for port in s.ports.values():
                     if port.id == port_id:
                         stack = s
-            port = self.api.compute.ports[port_id]
-            if port.net_name in stack.nets:
-                stack.nets[port.net_name].withdraw_ip_address(port.ip_address)
-            for server in stack.servers.values():
-                try:
-                    server.port_names.remove(port.name)
-                except ValueError:
-                    pass
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            if stack is not None:
+                if port.net_name in stack.nets:
+                    stack.nets[port.net_name].withdraw_ip_address(port.ip_address)
+                for server in stack.servers.values():
+                    try:
+                        server.port_names.remove(port.name)
+                    except ValueError:
+                        pass
 
-            # update the keys
-            self.api.compute.ports.pop(port.id, None)
-            self.api.compute.nets.pop(port.name, None)
-            stack.ports.pop(port.name, None)
+            # delete the port
+            self.api.compute.delete.port(port.id)
 
             return 'Port ' + port_id + ' deleted.', 204
 
@@ -717,45 +686,15 @@ class NeutronDeletePort(Resource):
             return ex.message, 500
 
 
-def create_network_dict(network):
-    network_dict = dict()
-    network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-    network_dict["subnets"] = [network.subnet_id]
-    network_dict["name"] = network.name
-    network_dict["admin_state_up"] = True  # TODO is it always true?
-    network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here
-    network_dict["id"] = network.id
-    network_dict["shared"] = False  # TODO is it always false?
-    return network_dict
-
-
-def create_subnet_dict(network):
-    subnet_dict = dict()
-    subnet_dict["name"] = network.subnet_name
-    subnet_dict["network_id"] = network.id
-    subnet_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here?
-    subnet_dict["created_at"] = network.subnet_creation_time
-    subnet_dict["dns_nameservers"] = []
-    subnet_dict["allocation_pools"] = [network.start_end_dict]
-    subnet_dict["host_routers"] = []
-    subnet_dict["gateway_ip"] = network.gateway_ip
-    subnet_dict["ip_version"] = "4"
-    subnet_dict["cidr"] = network.get_cidr()
-    subnet_dict["updated_at"] = network.subnet_update_time
-    subnet_dict["id"] = network.subnet_id
-    subnet_dict["enable_dhcp"] = False  # TODO do we support DHCP?
-    return subnet_dict
-
-
 def create_port_dict(port, compute):
     port_dict = dict()
     port_dict["admin_state_up"] = True  # TODO is it always true?
     port_dict["device_id"] = "257614cc-e178-4c92-9c61-3b28d40eca44"  # TODO find real values
     port_dict["device_owner"] = ""  # TODO do we have such things?
     tmp_subnet_id = None
-    for stack in compute.stacks.values():
-        if port.net_name in stack.nets:
-            tmp_subnet_id = stack.nets[port.net_name].subnet_id
+    for net in compute.nets.values():
+        if port.net_name == net.name:
+            tmp_subnet_id = net.subnet_id
     tmp_ip_address = None
     if port.ip_address is not None:
         tmp_ip_address = port.ip_address.rsplit('/', 1)[0]
@@ -768,25 +707,11 @@ def create_port_dict(port, compute):
     port_dict["id"] = port.id
     port_dict["mac_address"] = port.mac_address
     port_dict["name"] = port.name
-    for stack in compute.stacks.values():
-        if port.net_name in stack.nets:
-            port_dict["network_id"] = stack.nets[port.net_name].id
+    for net in compute.nets.values():
+        if port.net_name == net.name:
+            port_dict["network_id"] = net.id
         else:
             port_dict["network_id"] = None
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
     return port_dict
-
-
-def create_link(net_name, compute):
-    for stack in compute.stacks.values():
-        for server in stack.servers.values():
-            for port_name in server.port_names:  # TODO new ports are currently not added to any server.ports dict
-                port = stack.ports[port_name]
-                if port.net_name == net_name:
-                    compute.dc.net.addLink(
-                        compute.dc.containers[server.name],
-                        compute.dc.switch,
-                        params1={"ip": str(port.ip_address)},
-                        cls=Link,
-                        intfName1=net_name)

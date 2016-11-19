@@ -12,7 +12,7 @@ import uuid
 logging.basicConfig(level=logging.DEBUG)
 
 
-class HeatApiStackInvalidException(BaseException):
+class HeatApiStackInvalidException(Exception):
     def __init__(self, value):
         self.value = value
 
@@ -30,6 +30,7 @@ class OpenstackCompute(object):
         self.images= dict()
         self.nets = dict()
         self.ports = dict()
+        self.compute_nets = dict()
 
     def add_stack(self, stack):
         if not self.check_stack(stack):
@@ -40,9 +41,13 @@ class OpenstackCompute(object):
         for server in stack.servers.values():
             for port_name in server.port_names:
                 if port_name not in stack.ports:
+                    logging.warning("Server %s of stack %s has a port named %s that is not known." %
+                                  (server.name, stack.stack_name, port_name))
                     return False
         for port in stack.ports.values():
             if port.net_name not in stack.nets:
+                logging.warning("Port %s of stack %s has a network named %s that is not known." %
+                              (port.name, stack.stack_name, port.net_name))
                 return False
         for router in stack.routers.values():
             for subnet_name in router.subnet_names:
@@ -52,6 +57,8 @@ class OpenstackCompute(object):
                         found = True
                         break
                 if not found:
+                    logging.warning("Router %s of stack %s has a network named %s that is not known." %
+                                    (router.name, stack.stack_name, subnet_name))
                     return False
         return True
 
@@ -154,7 +161,7 @@ class OpenstackCompute(object):
         self.stacks[new_stack.id] = new_stack
         return True
 
-    def _start_compute(self, server, stack):
+    def _start_compute(self, server, stack = None):
         """ Starts a new compute object (docker container) inside the emulator
         Should only be called by stack modifications and not directly.
         :param server: emuvim.api.heat.resources.server
@@ -170,7 +177,7 @@ class OpenstackCompute(object):
             network_dict['ip'] = stack.ports[port_name].ip_address
             network_dict[network_dict['id']] = stack.nets[stack.ports[port_name].net_name].name
             network.append(network_dict)
-
+        self.compute_nets[server.name] = network
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
         # Start the real emulator command now as specified in the dockerfile
@@ -185,34 +192,110 @@ class OpenstackCompute(object):
                 t.daemon = True
                 t.start()
 
-    def _stop_compute(self, server, stack):
+    def _stop_compute(self, server):
         link_names = list()
         for port_name in server.port_names:
-            link_names.append(str(stack.nets[stack.ports[port_name].net_name].get_short_id() +
-                                  '-' + stack.ports[port_name].get_short_id()))
+            port = self.find_port_by_name_or_id(port_name)
+            net = self.find_network_by_name_or_id(port.net_name)
+            if net is not None:
+                link_names.append(str(net.get_short_id() +
+                                  '-' + port.get_short_id()))
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
                 self._remove_link(server.name, link)
         self.dc.stopCompute(server.name)
+        self.delete_server(server.name)
 
+
+    def find_server_by_name_or_id(self, name_or_id):
+        if name_or_id in self.computeUnits:
+            return self.computeUnits[name_or_id]
+
+        for server in self.computeUnits.values():
+            if server.name == name_or_id:
+                return server
+        return None
+
+    def create_server(self, name):
+        if self.find_server_by_name_or_id(name) is not None:
+            raise Exception("Server with name %s already exists." % name)
+        server = Server(name)
+        server.id = str(uuid.uuid4())
+        self.computeUnits[server.id] = server
+        return server
+
+    def delete_server(self, name_or_id):
+        server = self.find_server_by_name_or_id(name_or_id)
+        if server is None:
+            raise Exception("Server with name or id %s does not exists." % name_or_id)
+
+        self.computeUnits.pop(name_or_id, None)
+
+    def find_network_by_name_or_id(self, name_or_id):
+        if name_or_id in self.nets:
+            return self.nets[name_or_id]
+        for net in self.nets.values():
+            if net.name == name_or_id:
+                return net
+
+        return None
 
     def create_network(self, name):
-        if name in self.nets:
+        if self.find_network_by_name_or_id(name) is not None:
             raise Exception("Network with name %s already exists." % name)
         network = Net(name)
         network.id = str(uuid.uuid4())
-        self.nets[network.id] = self.nets[name] = network
+        self.nets[network.id] = network
         return network
 
+    def delete_network(self, name_or_id):
+        net = self.find_network_by_name_or_id(name_or_id)
+        if net is None:
+            raise Exception("Network with name or id %s does not exists." % name_or_id)
+
+        if net.subnet_id is not None:
+            self.delete_network(net.id)
+
+        for stack in self.stacks.values():
+            self.stacks.nets.pop(name_or_id, None)
+
+        self.nets.pop(name_or_id, None)
+
     def create_port(self, name):
-        if name in self.ports:
+        port = self.find_port_by_name_or_id(name)
+        if port is not None:
             raise Exception("Port with name %s already exists." % name)
         port = Port(name)
         port.id = str(uuid.uuid4())
-        self.ports[port.id] = self.ports[name] = port
+        self.ports[port.id] = port
 
         return port
+
+    def find_port_by_name_or_id(self, name_or_id):
+        if name_or_id in self.ports:
+            return self.ports[name_or_id]
+        for port in self.ports.values():
+            if port.name == name_or_id or port.template_name == name_or_id:
+                return port
+
+        return None
+
+    def delete_port(self, name_or_id):
+        port = self.find_port_by_name_or_id(name_or_id)
+        if port is None:
+            raise Exception("Port with name or id %s does not exists." % name_or_id)
+
+        self.ports.pop(name_or_id, None)
+        for stack in self.stacks.values():
+            self.stacks.ports.pop(name_or_id, None)
+
+        my_links = self.dc.net.links
+        for link in my_links:
+            if str(link.intf1) == port.intf_name and \
+                            str(link.intf1.ip) == port.ip_address.split('/')[0]:
+                self._remove_link(link.intf1.node.name, link)
+                break
 
     def _add_link(self, node_name, ip_address, link_name, net_name):
         node = self.dc.net.get(node_name)

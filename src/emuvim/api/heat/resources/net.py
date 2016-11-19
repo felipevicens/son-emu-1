@@ -104,6 +104,34 @@ class Net:
             return True
         return False
 
+    def create_network_dict(self):
+        network_dict = dict()
+        network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
+        network_dict["subnets"] = [self.subnet_id]
+        network_dict["name"] = self.name
+        network_dict["admin_state_up"] = True  # TODO is it always true?
+        network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here
+        network_dict["id"] = self.id
+        network_dict["shared"] = False  # TODO is it always false?
+        return network_dict
+
+    def create_subnet_dict(self):
+        subnet_dict = dict()
+        subnet_dict["name"] = self.subnet_name
+        subnet_dict["network_id"] = self.id
+        subnet_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here?
+        subnet_dict["created_at"] = self.subnet_creation_time
+        subnet_dict["dns_nameservers"] = []
+        subnet_dict["allocation_pools"] = [self.start_end_dict]
+        subnet_dict["host_routers"] = []
+        subnet_dict["gateway_ip"] = self.gateway_ip
+        subnet_dict["ip_version"] = "4"
+        subnet_dict["cidr"] = self.get_cidr()
+        subnet_dict["updated_at"] = self.subnet_update_time
+        subnet_dict["id"] = self.subnet_id
+        subnet_dict["enable_dhcp"] = False  # TODO do we support DHCP?
+        return subnet_dict
+
     def __eq__(self, other):
         if self.name == other.name and self.subnet_name == other.subnet_name and \
                                        self.gateway_ip == other.gateway_ip and \
