@@ -12,7 +12,7 @@ import re
 logging.basicConfig(level=logging.DEBUG)
 
 
-class HeatApiStackInvalidException(BaseException):
+class HeatApiStackInvalidException(Exception):
     def __init__(self, value):
         self.value = value
 
