@@ -173,12 +173,25 @@ class OpenstackCompute(object):
 
         for port_name in server.port_names:
             network_dict = dict()
-            network_dict['id'] = stack.ports[port_name].intf_name
-            network_dict['ip'] = stack.ports[port_name].ip_address
-            network_dict[network_dict['id']] = stack.nets[stack.ports[port_name].net_name].name
-            network.append(network_dict)
+            port = self.find_port_by_name_or_id(port_name)
+            if port is not None:
+                network_dict['id'] = port.intf_name
+                network_dict['ip'] = port.ip_address
+                network_dict[network_dict['id']] = self.find_network_by_name_or_id(port.net_name).name
+                network.append(network_dict)
         self.compute_nets[server.name] = network
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+
+        for intf in c.intfs.values():
+            for port_name in server.port_names:
+                port = self.find_port_by_name_or_id(port_name)
+                if port is not None:
+                    if intf.name == port.intf_name:
+                        if port.mac_address is not None:
+                            c.setMAC(port.mac_address)
+                        else:
+                            port.mac_address = intf.mac
+                        #TODO: mac addresses in neutron_dummy_api!
 
         # Start the real emulator command now as specified in the dockerfile
         # ENV SON_EMU_CMD
