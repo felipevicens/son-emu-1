@@ -61,7 +61,7 @@ class OpenstackCompute(object):
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
-        self.flavors[flavor.id] = flavor
+        self.flavors[flavor.name] = flavor
 
     def deploy_stack(self, stackid):
         if self.dc is None:
@@ -177,6 +177,9 @@ class OpenstackCompute(object):
                 network_dict[network_dict['id']] = self.find_network_by_name_or_id(port.net_name).name
                 network.append(network_dict)
         self.compute_nets[server.name] = network
+
+        if server.image not in self.images:
+            self.images[server.image] = Image(server.image)
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
 
         for intf in c.intfs.values():
@@ -225,7 +228,7 @@ class OpenstackCompute(object):
             return self.computeUnits[name_or_id]
 
         for server in self.computeUnits.values():
-            if server.name == name_or_id:
+            if server.id == name_or_id or server.template_name == name_or_id or server.full_name == name_or_id:
                 return server
         return None
 
@@ -240,7 +243,7 @@ class OpenstackCompute(object):
     def delete_server(self, name_or_id):
         server = self.find_server_by_name_or_id(name_or_id)
         if server is None:
-            raise Exception("Server with name or id %s does not exists." % name_or_id)
+            return False
 
         self.computeUnits.pop(name_or_id, None)
 

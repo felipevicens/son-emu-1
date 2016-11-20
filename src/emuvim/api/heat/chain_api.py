@@ -84,6 +84,7 @@ class ChainVnf(Resource):
             for intfs in self.api.manage.net[src_vnf].intfs.values():
                 for dintfs in self.api.manage.net[dst_vnf].intfs.values():
                     # if both are in the same network they can be chained
+                    # TODO: may chain on the mgmt interface!!
                     if intfs.params[intfs.name] == dintfs.params[dintfs.name]:
                         src_intfs = intfs.name
                         dst_intfs = dintfs.name

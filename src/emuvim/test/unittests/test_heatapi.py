@@ -114,9 +114,9 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors"
         listflavorsresponse = requests.get(url, headers=headers)
         self.assertEqual(listflavorsresponse.status_code, 200)
-        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
-        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
-        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
+        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         print(" ")
 
         print('->>>>>>> testNovaListFlavorsDetail ->>>>>>>>>>>>>>>')
@@ -125,9 +125,9 @@ class testRestApi(ApiBaseHeat):
         listflavorsdetailresponse = requests.get(url, headers=headers)
         self.assertEqual(listflavorsdetailresponse.status_code, 200)
         print (listflavorsdetailresponse.content)
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         print(" ")
 
 

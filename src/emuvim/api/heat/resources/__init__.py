@@ -7,3 +7,4 @@ from router import Router
 from server import Server
 from stack import Stack
 from template import Template
+from image import Image

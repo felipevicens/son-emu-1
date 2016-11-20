@@ -20,8 +20,9 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>")
-        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors",
+        self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors/",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavorsDetails, "/v2.1/<id>/flavors/detail",
                               resource_class_kwargs={'api': self})
@@ -41,6 +42,7 @@ class NovaDummyApi(BaseOpenstackDummy):
         self.compute.add_flavor('m1.tiny', 1, 512, "MB", 1, "GB")
         self.compute.add_flavor('m1.nano', 1, 64, "MB", 0, "GB")
         self.compute.add_flavor('m1.micro', 1, 128, "MB", 0, "GB")
+        self.compute.add_flavor('m1.small', 1, 1024, "MB", 2, "GB")
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
@@ -137,15 +139,14 @@ class NovaListServersApi(Resource):
         try:
             resp = dict()
             resp['servers'] = list()
-            for stack in self.api.compute.stacks.values():
-                for server in stack.servers.values():
-                    s = dict()
-                    s['id'] = server.id
-                    s['name'] = server.name
-                    s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (self.api.ip,
-                                                                                       self.api.port,
-                                                                                       server.id)}]
-                    resp['servers'].append(s)
+            for server in self.api.compute.computeUnits.values():
+                s = server.create_server_dict(self.api.compute)
+                s['links'] = [{'href': "http://%s:%d/v2.1/%s/servers/%s" % (self.api.ip,
+                                                                            self.api.port,
+                                                                            id,
+                                                                            server.id)}]
+
+                resp['servers'].append(s)
 
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -159,13 +160,14 @@ class NovaListServersApi(Resource):
 
             flavor = request.json['server'].get('flavorRef', '')
             image = request.json['server'].get('imageRef', '')
+            # TODO: not finished!
             print req
             resp = dict()
             s = resp['server'] = dict()
             s['name'] = request.json['server'].get('name', '')
 
         except Exception as ex:
-            logging.exception(u"%s: Could not createthe server." % __name__)
+            logging.exception(u"%s: Could not create the server." % __name__)
             return ex.message, 500
 
 
@@ -177,12 +179,38 @@ class NovaListServersDetailed(Resource):
         try:
             resp = {"servers": list()}
             for server in self.api.compute.computeUnits.values():
-                s = dict()
-                s['id'] = server.id
-                s['name'] = server.name
-                s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (self.api.ip,
-                                                                                   self.api.port,
-                                                                                   server.id)}]
+                s = server.create_server_dict(self.api.compute)
+                s['links'] = [{'href': "http://%s:%d/v2.1/%s/servers/%s" % (self.api.ip,
+                                                                            self.api.port,
+                                                                            id,
+                                                                            server.id)}]
+                flavor = self.api.compute.flavors[server.flavor]
+                s['flavor'] = {
+                    "id": flavor.id,
+                    "links": [
+                        {
+                            "href": "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                         self.api.port,
+                                                                         id,
+                                                                         flavor.id),
+                            "rel": "bookmark"
+                        }
+                    ]
+                }
+                image = self.api.compute.images[server.image]
+                s['image'] = {
+                    "id": image.id,
+                    "links": [
+                        {
+                            "href": "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
+                                                                        self.api.port,
+                                                                        id,
+                                                                        image.id),
+                            "rel": "bookmark"
+                        }
+                    ]
+                }
+
                 resp['servers'].append(s)
 
             return Response(json.dumps(resp), status=200, mimetype="application/json")
@@ -201,13 +229,15 @@ class NovaListFlavors(Resource):
             resp = dict()
             resp['flavors'] = list()
             for flavor in self.api.compute.flavors.values():
-                f = dict()
+                f = flavor.__dict__.copy()
                 f['id'] = flavor.id
                 f['name'] = flavor.name
-                f['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (self.api.ip,
-                                                                                   self.api.port,
-                                                                                   flavor.id)}]
+                f['links'] = [{'href': "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                            self.api.port,
+                                                                            id,
+                                                                            flavor.id)}]
                 resp['flavors'].append(f)
+
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
@@ -228,9 +258,10 @@ class NovaListFlavorsDetails(Resource):
                 # but use a copy so we don't modifiy the original
                 f = flavor.__dict__.copy()
                 # add additional expected stuff stay openstack compatible
-                f['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (self.api.ip,
-                                                                                   self.api.port,
-                                                                                   flavor.id)}]
+                f['links'] = [{'href': "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                            self.api.port,
+                                                                            id,
+                                                                            flavor.id)}]
                 f['OS-FLV-DISABLED:disabled'] = False
                 f['OS-FLV-EXT-DATA:ephemeral'] = 0
                 f['os-flavor-access:is_public'] = True
@@ -259,14 +290,15 @@ class NovaListFlavorById(Resource):
             flavor = self.api.compute.flavors.get(flavorid, None)
             if flavor is None:
                 for f in self.api.compute.flavors.values():
-                    if f.name == flavorid:
+                    if f.id == flavorid:
                         flavor = f
                         break
             resp['flavor']['id'] = flavor.id
             resp['flavor']['name'] = flavor.name
-            resp['flavor']['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (self.api.ip,
-                                                                                            self.api.port,
-                                                                                            flavor.id)}]
+            resp['flavor']['links'] = [{'href': "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                                     self.api.port,
+                                                                                     id,
+                                                                                     flavor.id)}]
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
@@ -282,21 +314,14 @@ class NovaListImages(Resource):
         try:
             resp = dict()
             resp['images'] = list()
-            # add a dummy server to create images from.
-            # call 1-800-dirtyhack
-            s = dict()
-            s['id'] = "1"
-            s['name'] = "CREATE-IMAGE"
-            s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/1" % (self.api.ip,
-                                                                              self.api.port)}]
-            resp['images'].append(s)
             for image in self.api.compute.images.values():
                 f = dict()
                 f['id'] = image.id
                 f['name'] = image.name
-                f['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/%s" % (self.api.ip,
-                                                                                  self.api.port,
-                                                                                  image.id)}]
+                f['links'] = [{'href': "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
+                                                                           self.api.port,
+                                                                           id,
+                                                                           image.id)}]
                 resp['images'].append(f)
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -313,31 +338,22 @@ class NovaListImagesDetails(Resource):
         try:
             resp = dict()
             resp['images'] = list()
-            # add a dummy server to create images from.
-            # call 1-800-dirtyhack
-            s = dict()
-            s['id'] = "1"
-            s['name'] = "CREATE-IMAGE"
-            s['status'] = "INACTIVE"
-            s['created'] = str(datetime.now())
-            s['updated'] = str(datetime.now())
-            s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/1" % (self.api.ip,
-                                                                              self.api.port)}]
-            resp['images'].append(s)
             for image in self.api.compute.images.values():
                 # use the class dict. it should work fine
                 # but use a copy so we don't modifiy the original
                 f = image.__dict__.copy()
                 # add additional expected stuff stay openstack compatible
-                f['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/%s" % (self.api.ip,
-                                                                                  self.api.port,
-                                                                                  image.id)}]
-                f['minDisk'] = 0
-                f['id'] = f.id
-                f['minRam'] = 0
-                f['created'] = str(datetime.now())
-                f['updated'] = str(datetime.now())
-                resp['flavors'].append(f)
+                f['links'] = [{'href': "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
+                                                                           self.api.port,
+                                                                           id,
+                                                                           image.id)}]
+                f['metadata'] = {
+                    "architecture": "x86_64",
+                    "auto_disk_config": "True",
+                    "kernel_id": "nokernel",
+                    "ramdisk_id": "nokernel"
+                }
+                resp['images'].append(f)
 
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -363,20 +379,7 @@ class NovaListImageById(Resource):
             # add a dummy server to create images from.
             # call 1-800-dirtyhack
             s = resp['image']
-            if str(imageid) == "1":
-                s['id'] = "1"
-                s['name'] = "CREATE-IMAGE"
-                s['status'] = "INACTIVE"
-                s['created'] = str(datetime.now())
-                s['updated'] = str(datetime.now())
-                s['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/1" % (self.api.ip,
-                                                                                 self.api.port)}]
-                s['metadata'] = {
-                    "architecture": "x86_64",
-                    "auto_disk_config": "True",
-                    "kernel_id": "nokernel",
-                    "ramdisk_id": "nokernel"
-                }
+
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
@@ -385,10 +388,48 @@ class NovaListImageById(Resource):
 
 
 class NovaShowServerDetails(Resource):
+    def __init__(self, api):
+        self.api = api
+
     def get(self, id, serverid):
         try:
             resp = dict()
             resp['server'] = dict()
+            server = self.api.compute.find_server_by_name_or_id(serverid)
+            if server is None:
+                return Response("Server with id or name %s does not exists." % serverid, status=404)
+            s = server.create_server_dict()
+            s['links'] = [{'href': "http://%s:%d/v2.1/%s/servers/%s" % (self.api.ip,
+                                                                        self.api.port,
+                                                                        id,
+                                                                        server.id)}]
+
+            flavor = self.api.compute.flavors[server.flavor["flavorName"]]
+            s['flavor'] = {
+                "id": flavor.id,
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                     self.api.port,
+                                                                     id,
+                                                                     flavor.id),
+                        "rel": "bookmark"
+                    }
+                ]
+            }
+            image = self.api.compute.images[server.image]
+            s['image'] = {
+                "id": image.id,
+                "links": [
+                    {
+                        "href": "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
+                                                                    self.api.port,
+                                                                    id,
+                                                                    image.id),
+                        "rel": "bookmark"
+                    }
+                ]
+            }
 
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 

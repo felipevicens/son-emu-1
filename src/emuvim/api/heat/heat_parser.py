@@ -118,7 +118,13 @@ class HeatParser:
                 server.template_name = str(resource['properties']['name'])
                 server.command = resource['properties'].get('command', '/bin/sh')
                 server.image = resource['properties']['image']
+
                 server.flavor = resource['properties']['flavor']
+                #if flavor['name'] not in self.compute.flavors:
+                #    self.compute.add_flavor(flavor['flavorName'], flavor['vcpu'], flavor['ram'],
+                #                            "MB", flavor['storage'], "GB")
+                #server.flavor = flavor
+
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     # just create a port
