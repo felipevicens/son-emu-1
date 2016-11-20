@@ -1,5 +1,6 @@
 import re
 
+
 class Net:
     def __init__(self, name):
         self.name = name
@@ -22,10 +23,10 @@ class Net:
             return None
 
         int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
-                                                                        # Second one is for gateways only
-        int_end_ip = self.ip_2_int(self.start_end_dict['end']) - 1      # Last address for broadcasts
+        # Second one is for gateways only
+        int_end_ip = self.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
         while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
-            int_start_ip+=1
+            int_start_ip += 1
 
         if int_start_ip > int_end_ip:
             return None
@@ -134,10 +135,10 @@ class Net:
 
     def __eq__(self, other):
         if self.name == other.name and self.subnet_name == other.subnet_name and \
-                                       self.gateway_ip == other.gateway_ip and \
-                                       self.segmentation_id == other.segmentation_id and \
-                                       self._cidr == other._cidr and \
-                                       self.start_end_dict == other.start_end_dict:
+                        self.gateway_ip == other.gateway_ip and \
+                        self.segmentation_id == other.segmentation_id and \
+                        self._cidr == other._cidr and \
+                        self.start_end_dict == other.start_end_dict:
             return True
         return False
 

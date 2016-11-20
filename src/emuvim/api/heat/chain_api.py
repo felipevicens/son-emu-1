@@ -19,7 +19,8 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfInterfaces, "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(ChainVnfDcStackInterfaces, "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
+        self.api.add_resource(ChainVnfDcStackInterfaces,
+                              "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(LoadBalancer, "/v1/lb/<name>",
                               resource_class_kwargs={'api': self})
@@ -113,7 +114,7 @@ class ChainVnf(Resource):
                         dst_intfs = dintfs.name
 
             cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                          vnf_dst_interface=dst_intfs, bidirectional=True)
+                                                         vnf_dst_interface=dst_intfs, bidirectional=True)
 
             return Response(json.dumps(cookie), status=200, mimetype="application/json")
         except Exception as e:
@@ -145,11 +146,12 @@ class ChainVnfInterfaces(Resource):
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
         try:
             cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                vnf_dst_interface=dst_intfs, bidirectional=True)
+                                                         vnf_dst_interface=dst_intfs, bidirectional=True)
             return Response(json.dumps(cookie), status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
             return Response(u"Error deleting the chain", status=500, mimetype="application/json")
+
 
 class ChainVnfDcStackInterfaces(Resource):
     def __init__(self, api):
@@ -187,7 +189,7 @@ class ChainVnfDcStackInterfaces(Resource):
 
         try:
             cookie = self.api.manage.network_action_stop(container_src, container_dst, vnf_src_interface=interface_src,
-                                                vnf_dst_interface=interface_dst, bidirectional=True)
+                                                         vnf_dst_interface=interface_dst, bidirectional=True)
             return Response(json.dumps(cookie), status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
@@ -254,6 +256,7 @@ class ChainVnfDcStackInterfaces(Resource):
         interface_dst = port_dst.intf_name
 
         return container_src, container_dst, interface_src, interface_dst
+
 
 class LoadBalancer(Resource):
     def __init__(self, api):

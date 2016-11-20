@@ -6,8 +6,6 @@ import sys
 import uuid
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-
 class HeatParser:
     def __init__(self, compute):
         self.description = None
@@ -35,7 +33,7 @@ class HeatParser:
             self.handle_resource(resource, stack, dc_label)
 
         # This loop tries to create all classes which had unresolved dependencies.
-        unresolved_resources_last_round = len(self.bufferResource)+1
+        unresolved_resources_last_round = len(self.bufferResource) + 1
         while len(self.bufferResource) > 0 and unresolved_resources_last_round > len(self.bufferResource):
             unresolved_resources_last_round = len(self.bufferResource)
             number_of_items = len(self.bufferResource)
@@ -52,9 +50,11 @@ class HeatParser:
     def handle_resource(self, resource, stack, dc_label):
         if "OS::Neutron::Net" in resource['type']:
             try:
-                if self.compute.find_network_by_name_or_id(resource['properties']['name']) is None:
-                    stack.nets[resource['properties']['name']] = \
-                        self.compute.create_network(resource['properties']['name'])
+                net = self.compute.find_network_by_name_or_id(resource['properties']['name'])
+                if net is None:
+                    net = self.compute.create_network(resource['properties']['name'])
+                stack.nets[resource['properties']['name']] = net
+
             except Exception as e:
                 logging.warning('Could not create Net: ' + e.message)
             return
@@ -66,7 +66,6 @@ class HeatParser:
                 if net is None:
                     net = self.compute.create_network(net_name)
                     stack.nets[net_name] = net
-
 
                 net.subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -85,17 +84,17 @@ class HeatParser:
                 if port is None:
                     port = self.compute.create_port(port_name)
                 stack.ports[port_name] = port
-                for tmp_net in stack.nets.values():
-                    if tmp_net.name == resource['properties']['network']['get_resource'] and \
-                                    tmp_net.subnet_id is not None:
-                        port.net_name = tmp_net.name
+                if resource['properties']['network']['get_resource'] in stack.nets:
+                    net = stack.nets[resource['properties']['network']['get_resource']]
+                    if net.subnet_id is not None:
+                        port.net_name = net.name
                         name_part = port.name.split(':')
                         if name_part[2] == 'input' or name_part[2] == 'in':
-                            port.ip_address = tmp_net.get_in_ip_address(port.name)
+                            port.ip_address = net.get_in_ip_address(port.name)
                         elif name_part[2] == 'output' or name_part[2] == 'out':
-                            port.ip_address = tmp_net.get_out_ip_address(port.name)
+                            port.ip_address = net.get_out_ip_address(port.name)
                         else:
-                            port.ip_address = tmp_net.get_new_ip_address(port.name)
+                            port.ip_address = net.get_new_ip_address(port.name)
                         return
             except Exception as e:
                 logging.warning('Could not create Port: ' + e.message)
@@ -108,14 +107,18 @@ class HeatParser:
                 shortened_name = str(dc_label) + '_' + str(stack.stack_name) + '_' + \
                                  self.shorten_server_name(str(resource['properties']['name']), stack)
                 nw_list = resource['properties']['networks']
-                if shortened_name not in stack.servers:
-                    stack.servers[shortened_name] = self.compute.create_server(shortened_name)
 
-                stack.servers[shortened_name].full_name = compute_name
-                stack.servers[shortened_name].template_name = str(resource['properties']['name'])
-                stack.servers[shortened_name].command = resource['properties'].get('command','/bin/sh')
-                stack.servers[shortened_name].image = resource['properties']['image']
-                stack.servers[shortened_name].flavor = resource['properties']['flavor']
+                server = self.compute.find_server_by_name_or_id(shortened_name)
+                if server is None:
+                    server = self.compute.create_server(shortened_name)
+
+                stack.servers[shortened_name] = server
+
+                server.full_name = compute_name
+                server.template_name = str(resource['properties']['name'])
+                server.command = resource['properties'].get('command', '/bin/sh')
+                server.image = resource['properties']['image']
+                server.flavor = resource['properties']['flavor']
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     # just create a port
@@ -124,7 +127,7 @@ class HeatParser:
                     port = self.compute.find_port_by_name_or_id(port_name)
                     if port is None:
                         self.compute.create_port(port_name)
-                    stack.servers[shortened_name].port_names.append(port_name)
+                    server.port_names.append(port_name)
                 return
             except Exception as e:
                 logging.warning('Could not create Server: ' + e.message)
@@ -203,5 +206,5 @@ class HeatParser:
             if month < 04:
                 return False
             if month == 04 and day < 30:
-                    return False
+                return False
         return True

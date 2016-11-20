@@ -9,9 +9,6 @@ import time
 import re
 import uuid
 
-logging.basicConfig(level=logging.DEBUG)
-
-
 class HeatApiStackInvalidException(Exception):
     def __init__(self, value):
         self.value = value
@@ -82,7 +79,7 @@ class OpenstackCompute(object):
 
         # Stop all servers and their links of this stack
         for server in self.stacks[stack_id].servers.values():
-            self._stop_compute(server, self.stacks[stack_id])
+            self._stop_compute(server)
 
         del self.stacks[stack_id]
 
@@ -116,7 +113,7 @@ class OpenstackCompute(object):
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
                 if not server.compare_attributes(new_stack.servers[server.name]):
-                    self._stop_compute(server, old_stack)
+                    self._stop_compute(server)
                 else:
                     # Delete unused and changed links
                     for port_name in server.port_names:
@@ -150,7 +147,7 @@ class OpenstackCompute(object):
                                            new_stack.ports[port_name].intf_name,
                                            new_stack.ports[port_name].net_name)
             else:
-                self._stop_compute(server, old_stack)
+                self._stop_compute(server)
 
         # Start all new servers
         for server in new_stack.servers.values():
@@ -206,6 +203,7 @@ class OpenstackCompute(object):
                 t.start()
 
     def _stop_compute(self, server):
+        logging.debug("Stopping container %s with full name %s" % (server.name, server.full_name))
         link_names = list()
         for port_name in server.port_names:
             port = self.find_port_by_name_or_id(port_name)
@@ -217,6 +215,7 @@ class OpenstackCompute(object):
         for link in my_links:
             if str(link.intf1) in link_names:
                 self._remove_link(server.name, link)
+
         self.dc.stopCompute(server.name)
         self.delete_server(server.name)
 
@@ -245,6 +244,11 @@ class OpenstackCompute(object):
 
         self.computeUnits.pop(name_or_id, None)
 
+        # remove the server from any stack
+        for stack in self.stacks.values():
+            stack.servers.pop(server.name, None)
+
+
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:
             return self.nets[name_or_id]
@@ -255,7 +259,9 @@ class OpenstackCompute(object):
         return None
 
     def create_network(self, name):
+        logging.debug("Creating network with name %s" % name)
         if self.find_network_by_name_or_id(name) is not None:
+            logging.warning("Creating network with name %s failed, as it already exists" % name)
             raise Exception("Network with name %s already exists." % name)
         network = Net(name)
         network.id = str(uuid.uuid4())
@@ -271,14 +277,16 @@ class OpenstackCompute(object):
             self.delete_network(net.id)
 
         for stack in self.stacks.values():
-            self.stacks.nets.pop(name_or_id, None)
+            stack.nets.pop(net.name, None)
 
-        self.nets.pop(name_or_id, None)
+        self.nets.pop(net.id, None)
 
     def create_port(self, name):
         port = self.find_port_by_name_or_id(name)
         if port is not None:
+            logging.warning("Creating port with name %s failed, as it already exists" % name)
             raise Exception("Port with name %s already exists." % name)
+        logging.debug("Creating port with name %s" % name)
         port = Port(name)
         port.id = str(uuid.uuid4())
         self.ports[port.id] = port
@@ -299,16 +307,16 @@ class OpenstackCompute(object):
         if port is None:
             raise Exception("Port with name or id %s does not exists." % name_or_id)
 
-        self.ports.pop(name_or_id, None)
-        for stack in self.stacks.values():
-            self.stacks.ports.pop(name_or_id, None)
-
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) == port.intf_name and \
                             str(link.intf1.ip) == port.ip_address.split('/')[0]:
                 self._remove_link(link.intf1.node.name, link)
                 break
+
+        self.ports.pop(port.id, None)
+        for stack in self.stacks.values():
+            stack.ports.pop(port.name, None)
 
     def _add_link(self, node_name, ip_address, link_name, net_name):
         node = self.dc.net.get(node_name)

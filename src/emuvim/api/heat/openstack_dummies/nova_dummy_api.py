@@ -44,6 +44,7 @@ class NovaDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
 class Shutdown(Resource):
     def get(self):
         logging.debug(("%s is beeing shut doen") % (__name__))
@@ -52,8 +53,8 @@ class Shutdown(Resource):
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
 
-class NovaVersionsList(Resource):
 
+class NovaVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
@@ -87,7 +88,6 @@ class NovaVersionsList(Resource):
 
 
 class NovaVersionShow(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -130,7 +130,6 @@ class NovaVersionShow(Resource):
 
 
 class NovaListServersApi(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -158,7 +157,7 @@ class NovaListServersApi(Resource):
         try:
             req = request.json
 
-            flavor = request.json['server'].get('flavorRef','')
+            flavor = request.json['server'].get('flavorRef', '')
             image = request.json['server'].get('imageRef', '')
             print req
             resp = dict()
@@ -171,22 +170,20 @@ class NovaListServersApi(Resource):
 
 
 class NovaListServersDetailed(Resource):
-
     def __init__(self, api):
         self.api = api
 
     def get(self, id):
         try:
-            resp = dict()
-            for stack in self.api.compute.stacks.values():
-                for server in stack.servers.values():
-                    s = dict()
-                    s['id'] = server.id
-                    s['name'] = server.name
-                    s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (self.api.ip,
-                                                                                       self.api.port,
-                                                                                       server.id)}]
-                    resp['servers'].append(s)
+            resp = {"servers": list()}
+            for server in self.api.compute.computeUnits.values():
+                s = dict()
+                s['id'] = server.id
+                s['name'] = server.name
+                s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/%s" % (self.api.ip,
+                                                                                   self.api.port,
+                                                                                   server.id)}]
+                resp['servers'].append(s)
 
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -196,7 +193,6 @@ class NovaListServersDetailed(Resource):
 
 
 class NovaListFlavors(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -220,7 +216,6 @@ class NovaListFlavors(Resource):
 
 
 class NovaListFlavorsDetails(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -252,8 +247,8 @@ class NovaListFlavorsDetails(Resource):
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
-class NovaListFlavorById(Resource):
 
+class NovaListFlavorById(Resource):
     def __init__(self, api):
         self.api = api
 
@@ -270,16 +265,16 @@ class NovaListFlavorById(Resource):
             resp['flavor']['id'] = flavor.id
             resp['flavor']['name'] = flavor.name
             resp['flavor']['links'] = [{'href': "http://%s:%d/v2.1/openstack/flavors/%s" % (self.api.ip,
-                                                                               self.api.port,
-                                                                               flavor.id)}]
+                                                                                            self.api.port,
+                                                                                            flavor.id)}]
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve flavor with id %s" % (__name__, flavorid))
             return ex.message, 500
 
-class NovaListImages(Resource):
 
+class NovaListImages(Resource):
     def __init__(self, api):
         self.api = api
 
@@ -293,15 +288,15 @@ class NovaListImages(Resource):
             s['id'] = "1"
             s['name'] = "CREATE-IMAGE"
             s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/1" % (self.api.ip,
-                                                                               self.api.port)}]
+                                                                              self.api.port)}]
             resp['images'].append(s)
             for image in self.api.compute.images.values():
                 f = dict()
                 f['id'] = image.id
                 f['name'] = image.name
                 f['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/%s" % (self.api.ip,
-                                                                                   self.api.port,
-                                                                                   image.id)}]
+                                                                                  self.api.port,
+                                                                                  image.id)}]
                 resp['images'].append(f)
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -311,7 +306,6 @@ class NovaListImages(Resource):
 
 
 class NovaListImagesDetails(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -328,7 +322,7 @@ class NovaListImagesDetails(Resource):
             s['created'] = str(datetime.now())
             s['updated'] = str(datetime.now())
             s['links'] = [{'href': "http://%s:%d/v2.1/openstack/servers/1" % (self.api.ip,
-                                                                               self.api.port)}]
+                                                                              self.api.port)}]
             resp['images'].append(s)
             for image in self.api.compute.images.values():
                 # use the class dict. it should work fine
@@ -336,8 +330,8 @@ class NovaListImagesDetails(Resource):
                 f = image.__dict__.copy()
                 # add additional expected stuff stay openstack compatible
                 f['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/%s" % (self.api.ip,
-                                                                                   self.api.port,
-                                                                                   image.id)}]
+                                                                                  self.api.port,
+                                                                                  image.id)}]
                 f['minDisk'] = 0
                 f['id'] = f.id
                 f['minRam'] = 0
@@ -350,6 +344,7 @@ class NovaListImagesDetails(Resource):
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of images." % __name__)
             return ex.message, 500
+
 
 class NovaListImageById(Resource):
     def __init__(self, api):
@@ -375,18 +370,19 @@ class NovaListImageById(Resource):
                 s['created'] = str(datetime.now())
                 s['updated'] = str(datetime.now())
                 s['links'] = [{'href': "http://%s:%d/v2.1/openstack/images/1" % (self.api.ip,
-                                                                                   self.api.port)}]
+                                                                                 self.api.port)}]
                 s['metadata'] = {
-                        "architecture": "x86_64",
-                        "auto_disk_config": "True",
-                        "kernel_id": "nokernel",
-                        "ramdisk_id": "nokernel"
+                    "architecture": "x86_64",
+                    "auto_disk_config": "True",
+                    "kernel_id": "nokernel",
+                    "ramdisk_id": "nokernel"
                 }
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve image with id %s." % (__name__, imageid))
             return ex.message, 500
+
 
 class NovaShowServerDetails(Resource):
     def get(self, id, serverid):

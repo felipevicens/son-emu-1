@@ -2,10 +2,8 @@ import logging
 import chain_api
 import threading
 
-
-logging.basicConfig(level=logging.DEBUG)
-
-
+# force full debug logging everywhere for now
+logging.getLogger().setLevel(logging.DEBUG)
 class OpenstackManage(object):
 
     # openstackmanage is a singleton!
