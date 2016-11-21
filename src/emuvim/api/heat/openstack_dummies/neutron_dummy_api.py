@@ -529,20 +529,22 @@ class NeutronCreatePort(Resource):
         logging.debug("API CALL: Neutron - Create port")
         try:
             port_dict = request.json
-            if 'name' in port_dict['port']:
-                name = port_dict['port']['name']
-            else:
-                return Response("Ports need a name.", status=500)
-
-            if self.api.compute.find_port_by_name_or_id(name):
-                return Response("Port with name %s already exists." % name, status=500)
             net_id = port_dict['port']['network_id']
 
             if net_id not in self.api.compute.nets:
                 return 'Could not find network.', 404
 
-            port = self.api.compute.create_port(name)
             net = self.api.compute.nets[net_id]
+            if 'name' in port_dict['port']:
+                name = port_dict['port']['name']
+            else:
+                num_ports = len(self.api.compute.ports)
+                name = "port:cp%s:manual:%s" % (num_ports, str(uuid.uuid4()))
+
+            if self.api.compute.find_port_by_name_or_id(name):
+                return Response("Port with name %s already exists." % name, status=500)
+
+            port = self.api.compute.create_port(name)
 
             port.net_name = net.name
             port.ip_address = net.get_new_ip_address(name)

@@ -155,16 +155,39 @@ class NovaListServersApi(Resource):
             return ex.message, 500
 
     def post(self, id):
+        '''
+        Creates a server instance
+        :param id:
+        :return:
+        '''
         try:
             req = request.json
-
-            flavor = request.json['server'].get('flavorRef', '')
-            image = request.json['server'].get('imageRef', '')
+            server_dict = request.json['server']
+            networks = server_dict.get('networks', None)
+            if self.api.compute.find_server_by_name_or_id(server_dict['name']) is not None:
+                return Response("Server with name %s already exists." % server_dict['name'], status=409)
             # TODO: not finished!
-            print req
             resp = dict()
-            s = resp['server'] = dict()
-            s['name'] = request.json['server'].get('name', '')
+            server = self.api.compute.create_server(server_dict['name'])
+
+            for flavor in self.api.compute.flavors.values():
+                if flavor.id == server_dict.get('flavorRef', ''):
+                     server.flavor = flavor.name
+            for image in self.api.compute.images.values():
+                if image.id == server_dict['imageRef']:
+                    server.image = image.name
+
+            if networks is not None:
+                for net in networks:
+                    port = self.api.compute.find_port_by_name_or_id(net.get('port', ""))
+                    if port is not None:
+                        server.port_names.append(port.name)
+                    else:
+                        return Response("Currently only networking by port is supported.", status=400)
+
+            self.api.compute._start_compute(server)
+
+            NovaShowServerDetails(self.api).get(id, server.id)
 
         except Exception as ex:
             logging.exception(u"%s: Could not create the server." % __name__)

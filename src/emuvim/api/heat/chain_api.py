@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_restful import Api, Resource
-from flask import Response
+from flask import Response, request
 import logging
 import json
 
@@ -24,7 +24,7 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(LoadBalancer, "/v1/lb/<name>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(BalanceHost, "/v1/lb/<name>",
+        self.api.add_resource(BalanceHost, "/v1/lb/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
 
     def _start_flask(self):
@@ -271,5 +271,41 @@ class BalanceHost(Resource):
     def __init__(self, api):
         self.api = api
 
-    def put(self, name):
+    def post(self, vnf_src_interface):
+        #TODO: not done yet!
+        req = request.json
+        if req is None or len(req) == 0:
+            return Response(u"You have to specify destination vnfs via the POST data.",
+                            status=500, mimetype="application/json")
+        vnf_src_name = ""
+        src_sw_inport_nr = 0
+        dest_intfs_names = req.get('dst_vnf_interfaces', list())
+        dest_vnf_outport_nrs = set()
+
+        for node in self.api.manage.net.values():
+            for intfs in node.intfList():
+                if intfs.name == vnf_src_interface:
+                    vnf_src_name = node.name
+
+
+        for connected_sw in self.api.manage.net.DCNetwork_graph:
+            link_dict = self.api.manage.net.DCNetwork_graph[vnf_src_name][connected_sw]
+            for link in link_dict:
+                if link_dict[link]['src_port_name'] == vnf_src_interface:
+                    src_sw_inport_nr = link_dict[link]['dst_port_nr']
+
+
+
+                print link_dict[link]
+
+                for dest_vnf_intfs in dest_intfs_names:
+                   # print link_dict[link]['src_port_name']
+                   # print dest_vnf_intfs
+                    if link_dict[link]['src_port_name'] == dest_vnf_intfs:
+                        dest_vnf_outport_nrs.add(link_dict[link]['dst_port_nr'])
+
+
+        print src_sw_inport_nr
+        print "Output %s" % " ".join(dest_vnf_outport_nrs)
+        #self.api.manage.net.ryu_REST()
         pass
