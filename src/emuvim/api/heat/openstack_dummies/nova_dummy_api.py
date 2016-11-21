@@ -375,12 +375,15 @@ class NovaListImageById(Resource):
         '''
         try:
             resp = dict()
-            resp['image'] = dict()
-            # add a dummy server to create images from.
-            # call 1-800-dirtyhack
-            s = resp['image']
+            i = resp['image'] = dict()
+            for image in self.api.compute.images.values():
+                if image.id == imageid or image.name == imageid:
+                    i['id'] = image.id
+                    i['name'] = image.name
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+                    return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+            return Response("Image with id or name %s does not exists." % imageid, status=404)
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve image with id %s." % (__name__, imageid))

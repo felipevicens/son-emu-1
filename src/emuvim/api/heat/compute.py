@@ -178,9 +178,21 @@ class OpenstackCompute(object):
                 network.append(network_dict)
         self.compute_nets[server.name] = network
 
-        if server.image not in self.images:
-            self.images[server.image] = Image(server.image)
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        # update the known images. ask the docker daemon for a list of all known images
+        for image in c.dcli.images():
+            if 'RepoTags' in image:
+                found = False
+                imageName = image['RepoTags']
+                if imageName == None:
+                    continue
+                imageName = imageName[0]
+                for i in self.images.values():
+                    if i.name == imageName:
+                        found = True
+                        break
+                if not found:
+                    self.images[imageName] = Image(imageName)
 
         for intf in c.intfs.values():
             for port_name in server.port_names:

@@ -37,7 +37,10 @@ class Server(object):
         server_dict['template_name'] = self.template_name
         server_dict['flavor'] = self.flavor
         server_dict['image'] = self.image
-        server_dict['command'] = self.son_emu_command
+        if self.son_emu_command is not None:
+            server_dict['command'] = self.son_emu_command
+        else:
+            server_dict['command'] = self.command
 
         if compute is not None:
             server_dict['status'] = 'ACTIVE'
