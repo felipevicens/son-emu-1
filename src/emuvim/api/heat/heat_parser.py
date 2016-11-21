@@ -119,11 +119,15 @@ class HeatParser:
                 server.command = resource['properties'].get('command', '/bin/sh')
                 server.image = resource['properties']['image']
 
-                server.flavor = resource['properties']['flavor']
-                #if flavor['name'] not in self.compute.flavors:
-                #    self.compute.add_flavor(flavor['flavorName'], flavor['vcpu'], flavor['ram'],
-                #                            "MB", flavor['storage'], "GB")
-                #server.flavor = flavor
+                flavor = resource['properties']['flavor']
+                if isinstance(flavor, dict):
+                    self.compute.add_flavor(flavor['flavorName'],
+                                            flavor['vcpu'],
+                                            flavor['ram'], 'MB',
+                                            flavor['storage'], 'GB')
+                    server.flavor = flavor['flavorName']
+                else:
+                    server.flavor = flavor
 
                 for port in nw_list:
                     port_name = port['port']['get_resource']

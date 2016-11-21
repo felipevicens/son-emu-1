@@ -200,6 +200,7 @@ class OpenstackCompute(object):
         for env_var in env:
             if "SON_EMU_CMD=" in env_var:
                 cmd = str(env_var.split("=")[1])
+                server.son_emu_command = cmd
                 # execute command in new thread to ensure that GK is not blocked by VNF
                 t = threading.Thread(target=c.cmdPrint, args=(cmd,))
                 t.daemon = True

@@ -393,8 +393,6 @@ class NovaShowServerDetails(Resource):
 
     def get(self, id, serverid):
         try:
-            resp = dict()
-            resp['server'] = dict()
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
@@ -404,7 +402,7 @@ class NovaShowServerDetails(Resource):
                                                                         id,
                                                                         server.id)}]
 
-            flavor = self.api.compute.flavors[server.flavor["flavorName"]]
+            flavor = self.api.compute.flavors[server.flavor]
             s['flavor'] = {
                 "id": flavor.id,
                 "links": [
@@ -431,7 +429,7 @@ class NovaShowServerDetails(Resource):
                 ]
             }
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            return Response(json.dumps({'server': s}), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the server details." % __name__)

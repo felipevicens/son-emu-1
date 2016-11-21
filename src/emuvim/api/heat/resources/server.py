@@ -9,6 +9,7 @@ class Server(object):
         self.command = command
         self.port_names = list()
         self.flavor = flavor
+        self.son_emu_command = None
 
     def compare_attributes(self, other):
         if self.name == other.name and self.full_name == other.full_name and \
@@ -36,7 +37,7 @@ class Server(object):
         server_dict['template_name'] = self.template_name
         server_dict['flavor'] = self.flavor
         server_dict['image'] = self.image
-        server_dict['command'] = self.command
+        server_dict['command'] = self.son_emu_command
 
         if compute is not None:
             server_dict['status'] = 'ACTIVE'
