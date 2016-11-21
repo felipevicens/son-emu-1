@@ -222,11 +222,7 @@ class OpenstackCompute(object):
         logging.debug("Stopping container %s with full name %s" % (server.name, server.full_name))
         link_names = list()
         for port_name in server.port_names:
-            port = self.find_port_by_name_or_id(port_name)
-            net = self.find_network_by_name_or_id(port.net_name)
-            if net is not None:
-                link_names.append(str(net.get_short_id() +
-                                  '-' + port.get_short_id()))
+            link_names.append(self.find_port_by_name_or_id(port_name).intf_name)
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
@@ -402,22 +398,25 @@ class OpenstackCompute(object):
 
     # One way to go - not so nice, because we currently only get the seconds, the process was running
     def docker_cpu(self, container_id):
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
-            first_timer = time.time()
-            line = f.readline()
-            first_cpu_usage = int(line)
-
+        first_cpu_usage = self.docker_abs_cpu(container_id)
         time.sleep(1)
+        second_cpu_usage = self.docker_abs_cpu(container_id)
 
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage', 'r') as f:
-            second_timer = time.time()
+        time_div = (int(second_cpu_usage['CPU_used_sysTime']) - int(first_cpu_usage['CPU_used_sysTime']))
+        usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
+        # TODO cpu_% is wrong!
+        return {'CPU_%': float(usage_div) / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']}
+
+    # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
+    def docker_abs_cpu(self, container_id):
+        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
             line = f.readline()
-            second_cpu_usage = int(line)
-
-        time_div = 1000000000 * (second_timer - first_timer)
-        usage_div = second_cpu_usage - first_cpu_usage
-
-        return usage_div / time_div
+            sys_time = int(time.time() * 1000000000)
+            numbers = [int(x) for x in line.split()]
+        cpu_usage = 0
+        for number in numbers:
+            cpu_usage += number
+        return {'CPU_used': cpu_usage, 'CPU_used_sysTime': sys_time, 'CPU_cores': len(numbers)}
 
     # Bytes of memory used from the docker container
     def docker_mem_used(args, container_id):
