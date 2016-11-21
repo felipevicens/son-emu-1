@@ -30,15 +30,12 @@ partner consortium (www.sonata-nfv.eu).
 Test suite to automatically test emulator REST API endpoints.
 """
 
-import time
+import os
 import unittest
-from emuvim.test.api_base_heat import ApiBaseHeat
-import subprocess
-from emuvim.dcemulator.node import EmulatorCompute
-import ast
 import requests
 import simplejson as json
-import os
+
+from emuvim.test.api_base_heat import ApiBaseHeat
 
 
 class testRestApi(ApiBaseHeat):
@@ -60,6 +57,7 @@ class testRestApi(ApiBaseHeat):
 
         # start Mininet network
         self.startNet()
+
 
     def testNovaDummy(self):
         headers = {'Content-type': 'application/json'}
@@ -163,10 +161,26 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>> testNeutronListNetworks ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
-        listnetworksesponse = requests.get(url, headers=headers)
-        self.assertEqual(listnetworksesponse.status_code, 200)
-        self.assertEqual(json.loads(listnetworksesponse.content)["networks"][0]["status"], "ACTIVE")
-        print(" ")
+        listnetworksesponse1 = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse1.status_code, 200)
+        self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["status"], "ACTIVE")
+        listNetworksId = json.loads(listnetworksesponse1.content)["networks"][0]["id"]
+
+        url = "http://0.0.0.0:9696/v2.0/networks?name=non_existent_network_name"
+        listnetworksesponse2 = requests.get(url,headers=headers)
+        self.assertEqual(listnetworksesponse2.status_code, 404)
+
+        # TODO if the code in neutron_dummy_api NeutronShowNetwork\get_network is extended to use names as well, rename the parameter from ID to name
+        # TODO at the moment we abuse the namefield for the id...
+        url = "http://0.0.0.0:9696/v2.0/networks?name=" + listNetworksId #tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        listnetworksesponse3 = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse3.status_code, 200)
+        self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["id"], listNetworksId)
+
+        url = "http://0.0.0.0:9696/v2.0/networks?id=" + json.loads(listnetworksesponse1.content)["networks"][0]["id"]  # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        listnetworksesponse4 = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse4.status_code, 200)
+        self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["id"], listNetworksId)
 
         print('->>>>>>> testNeutronCreateNetwork ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -294,6 +308,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
+
     def testKeystomeDummy(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_keystone_get_token = open(os.path.join(os.path.dirname(__file__), "test_heatapi_keystone_get_token.json")).read()
@@ -322,6 +337,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(gettokenstackresponse.status_code, 200)
         self.assertEqual(json.loads(gettokenstackresponse.content)["access"]["user"]["name"], "tenantName")
         print(" ")
+
 
     def testHeatDummy(self):
         headers = {'Content-type': 'application/json'}
@@ -380,89 +396,6 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
 
-
-
-
-
-
-
-""""
-        # check number of running nodes
-        self.assertTrue(len(self.getContainernetContainers()) == 3)
-        self.assertTrue(len(self.net.hosts) == 5)
-        self.assertTrue(len(self.net.switches) == 2)
-
-        # check compute list result
-        self.assertTrue(len(self.dc[0].listCompute()) == 2)
-        self.assertTrue(len(self.dc[1].listCompute()) == 1)
-        self.assertTrue(isinstance(self.dc[0].listCompute()[0], EmulatorCompute))
-        self.assertTrue(isinstance(self.dc[0].listCompute()[1], EmulatorCompute))
-        self.assertTrue(isinstance(self.dc[1].listCompute()[0], EmulatorCompute))
-        self.assertTrue(self.dc[0].listCompute()[1].name == "vnf1")
-        self.assertTrue(self.dc[0].listCompute()[0].name == "vnf2")
-        self.assertTrue(self.dc[1].listCompute()[0].name == "vnf3")
-
-        # check connectivity by using ping
-        self.assertTrue(self.net.ping([self.dc[0].listCompute()[1], self.dc[0].listCompute()[0]]) <= 0.0)
-        self.assertTrue(self.net.ping([self.dc[0].listCompute()[0], self.dc[1].listCompute()[0]]) <= 0.0)
-        self.assertTrue(self.net.ping([self.dc[1].listCompute()[0], self.dc[0].listCompute()[1]]) <= 0.0)
-
-        print('network add vnf1 vnf2->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli network add -src vnf1 -dst vnf2 -b -c 10", shell=True)
-        print('network remove vnf1 vnf2->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli network remove -src vnf1 -dst vnf2 -b", shell=True)
-
-        print('>>>>> checking --> son-emu-cli compute stop -d datacenter0 -n vnf2 ->>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli compute stop -d datacenter0 -n vnf2", shell=True)
-
-        # check number of running nodes
-        self.assertTrue(len(self.getContainernetContainers()) == 2)
-        self.assertTrue(len(self.net.hosts) == 4)
-        self.assertTrue(len(self.net.switches) == 2)
-        # check compute list result
-        self.assertTrue(len(self.dc[0].listCompute()) == 1)
-        self.assertTrue(len(self.dc[1].listCompute()) == 1)
-
-        print('>>>>> checking --> son-emu-cli compute list ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli compute list", shell=True)
-        output = subprocess.check_output("/media/sf_son-emu/src/emuvim/cli/son-emu-cli compute list", shell=True)
-
-        # check datacenter list result
-        self.assertTrue("datacenter0" in output)
-
-        print('>>>>> checking --> son-emu-cli compute status -d datacenter0 -n vnf1 ->>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli compute status -d datacenter0 -n vnf1", shell=True)
-        output = subprocess.check_output("/media/sf_son-emu/src/emuvim/cli/son-emu-cli compute status -d datacenter0 -n vnf1", shell=True)
-        output = ast.literal_eval(output)
-
-        # check compute status result
-        self.assertTrue(output["name"] == "vnf1")
-        self.assertTrue(output["state"]["Running"])
-
-        print('>>>>> checking --> son-emu-cli datacenter list ->>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli datacenter list", shell=True)
-        output = subprocess.check_output("/media/sf_son-emu/src/emuvim/cli/son-emu-cli datacenter list", shell=True)
-
-        # check datacenter list result
-
-        self.assertTrue("datacenter0" in output)
-
-        print('->>>>> checking --> son-emu-cli datacenter status -d datacenter0 ->>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        subprocess.call("/media/sf_son-emu/src/emuvim/cli/son-emu-cli datacenter status -d datacenter0", shell=True)
-        output = subprocess.check_output("/media/sf_son-emu/src/emuvim/cli/son-emu-cli datacenter status -d datacenter0", shell=True)
-
-        # check datacenter status result
-        self.assertTrue("datacenter0" in output)
-
-        #self.stopNet()
-"""
 
 if __name__ == '__main__':
     unittest.main()

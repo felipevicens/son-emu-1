@@ -142,7 +142,6 @@ class NeutronListNetworks(Resource):
     def get(self):
         logging.debug("API CALL: Neutron - List networks")
         try:
-
             if request.args.get('name'):
                 tmp_network = NeutronShowNetwork(self.api)
                 return tmp_network.get_network(request.args.get('name'), True)
@@ -183,6 +182,7 @@ class NeutronShowNetwork(Resource):
     def get(self, network_id):
         return self.get_network(network_id, False)
 
+    # TODO if this method also can deal with names then the testcase should be updated
     def get_network(self, network_id, as_list):
         logging.debug("API CALL: Neutron - Show network")
         try:
@@ -197,7 +197,6 @@ class NeutronShowNetwork(Resource):
                             tmp_dict["network"] = tmp_network_dict
 
                         return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
-
             return 'Network not found.', 404
 
         except Exception as ex:
