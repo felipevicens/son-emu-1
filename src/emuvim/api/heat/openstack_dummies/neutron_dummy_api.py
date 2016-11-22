@@ -135,7 +135,6 @@ class NeutronListNetworks(Resource):
     def get(self):
         logging.debug("API CALL: Neutron - List networks")
         try:
-
             if request.args.get('name'):
                 tmp_network = NeutronShowNetwork(self.api)
                 return tmp_network.get_network(request.args.get('name'), True)
@@ -175,10 +174,10 @@ class NeutronShowNetwork(Resource):
     def get(self, network_id):
         return self.get_network(network_id, False)
 
-    def get_network(self, network_id, as_list):
+    def get_network(self, network_name_or_id, as_list):
         logging.debug("API CALL: Neutron - Show network")
         try:
-            net = self.api.compute.find_network_by_name_or_id(network_id)
+            net = self.api.compute.find_network_by_name_or_id(network_name_or_id)
             if net is None:
                 return 'Network not found.', 404
 
@@ -320,11 +319,11 @@ class NeutronShowSubnet(Resource):
     def get(self, subnet_id):
         return self.get_subnet(subnet_id, False)
 
-    def get_subnet(self, subnet_id, as_list):
+    def get_subnet(self, subnet_name_or_id, as_list):
         logging.debug("API CALL: Neutron - Show subnet")
         try:
             for net in self.api.compute.nets.values():
-                if net.subnet_id == subnet_id:
+                if net.subnet_id == subnet_name_or_id or net.subnet_name == subnet_name_or_id:
                     tmp_subnet_dict = net.create_subnet_dict()
                     tmp_dict = dict()
                     if as_list:
@@ -333,7 +332,7 @@ class NeutronShowSubnet(Resource):
                         tmp_dict["subnet"] = tmp_subnet_dict
                     return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
-            return 'Subnet not found. (' + subnet_id + ')', 404
+            return 'Subnet not found. (' + subnet_name_or_id + ')', 404
 
         except Exception as ex:
             logging.exception("Neutron: Show subnet exception.")
@@ -503,12 +502,12 @@ class NeutronShowPort(Resource):
     def get(self, port_id):
         return self.get_port(port_id, False)
 
-    def get_port(self, port_id, as_list):
+    def get_port(self, port_name_or_id, as_list):
         logging.debug("API CALL: Neutron - Show port")
         try:
-            port = self.api.compute.find_port_by_name_or_id(port_id)
+            port = self.api.compute.find_port_by_name_or_id(port_name_or_id)
             if port is None:
-                return 'Port not found. (' + port_id + ')', 404
+                return 'Port not found. (' + port_name_or_id + ')', 404
             tmp_port_dict = create_port_dict(port, self.api.compute)
             tmp_dict = dict()
             if as_list:
