@@ -404,15 +404,14 @@ class OpenstackCompute(object):
 
         time_div = (int(second_cpu_usage['CPU_used_sysTime']) - int(first_cpu_usage['CPU_used_sysTime']))
         usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
-        # TODO cpu_% is wrong!
-        return {'CPU_%': float(usage_div) / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']}
+        return {'CPU_%': usage_div / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']}
 
     # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
     def docker_abs_cpu(self, container_id):
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
             line = f.readline()
-            sys_time = int(time.time() * 1000000000)
-            numbers = [int(x) for x in line.split()]
+        sys_time = int(time.time() * 1000000000)
+        numbers = [int(x) for x in line.split()]
         cpu_usage = 0
         for number in numbers:
             cpu_usage += number
@@ -429,12 +428,12 @@ class OpenstackCompute(object):
             mem_limit = int(f.readline())
         with open('/proc/meminfo', 'r') as f:
             line = f.readline().split()
-            sys_value = int(line[1])
-            unit = line[2]
-            if unit == 'kB':
-                sys_value *= 1024
-            if unit == 'MB':
-                sys_value *= 1024*1024
+        sys_value = int(line[1])
+        unit = line[2]
+        if unit == 'kB':
+            sys_value *= 1024
+        if unit == 'MB':
+            sys_value *= 1024*1024
 
         if sys_value < mem_limit:
             return sys_value
@@ -466,15 +465,23 @@ class OpenstackCompute(object):
         return {'NET_in': in_bytes, 'NET_out': out_bytes}
 
     # Disk - read in Bytes
-    def docker_block_i(self, container_id):
+    def docker_block_r(self, container_id):
         with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            return f.readline().split()  # [2]  # TODO why does it sometimes not have all 3 values?
+            line = f.readline().split()
+        if len(line) < 3:
+            return 0
+        else:
+            return line[2]
 
     # Disk - write in Bytes
-    def docker_block_o(self, container_id):
+    def docker_block_w(self, container_id):
         with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
             line = f.readline()
-            return f.readline().split()  # [2]  # TODO why does it sometimes not have all 3 values?
+            line = f.readline().split()
+        if len(line) < 3:
+            return 0
+        else:
+            return line[2]
 
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
