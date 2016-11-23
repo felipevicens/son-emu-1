@@ -4,7 +4,6 @@ from docker import Client
 from docker.utils import kwargs_from_env
 import logging
 import threading
-import subprocess
 import time
 import re
 import uuid
@@ -231,7 +230,6 @@ class OpenstackCompute(object):
         self.dc.stopCompute(server.name)
         self.delete_server(server.name)
 
-
     def find_server_by_name_or_id(self, name_or_id):
         if name_or_id in self.computeUnits:
             return self.computeUnits[name_or_id]
@@ -259,7 +257,6 @@ class OpenstackCompute(object):
         # remove the server from any stack
         for stack in self.stacks.values():
             stack.servers.pop(server.name, None)
-
 
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:
@@ -352,43 +349,7 @@ class OpenstackCompute(object):
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
 
-    # Creates the monitoring data with 'docker stats'
-    def monitor_container(self, container_name):
-        c = Client(**(kwargs_from_env()))
-        detail = c.inspect_container(container_name)
-
-        if bool(detail["State"]["Running"]):
-            container_id = detail['Id']
-
-            docker_stat = subprocess.Popen(['docker', 'stats', '--no-stream', container_name], stdout=subprocess.PIPE)
-            output = docker_stat.communicate()[0]
-
-            for line in output.split('\n'):
-                if line.split()[0] == container_name:
-                    return self.create_monitoring_dict(line)
-        else:
-            return None
-        return None
-
-    # Creates a dict for one container, out of the 'docker stats' output.
-    def create_monitoring_dict(self, docker_stats_line):
-        if docker_stats_line is None:
-            return None
-        split_line = docker_stats_line.split()
-        if len(split_line) < 19:
-            return None
-
-        out_dict = dict()
-        out_dict['CPU'] = split_line[1]
-        out_dict['MEM_used'] = split_line[2] + ' ' + split_line[3]
-        out_dict['MEM_limit'] = split_line[5] + ' ' + split_line[6]
-        out_dict['MEM_%'] = split_line[7]
-        out_dict['NET_in'] = split_line[8] + ' ' + split_line[9]
-        out_dict['NET_out'] = split_line[11] + ' ' + split_line[12]
-        out_dict['PIDS'] = split_line[18]
-        return out_dict
-
-
+    # Uses the container name to return the container ID
     def docker_container_id(self, container_name):
         c = Client(**(kwargs_from_env()))
         detail = c.inspect_container(container_name)
@@ -464,24 +425,21 @@ class OpenstackCompute(object):
 
         return {'NET_in': in_bytes, 'NET_out': out_bytes}
 
-    # Disk - read in Bytes
-    def docker_block_r(self, container_id):
+    # Disk - read in Bytes - write in Bytes
+    def docker_block_rw(self, container_id):
         with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            line = f.readline().split()
-        if len(line) < 3:
-            return 0
+            read = f.readline().split()
+            write = f.readline().split()
+        rw_dict = dict()
+        if len(read) < 3:
+            rw_dict['BLOCK_read'] = 0
         else:
-            return line[2]
-
-    # Disk - write in Bytes
-    def docker_block_w(self, container_id):
-        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            line = f.readline()
-            line = f.readline().split()
-        if len(line) < 3:
-            return 0
+            rw_dict['BLOCK_read'] = read[2]
+        if len(write) < 3:
+            rw_dict['BLOCK_write'] = 0
         else:
-            return line[2]
+            rw_dict['BLOCK_write'] = write[2]
+        return rw_dict
 
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
