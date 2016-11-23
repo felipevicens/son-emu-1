@@ -447,7 +447,7 @@ class DCNetwork(Containernet):
                     action = {}
                     action['type'] = 'SET_FIELD'
                     action['field'] = 'vlan_vid'
-                    action['value'] = vlan
+                    action['value'] = vlan | 0x1000
                     flow['actions'].append(action)
                 elif path.index(current_hop) == len(path) - 1:  # last node
                     match += ',dl_vlan=%s' % vlan
