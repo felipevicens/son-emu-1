@@ -447,6 +447,7 @@ class DCNetwork(Containernet):
                     action = {}
                     action['type'] = 'SET_FIELD'
                     action['field'] = 'vlan_vid'
+                    # ryu expects the field to be masked
                     action['value'] = vlan | 0x1000
                     flow['actions'].append(action)
                 elif path.index(current_hop) == len(path) - 1:  # last node
