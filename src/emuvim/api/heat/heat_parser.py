@@ -17,6 +17,14 @@ class HeatParser:
         self.bufferResource = list()
 
     def parse_input(self, input_dict, stack, dc_label):
+        """
+        It will parse the input dictionary into the corresponding classes, which are then stored within the stack.
+        :param input_dict: Dictionary with the template version and resources.
+        :param stack: Reference of the stack that should finally contain all created classes.
+        :param dc_label: String that contains the label of the used data center.
+        :return: True - if the template version is supported and all resources could be created.
+                 False - else
+        """
         if not self.check_template_version(str(input_dict['heat_template_version'])):
             print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
             return False
@@ -48,6 +56,16 @@ class HeatParser:
         return True
 
     def handle_resource(self, resource, stack, dc_label):
+        """
+        This function will take a resource (from a heat template) and determines which type it is and creates
+        the corresponding class, with its required parameters, for further calculations (like deploying the stack).
+        If it is not possible to create the class, because of unresolved dependencies, it will buffer the resource
+        within the 'self.bufferResource' list.
+        :param resource: Dict which contains all important informations about the type and parameters.
+        :param stack: Reference of the stack that should finally contain the created class.
+        :param dc_label: String that contains the label of the used data center
+        :return: void
+        """
         if "OS::Neutron::Net" in resource['type']:
             try:
                 net = self.compute.find_network_by_name_or_id(resource['properties']['name'])
@@ -191,6 +209,13 @@ class HeatParser:
         return
 
     def shorten_server_name(self, server_name, stack):
+        """
+        Shortens the server name to a maximum of 12 characters plus the iterator string, if the original name was
+        used before.
+        :param server_name: The original server name.
+        :param stack: A reference to the used stack.
+        :return: A string with max. 12 characters plus iterator string.
+        """
         server_name = self.shorten_name(server_name, 12)
         iterator = 0
         while server_name in stack.servers:
@@ -199,12 +224,23 @@ class HeatParser:
         return server_name
 
     def shorten_name(self, name, max_size):
+        """
+        Shortens the name to max_size characters and replaces all '-' with '_'.
+        :param name: The original string.
+        :param max_size: The number of allowed characters.
+        :return: String with at most max_size characters and without '-'.
+        """
         shortened_name = name.split(':', 1)[0]
         shortened_name = shortened_name.replace("-", "_")
         shortened_name = shortened_name[0:max_size]
         return shortened_name
 
     def check_template_version(self, version_string):
+        """
+        Checks if a version string is equal or later than 30.04.2015
+        :param version_string: String with the version.
+        :return: True: if the version is equal or later 30.04.2015. - False: else
+        """
         r = re.compile('\d{4}-\d{2}-\d{2}')
         if not r.match(version_string):
             return False

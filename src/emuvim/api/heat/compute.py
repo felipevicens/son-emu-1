@@ -34,6 +34,11 @@ class OpenstackCompute(object):
         self.stacks[stack.id] = stack
 
     def check_stack(self, stack):
+        """
+        Checks all dependencies of all servers, ports and routers and their most important parameters.
+        :param stack: A reference of the stack that should be checked.
+        :return: True: if the stack is completely fine. - False: else
+        """
         everything_ok = True
         for server in stack.servers.values():
             for port_name in server.port_names:
@@ -92,10 +97,22 @@ class OpenstackCompute(object):
         # Stop all servers and their links of this stack
         for server in self.stacks[stack_id].servers.values():
             self._stop_compute(server)
+            self.delete_server(server.id)
+        for net in self.stacks[stack_id].nets.values():
+            self.delete_network(net.id)
+        for port in self.stacks[stack_id].ports.values():
+            self.delete_port(port.id)
 
         del self.stacks[stack_id]
 
     def update_stack(self, old_stack_id, new_stack):
+        """
+        Determines differences within the old and the new stack and deletes, create or changes only parts that
+        differ between the two stacks.
+        :param old_stack_id: The ID of the old stack.
+        :param new_stack: A reference of the new stack.
+        :return: True: if the old stack could be updated to the new stack without any error. - False: else
+        """
         if old_stack_id not in self.stacks:
             return False
         old_stack = self.stacks[old_stack_id]
@@ -110,10 +127,12 @@ class OpenstackCompute(object):
         for net in old_stack.nets.values():
             if net.name in new_stack.nets:
                 new_stack.nets[net.name].id = net.id
-            for subnet in new_stack.nets.values():
-                if subnet.subnet_name == net.subnet_name:
-                    subnet.subnet_id = net.subnet_id
-                    break
+                for subnet in new_stack.nets.values():
+                    if subnet.subnet_name == net.subnet_name:
+                        subnet.subnet_id = net.subnet_id
+                        break
+            else:
+                self.delete_network(net.id)
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
@@ -235,6 +254,7 @@ class OpenstackCompute(object):
         link_names = list()
         for port_name in server.port_names:
             link_names.append(self.find_port_by_name_or_id(port_name).intf_name)
+            self.delete_port(port_name)
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
@@ -294,9 +314,6 @@ class OpenstackCompute(object):
         net = self.find_network_by_name_or_id(name_or_id)
         if net is None:
             raise Exception("Network with name or id %s does not exists." % name_or_id)
-
-        if net.subnet_id is not None:
-            self.delete_network(net.id)
 
         for stack in self.stacks.values():
             stack.nets.pop(net.name, None)
