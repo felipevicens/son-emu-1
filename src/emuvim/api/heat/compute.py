@@ -34,17 +34,30 @@ class OpenstackCompute(object):
         self.stacks[stack.id] = stack
 
     def check_stack(self, stack):
+        everything_ok = True
         for server in stack.servers.values():
             for port_name in server.port_names:
                 if port_name not in stack.ports:
                     logging.warning("Server %s of stack %s has a port named %s that is not known." %
                                   (server.name, stack.stack_name, port_name))
-                    return False
+                    everything_ok = False
+            if server.image is None:
+                logging.warning("Server %s holds no image." % (server.name))
+                everything_ok = False
+            if server.command is None:
+                logging.warning("Server %s holds no command." % (server.name))
+                everything_ok = False
         for port in stack.ports.values():
             if port.net_name not in stack.nets:
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
                               (port.name, stack.stack_name, port.net_name))
-                return False
+                everything_ok = False
+            if port.intf_name is None:
+                logging.warning("Port %s has no interface name." % (port.name))
+                everything_ok = False
+            if port.ip_address is None:
+                logging.warning("Port %s has no IP address." % (port.name))
+                everything_ok = False
         for router in stack.routers.values():
             for subnet_name in router.subnet_names:
                 found = False
@@ -55,8 +68,8 @@ class OpenstackCompute(object):
                 if not found:
                     logging.warning("Router %s of stack %s has a network named %s that is not known." %
                                     (router.name, stack.stack_name, subnet_name))
-                    return False
-        return True
+                    everything_ok = False
+        return everything_ok
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
@@ -83,11 +96,11 @@ class OpenstackCompute(object):
         del self.stacks[stack_id]
 
     def update_stack(self, old_stack_id, new_stack):
-        if old_stack_id in self.stacks:
-            if not self.check_stack(new_stack):
-                return False
-            old_stack = self.stacks[old_stack_id]
-        else:
+        if old_stack_id not in self.stacks:
+            return False
+        old_stack = self.stacks[old_stack_id]
+
+        if not self.check_stack(new_stack):
             return False
 
         # Update Stack IDs
