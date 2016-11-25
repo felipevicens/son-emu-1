@@ -23,10 +23,30 @@ class OpenstackCompute(object):
         self.computeUnits = dict()
         self.routers = dict()
         self.flavors = dict()
-        self.images= dict()
+        self._images= dict()
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
+        self.dcli = Client(base_url='unix://var/run/docker.sock')
+
+    @property
+    def images(self):
+        # update the known images. ask the docker daemon for a list of all known images
+        for image in self.dcli.images():
+            if 'RepoTags' in image:
+                found = False
+                imageName = image['RepoTags']
+                if imageName == None:
+                    continue
+                imageName = imageName[0]
+                for i in self._images.values():
+                    if i.name == imageName:
+                        found = True
+                        break
+                if not found:
+                    self._images[imageName] = Image(imageName)
+        return self._images
+
 
     def add_stack(self, stack):
         if not self.check_stack(stack):
@@ -210,20 +230,6 @@ class OpenstackCompute(object):
         self.compute_nets[server.name] = network
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
-        # update the known images. ask the docker daemon for a list of all known images
-        for image in c.dcli.images():
-            if 'RepoTags' in image:
-                found = False
-                imageName = image['RepoTags']
-                if imageName == None:
-                    continue
-                imageName = imageName[0]
-                for i in self.images.values():
-                    if i.name == imageName:
-                        found = True
-                        break
-                if not found:
-                    self.images[imageName] = Image(imageName)
 
         for intf in c.intfs.values():
             for port_name in server.port_names:

@@ -157,7 +157,7 @@ class NovaListServersApi(Resource):
     def post(self, id):
         '''
         Creates a server instance
-        :param id:
+        :param id: tenant id
         :return:
         '''
         try:
@@ -168,7 +168,9 @@ class NovaListServersApi(Resource):
                 return Response("Server with name %s already exists." % server_dict['name'], status=409)
             # TODO: not finished!
             resp = dict()
-            server = self.api.compute.create_server(server_dict['name'])
+            name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
+            server = self.api.compute.create_server(name)
+            server.full_name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"]
 
             for flavor in self.api.compute.flavors.values():
                 if flavor.id == server_dict.get('flavorRef', ''):
@@ -187,7 +189,7 @@ class NovaListServersApi(Resource):
 
             self.api.compute._start_compute(server)
 
-            NovaShowServerDetails(self.api).get(id, server.id)
+            return NovaShowServerDetails(self.api).get(id, server.id)
 
         except Exception as ex:
             logging.exception(u"%s: Could not create the server." % __name__)

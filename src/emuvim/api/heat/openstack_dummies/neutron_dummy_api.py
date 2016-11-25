@@ -684,11 +684,11 @@ def create_port_dict(port, compute):
     port_dict["id"] = port.id
     port_dict["mac_address"] = port.mac_address
     port_dict["name"] = port.name
-    for net in compute.nets.values():
-        if port.net_name == net.name:
-            port_dict["network_id"] = net.id
-        else:
-            port_dict["network_id"] = None
+
+    net = compute.find_network_by_name_or_id(port.net_name)
+    if net is not None:
+        port_dict["network_id"] = net.id
+
     port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
     port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
     return port_dict
