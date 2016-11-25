@@ -274,7 +274,6 @@ class BalanceHost(Resource):
         self.api = api
 
     def post(self, vnf_src_name, vnf_src_interface):
-        #TODO: not done yet!
         req = request.json
         if req is None or len(req) == 0:
             return Response(u"You have to specify destination vnfs via the POST data.",
@@ -349,9 +348,8 @@ class BalanceHost(Resource):
             else:
                 vlan = None
 
-            for i in range(0,len(path)):
+            for i in range(0, len(path)):
                 current_node = net.getNodeByName(current_hop)
-
                 if path.index(current_hop) < len(path)-1:
                     next_hop = path[path.index(current_hop)+1]
                 else:
@@ -361,25 +359,32 @@ class BalanceHost(Resource):
                 next_node = net.getNodeByName(next_hop)
 
                 if next_hop == dst_vnf_name:
+                    switch_outport_nr = dst_sw_outport_nr
                     logging.info("end node reached: {0}".format(dst_vnf_name))
-                elif not isinstance( next_node, OVSSwitch ):
+                elif not isinstance(next_node, OVSSwitch):
                     logging.info("Next node: {0} is not a switch".format(next_hop))
                     return "Next node: {0} is not a switch".format(next_hop)
+                else:
+                    # take first link between switches by default
+                    index_edge_out = 0
+                    switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
                 match = 'in_port=%s' % switch_inport_nr
                 # possible Ryu actions, match fields:
                 # http://ryu.readthedocs.io/en/latest/app/ofctl_rest.html#add-a-flow-entry
                 if vlan is not None:
-                    flow = {}
+                    flow = dict()
                     flow['dpid'] = int(current_node.dpid, 16)
                     flow['cookie'] = cookie
                     flow['priority'] = 0
 
-                    flow['actions'] = []
+                    flow['actions'] = list()
                     if path.index(current_hop) == 0:  # first node
                         # set up a new bucket for forwarding
                         bucket = dict()
                         bucket['actions'] = list()
+
+                        # set the vland field according to new ryu syntax
                         action = dict()
                         action['type'] = 'PUSH_VLAN'  # Push a new VLAN tag if a input frame is non-VLAN-tagged
                         action['ethertype'] = 33024   # Ethertype 0x8100(=33024): IEEE 802.1Q VLAN-tagged frame
@@ -390,8 +395,14 @@ class BalanceHost(Resource):
                         # ryu expects the field to be masked
                         action['value'] = vlan | 0x1000
                         bucket['actions'].append(action)
+
+                        # finally output the packet to the next switch
+                        action = dict()
+                        action['type'] = 'OUTPUT'
+                        action['port'] = switch_outport_nr
+                        bucket['actions'].append(action)
                         group_add["buckets"].append(bucket)
-                        logging.debug("Appending bucket %s" % bucket)
+                        logging.debug("Appending bucket %s. src vnf %s to dst vnf %s" % (bucket, vnf_src_name, dst_vnf_name))
                     elif path.index(current_hop) == len(path) - 1:  # last node
                         match += ',dl_vlan=%s' % vlan
                         action = dict()
@@ -401,14 +412,16 @@ class BalanceHost(Resource):
                         match += ',dl_vlan=%s' % vlan
 
                     if not path.index(current_hop) == 0:
+                        # this needs to be set for every hop that is not the first one
+                        # as the first one is handled in the group entry
                         action = dict()
                         action['type'] = 'OUTPUT'
-                        action['port'] = dst_sw_outport_nr
+                        action['port'] = switch_outport_nr
                         flow['actions'].append(action)
-
-                    flow['match'] = net._parse_match(match)
-                    flows.append(flow)
+                        flow['match'] = net._parse_match(match)
+                        flows.append(flow)
                 else:
+                    # dest is connected to the same switch so just choose the right port to forward to
                     bucket = dict()
                     bucket['actions'] = list()
                     action = dict()
@@ -417,12 +430,17 @@ class BalanceHost(Resource):
                     bucket['actions'].append(action)
                     group_add["buckets"].append(bucket)
 
-                # set up chain to enable answers
-                flow_cookie = self.api.manage.get_cookie()
-                self.api.manage.network_action_start(dst_vnf_name, vnf_src_name,
-                                                    vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
-                                                    vnf_dst_interface=vnf_src_interface, bidirectional=False,
-                                                     cookie=flow_cookie)
+                # set next hop for the next iteration step
+                if isinstance(next_node, OVSSwitch):
+                    switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
+                    current_hop = next_hop
+
+            # set up chain to enable answers
+            flow_cookie = self.api.manage.get_cookie()
+            self.api.manage.network_action_start(dst_vnf_name, vnf_src_name,
+                                                vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
+                                                vnf_dst_interface=vnf_src_interface, bidirectional=False,
+                                                 cookie=flow_cookie)
             self.api.manage.lb_flow_cookies[vnf_src_interface].append(flow_cookie)
 
         # always create the group before adding the flow entries
