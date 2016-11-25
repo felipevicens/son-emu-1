@@ -80,7 +80,7 @@ class MonitorVnf(Resource):
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
-            return Response(u"MonitorAPI: VNF %s does not exist.\n" % (vnf_name[:3]),
+            return Response(u"MonitorAPI: VNF %s does not exist.\n" % (vnf_name[3:]),
                             status=500, mimetype="application/json")
 
         try:
@@ -91,8 +91,7 @@ class MonitorVnf(Resource):
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
             out_dict.update(self.api.compute.docker_net_io(docker_id))
-            out_dict['BLOCK_read'] = self.api.compute.docker_block_r(docker_id)
-            out_dict['BLOCK_write'] = self.api.compute.docker_block_w(docker_id)
+            out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
@@ -111,8 +110,9 @@ class MonitorVnfAbs(Resource):
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
-            return Response(u"MonitorAPI: VNF %s does not exist\n", status=500, mimetype="application/json")
-
+            return Response(u"MonitorAPI: VNF %s does not exist\n" % vnf_name[3:],
+                            status=500,
+                            mimetype="application/json")
         try:
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
@@ -121,8 +121,7 @@ class MonitorVnfAbs(Resource):
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
             out_dict.update(self.api.compute.docker_net_io(docker_id))
-            out_dict['BLOCK_read'] = self.api.compute.docker_block_r(docker_id)
-            out_dict['BLOCK_write'] = self.api.compute.docker_block_w(docker_id)
+            out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
@@ -130,6 +129,7 @@ class MonitorVnfAbs(Resource):
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
+
 
 class MonitorVnfDcStack(Resource):
 
@@ -151,13 +151,12 @@ class MonitorVnfDcStack(Resource):
         try:
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict['CPU_%'] = self.api.compute.docker_cpu(docker_id)
+            out_dict.update(self.api.compute.docker_cpu(docker_id))
             out_dict['MEM_used'] = self.api.compute.docker_mem_used(docker_id)
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
             out_dict.update(self.api.compute.docker_net_io(docker_id))
-            out_dict['BLOCK_read'] = self.api.compute.docker_block_r(docker_id)
-            out_dict['BLOCK_write'] = self.api.compute.docker_block_w(docker_id)
+            out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 

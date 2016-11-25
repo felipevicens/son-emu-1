@@ -4,7 +4,7 @@ class Server(object):
         self.name = name
         self.full_name = None
         self.template_name = None
-        self.id = id          # not set
+        self.id = id
         self.image = image
         self.command = command
         self.port_names = list()

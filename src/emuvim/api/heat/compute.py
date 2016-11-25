@@ -4,7 +4,6 @@ from docker import Client
 from docker.utils import kwargs_from_env
 import logging
 import threading
-import subprocess
 import time
 import re
 import uuid
@@ -55,17 +54,35 @@ class OpenstackCompute(object):
         self.stacks[stack.id] = stack
 
     def check_stack(self, stack):
+        """
+        Checks all dependencies of all servers, ports and routers and their most important parameters.
+        :param stack: A reference of the stack that should be checked.
+        :return: True: if the stack is completely fine. - False: else
+        """
+        everything_ok = True
         for server in stack.servers.values():
             for port_name in server.port_names:
                 if port_name not in stack.ports:
                     logging.warning("Server %s of stack %s has a port named %s that is not known." %
                                   (server.name, stack.stack_name, port_name))
-                    return False
+                    everything_ok = False
+            if server.image is None:
+                logging.warning("Server %s holds no image." % (server.name))
+                everything_ok = False
+            if server.command is None:
+                logging.warning("Server %s holds no command." % (server.name))
+                everything_ok = False
         for port in stack.ports.values():
             if port.net_name not in stack.nets:
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
                               (port.name, stack.stack_name, port.net_name))
-                return False
+                everything_ok = False
+            if port.intf_name is None:
+                logging.warning("Port %s has no interface name." % (port.name))
+                everything_ok = False
+            if port.ip_address is None:
+                logging.warning("Port %s has no IP address." % (port.name))
+                everything_ok = False
         for router in stack.routers.values():
             for subnet_name in router.subnet_names:
                 found = False
@@ -76,8 +93,8 @@ class OpenstackCompute(object):
                 if not found:
                     logging.warning("Router %s of stack %s has a network named %s that is not known." %
                                     (router.name, stack.stack_name, subnet_name))
-                    return False
-        return True
+                    everything_ok = False
+        return everything_ok
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
@@ -100,15 +117,27 @@ class OpenstackCompute(object):
         # Stop all servers and their links of this stack
         for server in self.stacks[stack_id].servers.values():
             self._stop_compute(server)
+            self.delete_server(server.id)
+        for net in self.stacks[stack_id].nets.values():
+            self.delete_network(net.id)
+        for port in self.stacks[stack_id].ports.values():
+            self.delete_port(port.id)
 
         del self.stacks[stack_id]
 
     def update_stack(self, old_stack_id, new_stack):
-        if old_stack_id in self.stacks:
-            if not self.check_stack(new_stack):
-                return False
-            old_stack = self.stacks[old_stack_id]
-        else:
+        """
+        Determines differences within the old and the new stack and deletes, create or changes only parts that
+        differ between the two stacks.
+        :param old_stack_id: The ID of the old stack.
+        :param new_stack: A reference of the new stack.
+        :return: True: if the old stack could be updated to the new stack without any error. - False: else
+        """
+        if old_stack_id not in self.stacks:
+            return False
+        old_stack = self.stacks[old_stack_id]
+
+        if not self.check_stack(new_stack):
             return False
 
         # Update Stack IDs
@@ -118,10 +147,12 @@ class OpenstackCompute(object):
         for net in old_stack.nets.values():
             if net.name in new_stack.nets:
                 new_stack.nets[net.name].id = net.id
-            for subnet in new_stack.nets.values():
-                if subnet.subnet_name == net.subnet_name:
-                    subnet.subnet_id = net.subnet_id
-                    break
+                for subnet in new_stack.nets.values():
+                    if subnet.subnet_name == net.subnet_name:
+                        subnet.subnet_id = net.subnet_id
+                        break
+            else:
+                self.delete_network(net.id)
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
@@ -229,6 +260,7 @@ class OpenstackCompute(object):
         link_names = list()
         for port_name in server.port_names:
             link_names.append(self.find_port_by_name_or_id(port_name).intf_name)
+            self.delete_port(port_name)
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
@@ -236,7 +268,6 @@ class OpenstackCompute(object):
 
         self.dc.stopCompute(server.name)
         self.delete_server(server.name)
-
 
     def find_server_by_name_or_id(self, name_or_id):
         if name_or_id in self.computeUnits:
@@ -266,7 +297,6 @@ class OpenstackCompute(object):
         for stack in self.stacks.values():
             stack.servers.pop(server.name, None)
 
-
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:
             return self.nets[name_or_id]
@@ -290,9 +320,6 @@ class OpenstackCompute(object):
         net = self.find_network_by_name_or_id(name_or_id)
         if net is None:
             raise Exception("Network with name or id %s does not exists." % name_or_id)
-
-        if net.subnet_id is not None:
-            self.delete_network(net.id)
 
         for stack in self.stacks.values():
             stack.nets.pop(net.name, None)
@@ -358,43 +385,7 @@ class OpenstackCompute(object):
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
 
-    # Creates the monitoring data with 'docker stats'
-    def monitor_container(self, container_name):
-        c = Client(**(kwargs_from_env()))
-        detail = c.inspect_container(container_name)
-
-        if bool(detail["State"]["Running"]):
-            container_id = detail['Id']
-
-            docker_stat = subprocess.Popen(['docker', 'stats', '--no-stream', container_name], stdout=subprocess.PIPE)
-            output = docker_stat.communicate()[0]
-
-            for line in output.split('\n'):
-                if line.split()[0] == container_name:
-                    return self.create_monitoring_dict(line)
-        else:
-            return None
-        return None
-
-    # Creates a dict for one container, out of the 'docker stats' output.
-    def create_monitoring_dict(self, docker_stats_line):
-        if docker_stats_line is None:
-            return None
-        split_line = docker_stats_line.split()
-        if len(split_line) < 19:
-            return None
-
-        out_dict = dict()
-        out_dict['CPU'] = split_line[1]
-        out_dict['MEM_used'] = split_line[2] + ' ' + split_line[3]
-        out_dict['MEM_limit'] = split_line[5] + ' ' + split_line[6]
-        out_dict['MEM_%'] = split_line[7]
-        out_dict['NET_in'] = split_line[8] + ' ' + split_line[9]
-        out_dict['NET_out'] = split_line[11] + ' ' + split_line[12]
-        out_dict['PIDS'] = split_line[18]
-        return out_dict
-
-
+    # Uses the container name to return the container ID
     def docker_container_id(self, container_name):
         c = Client(**(kwargs_from_env()))
         detail = c.inspect_container(container_name)
@@ -470,24 +461,21 @@ class OpenstackCompute(object):
 
         return {'NET_in': in_bytes, 'NET_out': out_bytes}
 
-    # Disk - read in Bytes
-    def docker_block_r(self, container_id):
+    # Disk - read in Bytes - write in Bytes
+    def docker_block_rw(self, container_id):
         with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            line = f.readline().split()
-        if len(line) < 3:
-            return 0
+            read = f.readline().split()
+            write = f.readline().split()
+        rw_dict = dict()
+        if len(read) < 3:
+            rw_dict['BLOCK_read'] = 0
         else:
-            return line[2]
-
-    # Disk - write in Bytes
-    def docker_block_w(self, container_id):
-        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            line = f.readline()
-            line = f.readline().split()
-        if len(line) < 3:
-            return 0
+            rw_dict['BLOCK_read'] = read[2]
+        if len(write) < 3:
+            rw_dict['BLOCK_write'] = 0
         else:
-            return line[2]
+            rw_dict['BLOCK_write'] = write[2]
+        return rw_dict
 
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
