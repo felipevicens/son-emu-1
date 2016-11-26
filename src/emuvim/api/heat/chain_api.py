@@ -291,7 +291,6 @@ class BalanceHost(Resource):
                     src_sw_inport_nr = link_dict[link]['dst_port_nr']
                     break
 
-
         for vnf_name in dest_intfs_mapping:
             if vnf_name not in net.DCNetwork_graph:
                 return Response(u"Target VNF %s is not known." % vnf_name,
@@ -313,7 +312,7 @@ class BalanceHost(Resource):
         group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
         group_add['cookie'] = cookie
         group_add['priority'] = 0
-        #TODO: set to group_add['type'] = "SELECT"
+        # TODO: set to group_add['type'] = "SELECT"
         group_add['type'] = "ALL"
         group_id = self.api.manage.get_flow_group()
         group_add['group_id'] = group_id
@@ -350,10 +349,10 @@ class BalanceHost(Resource):
 
             for i in range(0, len(path)):
                 current_node = net.getNodeByName(current_hop)
-                if path.index(current_hop) < len(path)-1:
-                    next_hop = path[path.index(current_hop)+1]
+                if path.index(current_hop) < len(path) - 1:
+                    next_hop = path[path.index(current_hop) + 1]
                 else:
-                    #last switch reached
+                    # last switch reached
                     next_hop = dst_vnf_name
 
                 next_node = net.getNodeByName(next_hop)
@@ -387,7 +386,7 @@ class BalanceHost(Resource):
                         # set the vland field according to new ryu syntax
                         action = dict()
                         action['type'] = 'PUSH_VLAN'  # Push a new VLAN tag if a input frame is non-VLAN-tagged
-                        action['ethertype'] = 33024   # Ethertype 0x8100(=33024): IEEE 802.1Q VLAN-tagged frame
+                        action['ethertype'] = 33024  # Ethertype 0x8100(=33024): IEEE 802.1Q VLAN-tagged frame
                         bucket['actions'].append(action)
                         action = dict()
                         action['type'] = 'SET_FIELD'
@@ -402,7 +401,8 @@ class BalanceHost(Resource):
                         action['port'] = switch_outport_nr
                         bucket['actions'].append(action)
                         group_add["buckets"].append(bucket)
-                        logging.debug("Appending bucket %s. src vnf %s to dst vnf %s" % (bucket, vnf_src_name, dst_vnf_name))
+                        logging.debug(
+                            "Appending bucket %s. src vnf %s to dst vnf %s" % (bucket, vnf_src_name, dst_vnf_name))
                     elif path.index(current_hop) == len(path) - 1:  # last node
                         match += ',dl_vlan=%s' % vlan
                         action = dict()
@@ -438,21 +438,21 @@ class BalanceHost(Resource):
             # set up chain to enable answers
             flow_cookie = self.api.manage.get_cookie()
             self.api.manage.network_action_start(dst_vnf_name, vnf_src_name,
-                                                vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
-                                                vnf_dst_interface=vnf_src_interface, bidirectional=False,
+                                                 vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
+                                                 vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                  cookie=flow_cookie)
             self.api.manage.lb_flow_cookies[vnf_src_interface].append(flow_cookie)
 
         # always create the group before adding the flow entries
         if net.controller == RemoteController:
-            logging.debug("Setting up groupentry %s" % group_add)
-            net.ryu_REST("stats/groupentry/add", data=group_add)
+           logging.debug("Setting up groupentry %s" % group_add)
+           net.ryu_REST("stats/groupentry/add", data=group_add)
         else:
-            pass # TODO: implement normal openflow call
+            self.api.manage.convert_ryu_to_ofctl(group_add, "add-group")
 
         for flow in flows:
             if net.controller == RemoteController:
-                logging.debug("Setting up flowentry %s" % flow)
-                net.ryu_REST('stats/flowentry/add', data=flow)
+               logging.debug("Setting up flowentry %s" % flow)
+               net.ryu_REST('stats/flowentry/add', data=flow)
             else:
-                pass # TODO: implement normal openflow call
+                self.api.manage.convert_ryu_to_ofctl(flow)

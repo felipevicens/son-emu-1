@@ -2,6 +2,7 @@ import logging
 import chain_api
 import threading
 import networkx as nx
+from mininet.node import OVSSwitch
 
 # force full debug logging everywhere for now
 logging.getLogger().setLevel(logging.DEBUG)
@@ -135,3 +136,62 @@ class OpenstackManage(object):
 
         logging.info("Path between {0} and {1}: {2}".format(src_vnf,dst_vnf, path))
         return path, src_sw, dst_sw
+
+    def convert_ryu_to_ofctl(self, flow, ofctl_cmd="add-flow"):
+        def convert_action_to_string(act):
+            cmd = ""
+            # remember to escape commands!
+            if act.get("type") == "POP_VLAN":
+                cmd += "strip_vlan,"
+            if act.get("type") == "PUSH_VLAN":
+                cmd += "push_vlan:%s," % hex(act.get("ethertype"))
+            if "field" in act and "vlan_vid" in act["field"] and act.get("type") == "SET_FIELD":
+                cmd += "set_field=%s-\>vlan_vid," % act.get("value")
+            if act.get("type") == "OUTPUT":
+                cmd += "output:%s," % int(act.get('port'))
+            if act.get("type") == "GROUP":
+                cmd += "group:%d" % act.get("group_id")
+            return cmd.rstrip(",")
+        cmd = "-O OpenFlow13 "
+        target_switch = None
+        for node in self.net:
+            try:
+                current_node = self.net.getNodeByName(node)
+                if isinstance(current_node, OVSSwitch) and int(current_node.dpid,16) == flow['dpid']:
+                    target_switch = current_node
+                    break
+            except Exception as ex:
+                logging.debug(ex)
+        if target_switch is None:
+            raise Exception("Convert_ryu_to_ofctl: Failed to find datapath id %s" % flow['dpid'])
+        if "group_id" in flow:
+            cmd += "group_id=%s," % flow.get("group_id")
+            cmd += "type=%s," % flow.get("type").lower()
+            if "buckets" in flow:
+                for bucket in flow["buckets"]:
+                    cmd += "bucket="
+                    #TODO: get correct weight field!
+                    if flow.get("type") == "select":
+                        cmd += "weight:%s," % bucket.get("weight", 0)
+                    for action in bucket.get("actions"):
+                        cmd += "%s," % convert_action_to_string(action)
+                cmd = cmd.rstrip(",")
+
+        else:
+            if "priority" in flow:
+                cmd += "priority=%s," % flow.get("priority")
+            if "cookie" in flow:
+                cmd += "cookie=%s," % flow.get("cookie")
+            if "match" in flow:
+                for key, match in flow.get("match").iteritems():
+                    cmd += "%s=%s," % (key, match)
+                cmd = cmd.rstrip(",")
+
+            cmd += ",actions="
+            for action in flow.get("actions"):
+                cmd += "%s," % convert_action_to_string(action)
+
+        cmd = cmd.rstrip(",")
+        logging.debug("Converted string is: %s %s" % (ofctl_cmd, cmd))
+
+        target_switch.dpctl(ofctl_cmd, cmd)
