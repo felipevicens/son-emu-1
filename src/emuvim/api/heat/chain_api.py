@@ -3,7 +3,6 @@ from flask_restful import Api, Resource
 from flask import Response, request
 import logging
 import json
-import copy
 from mininet.node import OVSSwitch, RemoteController
 
 
@@ -24,8 +23,6 @@ class ChainApi(Resource):
         self.api.add_resource(ChainVnfDcStackInterfaces,
                               "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(LoadBalancer, "/v1/lb/<name>",
-                              resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHost, "/v1/lb/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
 
@@ -36,6 +33,10 @@ class ChainApi(Resource):
 
 
 class ChainVersionsList(Resource):
+    '''
+    Entrypoint to find versions of the chain api.
+    '''
+
     def __init__(self, api):
         self.api = api
 
@@ -70,10 +71,22 @@ class ChainVersionsList(Resource):
 
 
 class ChainVnf(Resource):
+    '''
+    Handles setting up a chain between two VNFs at "/v1/chain/<src_vnf>/<dst_vnf>"
+    This Resource tries to guess on which interfaces to chain on
+    '''
+
     def __init__(self, api):
         self.api = api
 
     def put(self, src_vnf, dst_vnf):
+        '''
+        A PUT request to "/v1/chain/<src_vnf>/<dst_vnf>/" will create a chain between the two VNFs.
+        The interfaces will be guessed.
+        :param src_vnf:
+        :param dst_vnf:
+        :return:
+        '''
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
@@ -100,6 +113,13 @@ class ChainVnf(Resource):
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
     def delete(self, src_vnf, dst_vnf):
+        '''
+        A DELETE request at "/v1/chain/<src_vnf>/<dst_vnf>/"
+        Will delete a previously set up chain between two interfaces
+        :param src_vnf:
+        :param dst_vnf:
+        :return:
+        '''
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
@@ -126,10 +146,24 @@ class ChainVnf(Resource):
 
 
 class ChainVnfInterfaces(Resource):
+    '''
+    Handles requests targeted at: "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+    Handles tearing down or setting up a chain between two vnfs
+    '''
+
     def __init__(self, api):
         self.api = api
 
     def put(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
+        '''
+         A put request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+         will create a chain between two interfaces at the specified vnfs
+        :param src_vnf:
+        :param src_intfs:
+        :param dst_vnf:
+        :param dst_intfs:
+        :return:
+        '''
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
@@ -144,6 +178,15 @@ class ChainVnfInterfaces(Resource):
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
     def delete(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
+        '''
+        A DELETE request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+        will delete a previously created chain.
+        :param src_vnf:
+        :param src_intfs:
+        :param dst_vnf:
+        :param dst_intfs:
+        :return:
+        '''
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
             return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
@@ -261,19 +304,27 @@ class ChainVnfDcStackInterfaces(Resource):
         return container_src, container_dst, interface_src, interface_dst
 
 
-class LoadBalancer(Resource):
-    def __init__(self, api):
-        self.api = api
-
-    def put(self, name):
-        pass
-
-
 class BalanceHost(Resource):
+    '''
+     Handles requests at "/v1/lb/<vnf_src_name>/<vnf_src_interface>"
+     and will set up or delete Load Balancers.
+    '''
+
     def __init__(self, api):
         self.api = api
 
     def post(self, vnf_src_name, vnf_src_interface):
+        '''
+        Will set up a Load balancer behind an interface at a specified vnf
+        We need both to avoid naming conflicts as interface names are not unique
+        Post data is in this format:
+        {"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man",
+        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}}
+        and specifies the balanced nodes
+        :param vnf_src_name:
+        :param vnf_src_interface:
+        :return: flask Response
+        '''
         req = request.json
         if req is None or len(req) == 0:
             return Response(u"You have to specify destination vnfs via the POST data.",
@@ -467,6 +518,12 @@ class BalanceHost(Resource):
                 self.api.manage.convert_ryu_to_ofctl(flow)
 
     def delete(self, vnf_src_name, vnf_src_interface):
+        '''
+        Will delete a load balancer that sits behind a specified interface at a vnf
+        :param vnf_src_name:  the targeted vnf
+        :param vnf_src_interface:  the interface behind which the load balancer is sitting
+        :return: flask Response
+        '''
         logging.debug("Deleting loadbalancer at %s: interface: %s", (vnf_src_name, vnf_src_interface))
         net = self.api.manage.net
 
@@ -494,7 +551,7 @@ class BalanceHost(Resource):
 
         for flow in flows:
             logging.debug("Deleting flowentry with cookie %d belonging to lb at %s:%s" % (
-            flow["cookie"], vnf_src_name, vnf_src_interface))
+                flow["cookie"], vnf_src_name, vnf_src_interface))
             if net.controller == RemoteController:
                 net.ryu_REST('stats/flowentry/delete', data=flow)
             else:
