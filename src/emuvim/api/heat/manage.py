@@ -27,7 +27,7 @@ class OpenstackManage(object):
         self.lb_flow_cookies = dict()
         # flow groups could be handled for each switch separately, but this global group counter should be easier to
         # debug and to maintain
-        self.flow_groups = list()
+        self.flow_groups = dict()
 
         # we want one global chain api. this should not be datacenter dependent!
         if not hasattr(self,"chain"):
@@ -47,9 +47,9 @@ class OpenstackManage(object):
         self.cookies.add(cookie)
         return cookie
 
-    def get_flow_group(self):
+    def get_flow_group(self, src_vnf_interface):
         grp = int(len(self.flow_groups) + 1)
-        self.flow_groups.append(grp)
+        self.flow_groups[src_vnf_interface] = grp
         return grp
 
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
@@ -92,7 +92,7 @@ class OpenstackManage(object):
             return ex.message
 
     def _get_path(self, src_vnf, dst_vnf):
-        # modified version of the _chainAddFlow from emuvim.dcemulator.net
+        # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
         dst_sw = None
         logging.debug("Find path from vnf %s to %s",
@@ -140,7 +140,7 @@ class OpenstackManage(object):
     def convert_ryu_to_ofctl(self, flow, ofctl_cmd="add-flow"):
         def convert_action_to_string(act):
             cmd = ""
-            # remember to escape commands!
+            # remember to escape strings as the commandline is used!
             if act.get("type") == "POP_VLAN":
                 cmd += "strip_vlan,"
             if act.get("type") == "PUSH_VLAN":
@@ -154,42 +154,46 @@ class OpenstackManage(object):
             return cmd.rstrip(",")
         cmd = "-O OpenFlow13 "
         target_switch = None
-        for node in self.net:
-            try:
-                current_node = self.net.getNodeByName(node)
-                if isinstance(current_node, OVSSwitch) and int(current_node.dpid,16) == flow['dpid']:
-                    target_switch = current_node
-                    break
-            except Exception as ex:
-                logging.debug(ex)
+        # get the corresponding name of the datapath id
+        for node in self.net.switches:
+            if isinstance(node, OVSSwitch) and int(node.dpid,16) == flow['dpid']:
+                target_switch = node
+                break
         if target_switch is None:
             raise Exception("Convert_ryu_to_ofctl: Failed to find datapath id %s" % flow['dpid'])
-        if "group_id" in flow:
-            cmd += "group_id=%s," % flow.get("group_id")
-            cmd += "type=%s," % flow.get("type").lower()
-            if "buckets" in flow:
-                for bucket in flow["buckets"]:
-                    cmd += "bucket="
-                    #TODO: get correct weight field!
-                    if flow.get("type") == "select":
-                        cmd += "weight:%s," % bucket.get("weight", 0)
-                    for action in bucket.get("actions"):
-                        cmd += "%s," % convert_action_to_string(action)
-                cmd = cmd.rstrip(",")
+        if ofctl_cmd == "add-flow" or ofctl_cmd == "add-group":
+            if "group_id" in flow:
+                cmd += "group_id=%s," % flow.get("group_id")
+                cmd += "type=%s," % flow.get("type").lower()
+                if "buckets" in flow:
+                    for bucket in flow["buckets"]:
+                        cmd += "bucket="
+                        #TODO: get correct weight field!
+                        if flow.get("type") == "select":
+                            cmd += "weight:%s," % bucket.get("weight", 0)
+                        # buckets do not contain an action keyword!
+                        for action in bucket.get("actions"):
+                            cmd += "%s," % convert_action_to_string(action)
+                    cmd = cmd.rstrip(",")
 
-        else:
-            if "priority" in flow:
-                cmd += "priority=%s," % flow.get("priority")
-            if "cookie" in flow:
-                cmd += "cookie=%s," % flow.get("cookie")
-            if "match" in flow:
-                for key, match in flow.get("match").iteritems():
-                    cmd += "%s=%s," % (key, match)
-                cmd = cmd.rstrip(",")
+            else:
+                if "priority" in flow:
+                    cmd += "priority=%s," % flow.get("priority")
+                if "cookie" in flow:
+                    cmd += "cookie=%s," % flow.get("cookie")
+                if "match" in flow:
+                    for key, match in flow.get("match").iteritems():
+                        cmd += "%s=%s," % (key, match)
+                    cmd = cmd.rstrip(",")
 
-            cmd += ",actions="
-            for action in flow.get("actions"):
-                cmd += "%s," % convert_action_to_string(action)
+                cmd += ",actions="
+                for action in flow.get("actions"):
+                    cmd += "%s," % convert_action_to_string(action)
+
+        if ofctl_cmd == "del-flows":
+            cmd += "cookie=%s/%s" % (flow.get("cookie"), flow.get("cookie_mask"))
+        if ofctl_cmd == "del-groups":
+            cmd += "group_id=%s" % flow.get("group_id")
 
         cmd = cmd.rstrip(",")
         logging.debug("Converted string is: %s %s" % (ofctl_cmd, cmd))

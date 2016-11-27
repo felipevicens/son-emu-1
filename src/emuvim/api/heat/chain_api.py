@@ -283,6 +283,7 @@ class BalanceHost(Resource):
         dest_intfs_mapping = req.get('dst_vnf_interfaces', dict())
         dest_vnf_outport_nrs = list()
 
+        # find the switch belonging to the source interface, as well as the inport nr
         for connected_sw in self.api.manage.net.DCNetwork_graph.neighbors(vnf_src_name):
             link_dict = self.api.manage.net.DCNetwork_graph[vnf_src_name][connected_sw]
             for link in link_dict:
@@ -291,6 +292,11 @@ class BalanceHost(Resource):
                     src_sw_inport_nr = link_dict[link]['dst_port_nr']
                     break
 
+        if src_sw is None or src_sw_inport_nr == 0:
+            return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                            status=404, mimetype="application/json")
+
+        # get all target interface outport numbers
         for vnf_name in dest_intfs_mapping:
             if vnf_name not in net.DCNetwork_graph:
                 return Response(u"Target VNF %s is not known." % vnf_name,
@@ -307,22 +313,22 @@ class BalanceHost(Resource):
         if vnf_src_interface not in self.api.manage.lb_flow_cookies:
             self.api.manage.lb_flow_cookies[vnf_src_interface] = list()
 
-        cookie = self.api.manage.get_cookie()
-        self.api.manage.lb_flow_cookies[vnf_src_interface].append(cookie)
         group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
-        group_add['cookie'] = cookie
         group_add['priority'] = 0
-        # TODO: set to group_add['type'] = "SELECT"
+        # TODO: set to group_add['type'] = "SELECT", ALL is easier to debug
         group_add['type'] = "ALL"
-        group_id = self.api.manage.get_flow_group()
+        group_id = self.api.manage.get_flow_group(vnf_src_interface)
         group_add['group_id'] = group_id
         group_add['buckets'] = list()
 
         flows = list()
-        # set up an initial flow that will set the LB group
+        # set up an initial flow that will set the LB group at the src interface
         flow = dict()
         flow['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
         flow['match'] = net._parse_match('in_port=%s' % src_sw_inport_nr)
+        # cookie used by this flow
+        cookie = self.api.manage.get_cookie()
+        self.api.manage.lb_flow_cookies[vnf_src_interface].append(cookie)
         flow['cookie'] = cookie
         flow['priority'] = 1000
         action = dict()
@@ -334,6 +340,7 @@ class BalanceHost(Resource):
         flows.append(flow)
         index = 0
 
+        # set up paths for each destination vnf individually
         for dst_vnf_name in dest_intfs_mapping:
             path, src_sw, dst_sw = self.api.manage._get_path(vnf_src_name, dst_vnf_name)
             dst_sw_outport_nr = dest_vnf_outport_nrs[index]
@@ -371,6 +378,8 @@ class BalanceHost(Resource):
                 match = 'in_port=%s' % switch_inport_nr
                 # possible Ryu actions, match fields:
                 # http://ryu.readthedocs.io/en/latest/app/ofctl_rest.html#add-a-flow-entry
+
+                # if a vlan is picked, the connection is routed through multiple switches
                 if vlan is not None:
                     flow = dict()
                     flow['dpid'] = int(current_node.dpid, 16)
@@ -444,15 +453,59 @@ class BalanceHost(Resource):
             self.api.manage.lb_flow_cookies[vnf_src_interface].append(flow_cookie)
 
         # always create the group before adding the flow entries
+        logging.debug("Setting up groupentry %s" % group_add)
         if net.controller == RemoteController:
-           logging.debug("Setting up groupentry %s" % group_add)
-           net.ryu_REST("stats/groupentry/add", data=group_add)
+            net.ryu_REST("stats/groupentry/add", data=group_add)
         else:
             self.api.manage.convert_ryu_to_ofctl(group_add, "add-group")
 
         for flow in flows:
+            logging.debug("Setting up flowentry %s" % flow)
             if net.controller == RemoteController:
-               logging.debug("Setting up flowentry %s" % flow)
-               net.ryu_REST('stats/flowentry/add', data=flow)
+                net.ryu_REST('stats/flowentry/add', data=flow)
             else:
                 self.api.manage.convert_ryu_to_ofctl(flow)
+
+    def delete(self, vnf_src_name, vnf_src_interface):
+        logging.debug("Deleting loadbalancer at %s: interface: %s", (vnf_src_name, vnf_src_interface))
+        net = self.api.manage.net
+
+        # check if both VNFs exist
+        if vnf_src_name not in net:
+            return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                            status=404, mimetype="application/json")
+
+        flows = list()
+        # we have to call delete-group for each switch
+        delete_group = list()
+        group_id = self.api.manage.flow_groups[vnf_src_interface]
+        for node in net.switches:
+            for cookie in self.api.manage.lb_flow_cookies[vnf_src_interface]:
+                flow = dict()
+                flow["dpid"] = int(node.dpid, 16)
+                flow["cookie"] = cookie
+                flow['cookie_mask'] = int('0xffffffffffffffff', 16)
+
+                flows.append(flow)
+            group_del = dict()
+            group_del["dpid"] = int(node.dpid, 16)
+            group_del["group_id"] = group_id
+            delete_group.append(group_del)
+
+        for flow in flows:
+            logging.debug("Deleting flowentry with cookie %d belonging to lb at %s:%s" % (
+            flow["cookie"], vnf_src_name, vnf_src_interface))
+            if net.controller == RemoteController:
+                net.ryu_REST('stats/flowentry/delete', data=flow)
+            else:
+                self.api.manage.convert_ryu_to_ofctl(flow, "del-flows")
+
+        logging.debug("Deleting group with id %s" % group_id)
+        for switch_del_group in delete_group:
+            if net.controller == RemoteController:
+                net.ryu_REST("stats/groupentry/delete", data=switch_del_group)
+            else:
+                self.api.manage.convert_ryu_to_ofctl(switch_del_group, "del-groups")
+
+        # unmap groupid from the interface
+        del self.api.manage.flow_groups[vnf_src_interface]
