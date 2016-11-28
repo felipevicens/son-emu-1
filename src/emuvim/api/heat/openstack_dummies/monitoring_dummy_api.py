@@ -86,11 +86,10 @@ class MonitorVnf(Resource):
         try:
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(self.api.compute.docker_cpu(docker_id))
+            out_dict.update(self.monitoring_over_time(docker_id))
             out_dict['MEM_used'] = self.api.compute.docker_mem_used(docker_id)
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-            out_dict.update(self.api.compute.docker_net_io(docker_id))
             out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
@@ -99,6 +98,33 @@ class MonitorVnf(Resource):
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
+
+    def monitoring_over_time(self, container_id):
+        """
+        Calculates the
+        :param container_id: The full docker container ID
+        :return: A dictionary
+        """
+        first_cpu_usage = self.api.compute.docker_abs_cpu(container_id)
+        first = self.api.compute.docker_abs_net_io(container_id)
+        time.sleep(1)
+        second_cpu_usage = self.api.compute.docker_abs_cpu(container_id)
+        second = self.api.compute.docker_abs_net_io(container_id)
+
+        time_div = (int(second['NET_systime']) - int(first['NET_systime']))
+        in_div = int(second['NET_in']) - int(first['NET_in'])
+        out_div = int(second['NET_out']) - int(first['NET_out'])
+        out_dict = {'NET_in/s': int(in_div*1000000000 / float(time_div)+0.5),
+                    'NET_out/s': int(out_div*1000000000 / float(time_div)+0.5)}
+
+        print(time_div)
+        print(in_div)
+        print(out_div)
+
+        time_div = (int(second_cpu_usage['CPU_used_systime']) - int(first_cpu_usage['CPU_used_systime']))
+        usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
+        out_dict.update({'CPU_%': usage_div / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']})
+        return out_dict
 
 
 class MonitorVnfAbs(Resource):
@@ -120,7 +146,7 @@ class MonitorVnfAbs(Resource):
             out_dict['MEM_used'] = self.api.compute.docker_mem_used(docker_id)
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-            out_dict.update(self.api.compute.docker_net_io(docker_id))
+            out_dict.update(self.api.compute.docker_abs_net_io(docker_id))
             out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
@@ -151,11 +177,11 @@ class MonitorVnfDcStack(Resource):
         try:
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(self.api.compute.docker_cpu(docker_id))
+            out_dict.update(self.api.compute.docker_abs_cpu(docker_id))
             out_dict['MEM_used'] = self.api.compute.docker_mem_used(docker_id)
             out_dict['MEM_limit'] = self.api.compute.docker_max_mem(docker_id)
             out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-            out_dict.update(self.api.compute.docker_net_io(docker_id))
+            out_dict.update(self.api.compute.docker_abs_net_io(docker_id))
             out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict['PIDS'] = self.api.compute.docker_PIDS(docker_id)
             out_dict['SYS_time'] = int(time.time() * 1000000000)
