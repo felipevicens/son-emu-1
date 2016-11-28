@@ -2,10 +2,6 @@ from flask import Flask
 from flask_restful import Api,Resource
 import logging
 
-
-logging.basicConfig(level=logging.INFO)
-
-
 class BaseOpenstackDummy(Resource):
     def __init__(self, listenip, port):
         self.ip = listenip

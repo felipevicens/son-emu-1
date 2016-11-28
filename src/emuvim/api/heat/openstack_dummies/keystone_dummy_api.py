@@ -4,10 +4,6 @@ from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstack
 import logging
 import json
 
-
-logging.basicConfig(level=logging.INFO)
-
-
 class KeystoneDummyApi(BaseOpenstackDummy):
     def __init__(self, in_ip, in_port):
         super(KeystoneDummyApi, self).__init__(in_ip, in_port)

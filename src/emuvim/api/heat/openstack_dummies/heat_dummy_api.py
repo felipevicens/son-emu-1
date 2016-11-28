@@ -9,7 +9,6 @@ import json
 
 
 class HeatDummyApi(BaseOpenstackDummy):
-
     def __init__(self, in_ip, in_port, compute):
         super(HeatDummyApi, self).__init__(in_ip, in_port)
         self.compute = compute
@@ -36,7 +35,6 @@ class HeatDummyApi(BaseOpenstackDummy):
 
 
 class Shutdown(Resource):
-
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -46,7 +44,6 @@ class Shutdown(Resource):
 
 
 class HeatListAPIVersions(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -56,21 +53,20 @@ class HeatListAPIVersions(Resource):
 
         resp['versions'] = dict()
         resp['versions'] = [{
-                "status": "CURRENT",
-                "id": "v1.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    }
-                ]
-            }]
+            "status": "CURRENT",
+            "id": "v1.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                }
+            ]
+        }]
 
         return Response(json.dumps(resp), status=200, mimetype="application/json")
 
 
 class HeatCreateStack(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -84,7 +80,7 @@ class HeatCreateStack(Resource):
                     return [], 409
             stack = Stack()
             stack.stack_name = stack_dict['stack_name']
-            reader = HeatParser()
+            reader = HeatParser(self.api.compute)
 
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
@@ -96,11 +92,11 @@ class HeatCreateStack(Resource):
 
             return_dict = {"stack": {"id": stack.id,
                                      "links": [
-                                        {
-                                            "href": "http://%s:%s/v1/%s/stacks/%s"
-                                                    %(self.api.ip, self.api.port, tenant_id, stack.id),
-                                            "rel": "self"
-                                        } ]}}
+                                         {
+                                             "href": "http://%s:%s/v1/%s/stacks/%s"
+                                                     % (self.api.ip, self.api.port, tenant_id, stack.id),
+                                             "rel": "self"
+                                         }]}}
 
             self.api.compute.add_stack(stack)
             self.api.compute.deploy_stack(stack.id)
@@ -117,16 +113,16 @@ class HeatCreateStack(Resource):
             return_stacks['stacks'] = list()
             for stack in self.api.compute.stacks.values():
                 return_stacks['stacks'].append(
-                                {"creation_time": stack.creation_time,
-                                  "description":"desc of "+stack.id,
-                                  "id": stack.id,
-                                  "links": [],
-                                  "stack_name": stack.stack_name,
-                                  "stack_status": stack.status,
-                                  "stack_status_reason": "Stack CREATE completed successfully",
-                                  "updated_time": stack.update_time,
-                                  "tags": ""
-                                })
+                    {"creation_time": stack.creation_time,
+                     "description": "desc of " + stack.id,
+                     "id": stack.id,
+                     "links": [],
+                     "stack_name": stack.stack_name,
+                     "stack_status": stack.status,
+                     "stack_status_reason": "Stack CREATE completed successfully",
+                     "updated_time": stack.update_time,
+                     "tags": ""
+                     })
 
             return Response(json.dumps(return_stacks), status=200, mimetype="application/json")
         except Exception as ex:
@@ -135,7 +131,6 @@ class HeatCreateStack(Resource):
 
 
 class HeatShowStack(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -153,38 +148,38 @@ class HeatShowStack(Resource):
                 return 'Could not resolve Stack - ID', 404
 
             return_stack = {
-                            "stack": {
-                                "capabilities": [],
-                                "creation_time": stack.creation_time,
-                                "description": "desc of "+stack.stack_name,
-                                "disable_rollback": True,
-                                "id": stack.id,
-                                "links": [
-                                    {
-                                        "href": "http://%s:%s/v1/%s/stacks/%s"
-                                                %(self.api.ip, self.api.port, tenant_id, stack.id),
-                                        "rel": "self"
-                                    }
-                                ],
-                                "notification_topics": [],
-                                "outputs": [],
-                                "parameters": {
-                                    "OS::project_id": "3ab5b02f-a01f-4f95-afa1-e254afc4a435",  # add real project id
-                                    "OS::stack_id": stack.id,
-                                    "OS::stack_name": stack.stack_name
-                                },
-                                "stack_name": stack.stack_name,
-                                "stack_owner": "The owner of the stack.",  # add stack owner
-                                "stack_status": stack.status,
-                                "stack_status_reason": "The reason for the current status of the stack.",  # add status reason
-                                "template_description": "The description of the stack template.",
-                                "stack_user_project_id": "The project UUID of the stack user.",
-                                "timeout_mins": "",
-                                "updated_time": "",
-                                "parent": "",
-                                "tags": ""
-                            }
+                "stack": {
+                    "capabilities": [],
+                    "creation_time": stack.creation_time,
+                    "description": "desc of " + stack.stack_name,
+                    "disable_rollback": True,
+                    "id": stack.id,
+                    "links": [
+                        {
+                            "href": "http://%s:%s/v1/%s/stacks/%s"
+                                    % (self.api.ip, self.api.port, tenant_id, stack.id),
+                            "rel": "self"
                         }
+                    ],
+                    "notification_topics": [],
+                    "outputs": [],
+                    "parameters": {
+                        "OS::project_id": "3ab5b02f-a01f-4f95-afa1-e254afc4a435",  # add real project id
+                        "OS::stack_id": stack.id,
+                        "OS::stack_name": stack.stack_name
+                    },
+                    "stack_name": stack.stack_name,
+                    "stack_owner": "The owner of the stack.",  # add stack owner
+                    "stack_status": stack.status,
+                    "stack_status_reason": "The reason for the current status of the stack.",  # add status reason
+                    "template_description": "The description of the stack template.",
+                    "stack_user_project_id": "The project UUID of the stack user.",
+                    "timeout_mins": "",
+                    "updated_time": "",
+                    "parent": "",
+                    "tags": ""
+                }
+            }
 
             return Response(json.dumps(return_stack), status=200, mimetype="application/json")
 
@@ -194,7 +189,6 @@ class HeatShowStack(Resource):
 
 
 class HeatUpdateStack(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -220,7 +214,7 @@ class HeatUpdateStack(Resource):
             stack.update_time = str(datetime.now())
             stack.status = "UPDATE_COMPLETE"
 
-            reader = HeatParser()
+            reader = HeatParser(self.api.compute)
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
             if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
@@ -237,7 +231,6 @@ class HeatUpdateStack(Resource):
 
 
 class HeatDeleteStack(Resource):
-
     def __init__(self, api):
         self.api = api
 

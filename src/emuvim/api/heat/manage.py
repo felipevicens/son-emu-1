@@ -1,11 +1,11 @@
 import logging
 import chain_api
 import threading
+import networkx as nx
+from mininet.node import OVSSwitch
 
-
-logging.basicConfig(level=logging.DEBUG)
-
-
+# force full debug logging everywhere for now
+logging.getLogger().setLevel(logging.DEBUG)
 class OpenstackManage(object):
 
     # openstackmanage is a singleton!
@@ -23,6 +23,11 @@ class OpenstackManage(object):
         self.ip = ip
         self.port = port
         self.net = None
+        # to keep track which src_vnf(input port on the switch) handles a load balancer
+        self.lb_flow_cookies = dict()
+        # flow groups could be handled for each switch separately, but this global group counter should be easier to
+        # debug and to maintain
+        self.flow_groups = list()
 
         # we want one global chain api. this should not be datacenter dependent!
         if not hasattr(self,"chain"):
@@ -37,9 +42,19 @@ class OpenstackManage(object):
         key = "%s:%s" % (ep.ip, ep.port)
         self.endpoints[key] = ep
 
+    def get_cookie(self):
+        cookie = int(max(self.cookies) +1)
+        self.cookies.add(cookie)
+        return cookie
+
+    def get_flow_group(self):
+        grp = int(len(self.flow_groups) + 1)
+        self.flow_groups.append(grp)
+        return grp
+
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
         try:
-            cookie = kwargs.get('cookie',max(self.cookies)+1)
+            cookie = kwargs.get('cookie', self.get_cookie())
             self.cookies.add(cookie)
             c = self.net.setChain(
                 vnf_src_name, vnf_dst_name,
@@ -75,3 +90,108 @@ class OpenstackManage(object):
         except Exception as ex:
             logging.exception("RPC error.")
             return ex.message
+
+    def _get_path(self, src_vnf, dst_vnf):
+        # modified version of the _chainAddFlow from emuvim.dcemulator.net
+        src_sw = None
+        dst_sw = None
+        logging.debug("Find path from vnf %s to %s",
+                  src_vnf, dst_vnf)
+
+        for connected_sw in self.net.DCNetwork_graph.neighbors(src_vnf):
+            link_dict = self.net.DCNetwork_graph[src_vnf][connected_sw]
+            for link in link_dict:
+                for intfs in self.net[src_vnf].intfs.values():
+                    if (link_dict[link]['src_port_id'] == intfs.name or
+                            link_dict[link]['src_port_name'] == intfs.name):  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                        # found the right link and connected switch
+                        src_sw = connected_sw
+                        break
+
+
+        for connected_sw in self.net.DCNetwork_graph.neighbors(dst_vnf):
+            link_dict = self.net.DCNetwork_graph[connected_sw][dst_vnf]
+            for link in link_dict:
+                for intfs in self.net[dst_vnf].intfs.values():
+                    if link_dict[link]['dst_port_id'] == intfs.name or \
+                            link_dict[link]['dst_port_name'] == intfs.name:  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                        # found the right link and connected
+                        dst_sw = connected_sw
+                        break
+        logging.debug("From switch %s to %s " % (src_sw, dst_sw))
+
+        # get shortest path
+        try:
+            # returns the first found shortest path
+            # if all shortest paths are wanted, use: all_shortest_paths
+            path = nx.shortest_path(self.net.DCNetwork_graph, src_sw, dst_sw)
+        except:
+            logging.exception("No path could be found between {0} and {1} using src_sw={2} and dst_sw={3}".format(
+                src_vnf, dst_vnf, src_sw, dst_sw))
+            logging.debug("Graph nodes: %r" % self.net.DCNetwork_graph.nodes())
+            logging.debug("Graph edges: %r" % self.net.DCNetwork_graph.edges())
+            for e, v in self.net.DCNetwork_graph.edges():
+                logging.debug("%r" % self.net.DCNetwork_graph[e][v])
+            return "No path could be found between {0} and {1}".format(src_vnf, dst_vnf)
+
+        logging.info("Path between {0} and {1}: {2}".format(src_vnf,dst_vnf, path))
+        return path, src_sw, dst_sw
+
+    def convert_ryu_to_ofctl(self, flow, ofctl_cmd="add-flow"):
+        def convert_action_to_string(act):
+            cmd = ""
+            # remember to escape commands!
+            if act.get("type") == "POP_VLAN":
+                cmd += "strip_vlan,"
+            if act.get("type") == "PUSH_VLAN":
+                cmd += "push_vlan:%s," % hex(act.get("ethertype"))
+            if "field" in act and "vlan_vid" in act["field"] and act.get("type") == "SET_FIELD":
+                cmd += "set_field=%s-\>vlan_vid," % act.get("value")
+            if act.get("type") == "OUTPUT":
+                cmd += "output:%s," % int(act.get('port'))
+            if act.get("type") == "GROUP":
+                cmd += "group:%d" % act.get("group_id")
+            return cmd.rstrip(",")
+        cmd = "-O OpenFlow13 "
+        target_switch = None
+        for node in self.net:
+            try:
+                current_node = self.net.getNodeByName(node)
+                if isinstance(current_node, OVSSwitch) and int(current_node.dpid,16) == flow['dpid']:
+                    target_switch = current_node
+                    break
+            except Exception as ex:
+                logging.debug(ex)
+        if target_switch is None:
+            raise Exception("Convert_ryu_to_ofctl: Failed to find datapath id %s" % flow['dpid'])
+        if "group_id" in flow:
+            cmd += "group_id=%s," % flow.get("group_id")
+            cmd += "type=%s," % flow.get("type").lower()
+            if "buckets" in flow:
+                for bucket in flow["buckets"]:
+                    cmd += "bucket="
+                    #TODO: get correct weight field!
+                    if flow.get("type") == "select":
+                        cmd += "weight:%s," % bucket.get("weight", 0)
+                    for action in bucket.get("actions"):
+                        cmd += "%s," % convert_action_to_string(action)
+                cmd = cmd.rstrip(",")
+
+        else:
+            if "priority" in flow:
+                cmd += "priority=%s," % flow.get("priority")
+            if "cookie" in flow:
+                cmd += "cookie=%s," % flow.get("cookie")
+            if "match" in flow:
+                for key, match in flow.get("match").iteritems():
+                    cmd += "%s=%s," % (key, match)
+                cmd = cmd.rstrip(",")
+
+            cmd += ",actions="
+            for action in flow.get("actions"):
+                cmd += "%s," % convert_action_to_string(action)
+
+        cmd = cmd.rstrip(",")
+        logging.debug("Converted string is: %s %s" % (ofctl_cmd, cmd))
+
+        target_switch.dpctl(ofctl_cmd, cmd)
