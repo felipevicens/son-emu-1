@@ -317,9 +317,10 @@ class BalanceHost(Resource):
         '''
         Will set up a Load balancer behind an interface at a specified vnf
         We need both to avoid naming conflicts as interface names are not unique
+        type: ALL | SELECT | FF, default is ALL
         Post data is in this format:
         {"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man",
-        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}}
+        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}, "type": "ALL"}
         and specifies the balanced nodes
         :param vnf_src_name:
         :param vnf_src_interface:
@@ -332,6 +333,10 @@ class BalanceHost(Resource):
         net = self.api.manage.net
         src_sw_inport_nr = 0
         dest_intfs_mapping = req.get('dst_vnf_interfaces', dict())
+
+        #use all as default, as it is easiest for debugging purposes
+        # ryu expects the type to be uppercase
+        type = req.get('type', "ALL").upper()
         dest_vnf_outport_nrs = list()
 
         # find the switch belonging to the source interface, as well as the inport nr
@@ -366,8 +371,7 @@ class BalanceHost(Resource):
 
         group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
         group_add['priority'] = 0
-        # TODO: set to group_add['type'] = "SELECT", ALL is easier to debug
-        group_add['type'] = "ALL"
+        group_add['type'] = type
         group_id = self.api.manage.get_flow_group(vnf_src_interface)
         group_add['group_id'] = group_id
         group_add['buckets'] = list()
