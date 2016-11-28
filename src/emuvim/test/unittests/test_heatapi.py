@@ -58,7 +58,6 @@ class testRestApi(ApiBaseHeat):
         # start Mininet network
         self.startNet()
 
-
     def testNovaDummy(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
@@ -165,22 +164,56 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listnetworksesponse1.status_code, 200)
         self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["status"], "ACTIVE")
         listNetworksId = json.loads(listnetworksesponse1.content)["networks"][0]["id"]
+        listNetworksName = json.loads(listnetworksesponse1.content)["networks"][0]["name"]
+        listNetworksId2 = json.loads(listnetworksesponse1.content)["networks"][1]["id"]
+        print(" ")
 
+        print('->>>>>>> testNeutronListNonExistingNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks?name=non_existent_network_name"
         listnetworksesponse2 = requests.get(url,headers=headers)
         self.assertEqual(listnetworksesponse2.status_code, 404)
+        print(" ")
 
-        # TODO if the code in neutron_dummy_api NeutronShowNetwork\get_network is extended to use names as well, rename the parameter from ID to name
-        # TODO at the moment we abuse the namefield for the id...
-        url = "http://0.0.0.0:9696/v2.0/networks?name=" + listNetworksId #tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        print('->>>>>>> testNeutronListNetworksByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks?name=" + listNetworksName #tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
         listnetworksesponse3 = requests.get(url, headers=headers)
         self.assertEqual(listnetworksesponse3.status_code, 200)
-        self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["id"], listNetworksId)
+        self.assertEqual(json.loads(listnetworksesponse3.content)["networks"][0]["name"], listNetworksName)
+        print(" ")
 
-        url = "http://0.0.0.0:9696/v2.0/networks?id=" + json.loads(listnetworksesponse1.content)["networks"][0]["id"]  # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        print('->>>>>>> testNeutronListNetworksById ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks?id=" + listNetworksId  # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
         listnetworksesponse4 = requests.get(url, headers=headers)
         self.assertEqual(listnetworksesponse4.status_code, 200)
-        self.assertEqual(json.loads(listnetworksesponse1.content)["networks"][0]["id"], listNetworksId)
+        self.assertEqual(json.loads(listnetworksesponse4.content)["networks"][0]["id"], listNetworksId)
+        print(" ")
+
+        print('->>>>>>> testNeutronListNetworksByMultipleIds ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks?id=" + listNetworksId + "&id="+ listNetworksId2 # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
+        listnetworksesponse5 = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse5.status_code, 200)
+        self.assertEqual(json.loads(listnetworksesponse5.content)["networks"][0]["id"], listNetworksId)
+        self.assertEqual(json.loads(listnetworksesponse5.content)["networks"][1]["id"], listNetworksId2)
+        print(" ")
+
+        print('->>>>>>> testNeutronShowNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks/"+listNetworksId
+        shownetworksesponse = requests.get(url, headers=headers)
+        self.assertEqual(shownetworksesponse.status_code, 200)
+        self.assertEqual(json.loads(shownetworksesponse.content)["network"]["status"], "ACTIVE")
+        print(" ")
+
+        print('->>>>>>> testNeutronShowNetworkNonExistendNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks/non_existent_network_id"
+        shownetworksesponse2 = requests.get(url, headers=headers)
+        self.assertEqual(shownetworksesponse2.status_code, 404)
+        print(" ")
 
         print('->>>>>>> testNeutronCreateNetwork ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -200,25 +233,95 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>> testNeutronUpdateNetwork ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks/%s" % (json.loads(createnetworkresponse.content)["network"]["id"])
-        updatenetworkresponse = requests.put(url, data='{"network": {"name": "sample_network_new_name","admin_state_up": true}}' , headers=headers)
+        updatenetworkresponse = requests.put(url, data='{"network": {"status": "ACTIVE", "admin_state_up":true, "tenant_id":"abcd123", "name": "sample_network_new_name", "shared":false}}' , headers=headers)
         self.assertEqual(updatenetworkresponse.status_code, 200)
         self.assertEqual(json.loads(updatenetworkresponse.content)["network"]["name"], "sample_network_new_name")
+        self.assertEqual(json.loads(updatenetworkresponse.content)["network"]["tenant_id"], "abcd123")
+        print(" ")
+
+        print('->>>>>>> testNeutronUpdateNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks/non-existing-name123"
+        updatenetworkresponse = requests.put(url, data='{"network": {"name": "sample_network_new_name"}}', headers=headers)
+        self.assertEqual(updatenetworkresponse.status_code, 404)
         print(" ")
 
         print('->>>>>>> testNeutronListSubnets ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
-        listsubnetsesponse = requests.get(url, headers=headers)
-        self.assertEqual(listsubnetsesponse.status_code, 200)
-        self.assertIn("subnet", json.loads(listsubnetsesponse.content)["subnets"][0]["name"])
+        listsubnetsresponse = requests.get(url, headers=headers)
+        listSubnetName = json.loads(listsubnetsresponse.content)["subnets"][0]["name"]
+        listSubnetId = json.loads(listsubnetsresponse.content)["subnets"][0]["id"]
+        listSubnetId2 = json.loads(listsubnetsresponse.content)["subnets"][1]["id"]
+        self.assertEqual(listsubnetsresponse.status_code, 200)
+        self.assertIn("subnet", listSubnetName)
         print(" ")
+
+        print('->>>>>>> testNeutronListSubnetsByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets?name="+listSubnetName
+        listsubnetByNameresponse = requests.get(url, headers=headers)
+        self.assertEqual(listsubnetByNameresponse.status_code, 200)
+        self.assertIn("subnet", json.loads(listsubnetByNameresponse.content)["subnets"][0]["name"])
+        print(" ")
+
+        print('->>>>>>> testNeutronListSubnetsById ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId
+        listsubnetsbyidresponse = requests.get(url, headers=headers)
+        self.assertEqual(listsubnetsbyidresponse.status_code, 200)
+        self.assertIn("subnet", json.loads(listsubnetsbyidresponse.content)["subnets"][0]["name"])
+        print(" ")
+
+        print('->>>>>>> testNeutronListSubnetsByMultipleId ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId +"&id="+listSubnetId2
+        listsubnetsbymultipleidsresponse = requests.get(url, headers=headers)
+        self.assertEqual(listsubnetsbymultipleidsresponse.status_code, 200)
+        self.assertIn("subnet", json.loads(listsubnetsbymultipleidsresponse.content)["subnets"][0]["name"])
+        print(" ")
+
+
 
         print('->>>>>>> testNeutronShowSubnet->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(listsubnetsesponse.content)["subnets"][0]["id"])
-        showsubnetsesponse = requests.get(url, headers=headers)
-        self.assertEqual(showsubnetsesponse.status_code, 200)
-        self.assertIn("subnet", json.loads(showsubnetsesponse.content)["subnet"]["name"])
+        url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(listsubnetsresponse.content)["subnets"][0]["id"])
+        showsubnetsresponse = requests.get(url, headers=headers)
+        self.assertEqual(showsubnetsresponse.status_code, 200)
+        self.assertIn("subnet", json.loads(showsubnetsresponse.content)["subnet"]["name"])
+        print(" ")
+
+        print('->>>>>>> testNeutronShowNonExistingSubnet->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets/non-existing-id123"
+        showsubnetsresponse = requests.get(url, headers=headers)
+        self.assertEqual(showsubnetsresponse.status_code, 404)
+        print(" ")
+
+        print('->>>>>>> testNeutronCreateSubnetInNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets"
+        createnosubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "non-existing-networkid123","ip_version": 4,"cidr": "10.0.0.1/24"} }'
+        createsubnetresponse = requests.post(url, data=createnosubnetdata, headers=headers)
+        self.assertEqual(createsubnetresponse.status_code, 404)
+        print(" ")
+
+        print('->>>>>>> testNeutronCreateSubnetWithWrongCIDR ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets"
+        createsubnetdatawithwrongcidr = '{"subnet": {"name": "new_subnet_with_wrong_cidr", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.124"} }' % (
+        json.loads(createnetworkresponse.content)["network"]["id"])
+        createsubnetwrongcirdresponse = requests.post(url, data=createsubnetdatawithwrongcidr, headers=headers)
+        self.assertEqual(createsubnetwrongcirdresponse.status_code, 400)
+        print(" ")
+
+        print('->>>>>>> testNeutronCreateSubnetWithoutCIDR ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets"
+        createsubnetdatawithoutcidr = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4, "allocation_pools":"change_me", "gateway_ip":"10.0.0.1", "id":"new_id123", "enable_dhcp":true} }' % (
+        json.loads(createnetworkresponse.content)["network"]["id"])
+        createsubnetwithoutcirdresponse = requests.post(url, data=createsubnetdatawithoutcidr, headers=headers)
+        self.assertEqual(createsubnetwithoutcirdresponse.status_code, 400)
         print(" ")
 
         print('->>>>>>> testNeutronCreateSubnet ->>>>>>>>>>>>>>>')
@@ -230,13 +333,29 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(createsubnetresponse.content)["subnet"]["name"], "new_subnet")
         print(" ")
 
+        print('->>>>>>> testNeutronCreateSecondSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets"
+        createsubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.1/24"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
+        createsubnetfailureresponse = requests.post(url, data=createsubnetdata, headers=headers)
+        self.assertEqual(createsubnetfailureresponse.status_code, 409)
+        print(" ")
+
         print('->>>>>>> testNeutronUpdateSubnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(createsubnetresponse.content)["subnet"]["id"])
-        updatesubnetdata = '{"subnet": {"name": "new_subnet_new_name"} }'
+        updatesubnetdata = '{"subnet": {"name": "new_subnet_new_name", "network_id":"some_id", "tenant_id":"new_tenant_id", "allocation_pools":"change_me", "gateway_ip":"192.168.1.120", "ip_version":4, "cidr":"10.0.0.1/24", "id":"some_new_id", "enable_dhcp":true} }'
         updatesubnetresponse = requests.put(url, data=updatesubnetdata, headers=headers)
         self.assertEqual(updatesubnetresponse.status_code, 200)
         self.assertEqual(json.loads(updatesubnetresponse.content)["subnet"]["name"], "new_subnet_new_name")
+        print(" ")
+
+        print('->>>>>>> testNeutronUpdateNonExistingSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/subnets/non-existing-subnet-12345"
+        updatenonexistingsubnetdata = '{"subnet": {"name": "new_subnet_new_name"} }'
+        updatenonexistingsubnetresponse = requests.put(url, data=updatenonexistingsubnetdata, headers=headers)
+        self.assertEqual(updatenonexistingsubnetresponse.status_code, 404)
         print(" ")
 
 
@@ -247,6 +366,40 @@ class testRestApi(ApiBaseHeat):
         listportsesponse = requests.get(url, headers=headers)
         self.assertEqual(listportsesponse.status_code, 200)
         self.assertEqual(json.loads(listportsesponse.content)["ports"][0]["status"], "ACTIVE")
+        listPortsName = json.loads(listportsesponse.content)["ports"][0]["name"]
+        listPortsId1 = json.loads(listportsesponse.content)["ports"][0]["id"]
+        listPortsId2 = json.loads(listportsesponse.content)["ports"][1]["id"]
+        print(" ")
+
+        print('->>>>>>> testNeutronListPortsByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports?name=" + listPortsName
+        listportsbynameesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsbynameesponse.status_code, 200)
+        self.assertEqual(json.loads(listportsbynameesponse.content)["ports"][0]["name"], listPortsName)
+        print(" ")
+
+        print('->>>>>>> testNeutronListPortsById ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports?id=" + listPortsId1
+        listportsbyidesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsbyidesponse.status_code, 200)
+        self.assertEqual(json.loads(listportsbyidesponse.content)["ports"][0]["id"], listPortsId1)
+        print(" ")
+
+        print('->>>>>>> testNeutronListPortsByMultipleIds ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports?id=" + listPortsId1 +"&id="+listPortsId2
+        listportsbymultipleidsesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsbymultipleidsesponse.status_code, 200)
+        self.assertEqual(json.loads(listportsbymultipleidsesponse.content)["ports"][0]["id"], listPortsId1)
+        print(" ")
+
+        print('->>>>>>> testNeutronListNonExistingPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports?id=non-existing-port-id"
+        listportsbynonexistingidsesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsbynonexistingidsesponse.status_code, 404)
         print(" ")
 
         print('->>>>>>> testNeutronShowPort ->>>>>>>>>>>>>>>')
@@ -257,40 +410,87 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(showportresponse.content)["port"]["status"], "ACTIVE")
         print(" ")
 
+        print('->>>>>>> testNeutronShowNonexistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports/non-existing-portid123"
+        shownonexistingportresponse = requests.get(url, headers=headers)
+        self.assertEqual(shownonexistingportresponse.status_code, 404)
+        print(" ")
+
+        print('->>>>>>> testNeutronCreatePortInNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports"
+        createnonexistingportdata = '{"port": {"name": "new_port", "network_id": "non-existing-id"} }'
+        createnonexistingnetworkportresponse = requests.post(url, data=createnonexistingportdata, headers=headers)
+        self.assertEqual(createnonexistingnetworkportresponse.status_code, 404)
+        print(" ")
+
+        #TODO seems as something wents wrong if i set the id in the data field: "id":"new_id1234"
+        # then other parts do not find the port by the id...
         print('->>>>>>> testNeutronCreatePort ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
-        createportdata = '{"port": {"name": "new_port", "network_id": "%s"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
+        createportdata = '{"port": {"name": "new_port", "network_id": "%s", "admin_state_up":true, "device_id":"device_id123", "device_owner":"device_owner123", "fixed_ips":"change_me","mac_address":"12:34:56:78:90", "status":"change_me", "tenant_id":"tenant_id123"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
         createportresponse = requests.post(url, data=createportdata, headers=headers)
         self.assertEqual(createportresponse.status_code, 201)
+        print (createportresponse.content)
         self.assertEqual(json.loads(createportresponse.content)["port"]["name"], "new_port")
+        print(" ")
+
+        print('->>>>>>> testNeutronCreatePortWithExistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports"
+        createportwithexistingnamedata = '{"port": {"name": "new_port", "network_id": "%s"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
+        createportwithexistingnameresponse = requests.post(url, data=createportwithexistingnamedata, headers=headers)
+        self.assertEqual(createportwithexistingnameresponse.status_code, 500)
+        print(" ")
+
+        print('->>>>>>> testNeutronCreatePortWithoutName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports"
+        createportdatawithoutname = '{"port": {"network_id": "%s"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
+        createportwithoutnameresponse = requests.post(url, data=createportdatawithoutname, headers=headers)
+        self.assertEqual(createportwithoutnameresponse.status_code, 201)
+        self.assertIn("port:cp", json.loads(createportwithoutnameresponse.content)["port"]["name"])
         print(" ")
 
         print('->>>>>>> testNeutronUpdatePort ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["id"])
-        updateportdata = '{"port": {"name": "new_port_new_name"} }'
+        print json.loads(createportresponse.content)["port"]["name"]
+        url = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["name"])
+        updateportdata = '{"port": {"name": "new_port_new_name", "admin_state_up":true, "device_id":"device_id123", "device_owner":"device_owner123", "fixed_ips":"change_me","mac_address":"12:34:56:78:90", "status":"change_me", "tenant_id":"tenant_id123", "network_id":"network_id123"} }'
         updateportresponse = requests.put(url, data=updateportdata, headers=headers)
         self.assertEqual(updateportresponse.status_code, 200)
         self.assertEqual(json.loads(updateportresponse.content)["port"]["name"], "new_port_new_name")
         print(" ")
 
+        print('->>>>>>> testNeutronUpdateNonExistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports/non-existing-port-ip"
+        updatenonexistingportdata = '{"port": {"name": "new_port_new_name"} }'
+        updatenonexistingportresponse = requests.put(url, data=updatenonexistingportdata, headers=headers)
+        self.assertEqual(updatenonexistingportresponse.status_code, 404)
+        print(" ")
+
         print('->>>>>>> testNeutronDeletePort ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        wrongurl = "http://0.0.0.0:9696/v2.0/ports/unknownid"
         righturl = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["id"])
-        deletewrongportresponse = requests.delete(wrongurl, headers=headers)
         deleterightportresponse = requests.delete(righturl, headers=headers)
-        self.assertEqual(deletewrongportresponse.status_code, 404)
         self.assertEqual(deleterightportresponse.status_code, 204)
         print(" ")
 
 
+        print('->>>>>>> testNeutronDeleteNonExistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        wrongurl = "http://0.0.0.0:9696/v2.0/ports/unknownid"
+        deletewrongportresponse = requests.delete(wrongurl, headers=headers)
+        self.assertEqual(deletewrongportresponse.status_code, 404)
+        print(" ")
 
         print('->>>>>>> testNeutronDeleteSubnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         wrongurl = "http://0.0.0.0:9696/v2.0/subnets/unknownid"
-        righturl = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(createsubnetresponse.content)["subnet"]["id"])
+        righturl = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(updatesubnetresponse.content)["subnet"]["id"])
         deletewrongsubnetresponse = requests.delete(wrongurl, headers=headers)
         deleterightsubnetresponse = requests.delete(righturl, headers=headers)
         self.assertEqual(deletewrongsubnetresponse.status_code, 404)
@@ -299,15 +499,17 @@ class testRestApi(ApiBaseHeat):
 
         print('->>>>>>> testNeutronDeleteNetwork ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        wrongurl = "http://0.0.0.0:9696/v2.0/networks/unknownid"
         righturl = "http://0.0.0.0:9696/v2.0/networks/%s" % (json.loads(createnetworkresponse.content)["network"]["id"])
-        deletewrongnetworkresponse = requests.delete(wrongurl, headers=headers)
         deleterightnetworkresponse = requests.delete(righturl, headers=headers)
-        self.assertEqual(deletewrongnetworkresponse.status_code, 404)
         self.assertEqual(deleterightnetworkresponse.status_code, 204)
         print(" ")
 
-
+        print('->>>>>>> testNeutronDeleteNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        wrongurl = "http://0.0.0.0:9696/v2.0/networks/unknownid"
+        deletewrongnetworkresponse = requests.delete(wrongurl, headers=headers)
+        self.assertEqual(deletewrongnetworkresponse.status_code, 404)
+        print(" ")
 
     def testKeystomeDummy(self):
         headers = {'Content-type': 'application/json'}
@@ -395,6 +597,7 @@ class testRestApi(ApiBaseHeat):
         deletestackdetailsresponse = requests.delete(url, headers=headers)
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
+
 
 
 if __name__ == '__main__':

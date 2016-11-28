@@ -20,7 +20,7 @@ class KeystoneDummyApi(BaseOpenstackDummy):
 
 class Shutdown(Resource):
     def get(self):
-        logging.debug(("%s is beeing shut doen") % (__name__))
+        logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
