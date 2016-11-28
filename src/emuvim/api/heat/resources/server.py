@@ -10,6 +10,7 @@ class Server(object):
         self.port_names = list()
         self.flavor = flavor
         self.son_emu_command = None
+        self.emulator_compute = None
 
     def compare_attributes(self, other):
         if self.name == other.name and self.full_name == other.full_name and \

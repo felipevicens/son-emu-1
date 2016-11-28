@@ -230,6 +230,7 @@ class OpenstackCompute(object):
         self.compute_nets[server.name] = network
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        server.emulator_compute = c
 
         for intf in c.intfs.values():
             for port_name in server.port_names:

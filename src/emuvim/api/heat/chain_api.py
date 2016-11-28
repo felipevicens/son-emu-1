@@ -372,13 +372,13 @@ class BalanceHost(Resource):
             # setup group table for load balancing on the first switch
             group_add = dict()
             # get first switch
-            if vnf_src_interface not in self.api.manage.lb_flow_cookies:
-                self.api.manage.lb_flow_cookies[vnf_src_interface] = list()
+            if (vnf_src_name, vnf_src_interface) not in self.api.manage.lb_flow_cookies:
+                self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)] = list()
 
             group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
             group_add['priority'] = 0
             group_add['type'] = lb_type
-            group_id = self.api.manage.get_flow_group(vnf_src_interface)
+            group_id = self.api.manage.get_flow_group(vnf_src_name, vnf_src_interface)
             group_add['group_id'] = group_id
             group_add['buckets'] = list()
 
@@ -389,7 +389,7 @@ class BalanceHost(Resource):
             flow['match'] = net._parse_match('in_port=%s' % src_sw_inport_nr)
             # cookie used by this flow
             cookie = self.api.manage.get_cookie()
-            self.api.manage.lb_flow_cookies[vnf_src_interface].append(cookie)
+            self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(cookie)
             flow['cookie'] = cookie
             flow['priority'] = 1000
             action = dict()
@@ -511,7 +511,7 @@ class BalanceHost(Resource):
                                                      vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
                                                      vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                      cookie=flow_cookie)
-                self.api.manage.lb_flow_cookies[vnf_src_interface].append(flow_cookie)
+                self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)
 
             # always create the group before adding the flow entries
             logging.debug("Setting up groupentry %s" % group_add)
@@ -531,9 +531,9 @@ class BalanceHost(Resource):
                             status=200, mimetype="application/json")
 
         except Exception as e:
-            logging.exception(u"%s: Error setting up the loadbalancer at %s%s.\n %s" %
+            logging.exception(u"%s: Error setting up the loadbalancer at %s:%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
-            return Response(u"%s: Error setting up the loadbalancer at %s%s.\n %s" %
+            return Response(u"%s: Error setting up the loadbalancer at %s:%s.\n %s" %
                             (__name__, vnf_src_name, vnf_src_interface, e), status=500, mimetype="application/json")
 
     def delete(self, vnf_src_name, vnf_src_interface):
@@ -547,45 +547,12 @@ class BalanceHost(Resource):
             logging.debug("Deleting loadbalancer at %s: interface: %s", (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net
 
-            # check if both VNFs exist
+            # check if VNF exists
             if vnf_src_name not in net:
                 return Response(u"Source VNF or interface can not be found." % vnf_src_name,
                                 status=404, mimetype="application/json")
 
-            flows = list()
-            # we have to call delete-group for each switch
-            delete_group = list()
-            group_id = self.api.manage.flow_groups[vnf_src_interface]
-            for node in net.switches:
-                for cookie in self.api.manage.lb_flow_cookies[vnf_src_interface]:
-                    flow = dict()
-                    flow["dpid"] = int(node.dpid, 16)
-                    flow["cookie"] = cookie
-                    flow['cookie_mask'] = int('0xffffffffffffffff', 16)
-
-                    flows.append(flow)
-                group_del = dict()
-                group_del["dpid"] = int(node.dpid, 16)
-                group_del["group_id"] = group_id
-                delete_group.append(group_del)
-
-            for flow in flows:
-                logging.debug("Deleting flowentry with cookie %d belonging to lb at %s:%s" % (
-                    flow["cookie"], vnf_src_name, vnf_src_interface))
-                if net.controller == RemoteController:
-                    net.ryu_REST('stats/flowentry/delete', data=flow)
-                else:
-                    self.api.manage.convert_ryu_to_ofctl(flow, "del-flows")
-
-            logging.debug("Deleting group with id %s" % group_id)
-            for switch_del_group in delete_group:
-                if net.controller == RemoteController:
-                    net.ryu_REST("stats/groupentry/delete", data=switch_del_group)
-                else:
-                    self.api.manage.convert_ryu_to_ofctl(switch_del_group, "del-groups")
-
-            # unmap groupid from the interface
-            del self.api.manage.flow_groups[vnf_src_interface]
+            self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
 
             return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
                             status=200, mimetype="application/json")

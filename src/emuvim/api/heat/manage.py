@@ -2,7 +2,7 @@ import logging
 import chain_api
 import threading
 import networkx as nx
-from mininet.node import OVSSwitch
+from mininet.node import OVSSwitch, RemoteController
 
 # force full debug logging everywhere for now
 logging.getLogger().setLevel(logging.DEBUG)
@@ -47,9 +47,12 @@ class OpenstackManage(object):
         self.cookies.add(cookie)
         return cookie
 
-    def get_flow_group(self, src_vnf_interface):
-        grp = int(len(self.flow_groups) + 1)
-        self.flow_groups[src_vnf_interface] = grp
+    def get_flow_group(self, src_vnf_name, src_vnf_interface):
+        if (src_vnf_name, src_vnf_interface) not in self.flow_groups:
+            grp = int(len(self.flow_groups) + 1)
+            self.flow_groups[(src_vnf_name, src_vnf_interface)] = grp
+        else:
+            grp = self.flow_groups[(src_vnf_name, src_vnf_interface)]
         return grp
 
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
@@ -199,3 +202,45 @@ class OpenstackManage(object):
         logging.debug("Converted string is: %s %s" % (ofctl_cmd, cmd))
 
         target_switch.dpctl(ofctl_cmd, cmd)
+
+    def delete_loadbalancer(self, vnf_src_name, vnf_src_interface):
+        '''
+        Removes a loadbalancer that is configured for the node and interface
+        :param vnf_src_name:
+        :param vnf_src_interface:
+        :return:
+        '''
+        flows = list()
+        # we have to call delete-group for each switch
+        delete_group = list()
+        group_id = self.get_flow_group(vnf_src_name, vnf_src_interface)
+        for node in self.net.switches:
+            for cookie in self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)]:
+                flow = dict()
+                flow["dpid"] = int(node.dpid, 16)
+                flow["cookie"] = cookie
+                flow['cookie_mask'] = int('0xffffffffffffffff', 16)
+
+                flows.append(flow)
+            group_del = dict()
+            group_del["dpid"] = int(node.dpid, 16)
+            group_del["group_id"] = group_id
+            delete_group.append(group_del)
+
+        for flow in flows:
+            logging.debug("Deleting flowentry with cookie %d belonging to lb at %s:%s" % (
+                flow["cookie"], vnf_src_name, vnf_src_interface))
+            if self.net.controller == RemoteController:
+                self.net.ryu_REST('stats/flowentry/delete', data=flow)
+            else:
+                self.convert_ryu_to_ofctl(flow, "del-flows")
+
+        logging.debug("Deleting group with id %s" % group_id)
+        for switch_del_group in delete_group:
+            if self.net.controller == RemoteController:
+                self.net.ryu_REST("stats/groupentry/delete", data=switch_del_group)
+            else:
+                self.convert_ryu_to_ofctl(switch_del_group, "del-groups")
+
+        # unmap groupid from the interface
+        del self.flow_groups[(vnf_src_name, vnf_src_interface)]
