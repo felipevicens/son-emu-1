@@ -544,7 +544,7 @@ class BalanceHost(Resource):
         :return: flask Response
         '''
         try:
-            logging.debug("Deleting loadbalancer at %s: interface: %s", (vnf_src_name, vnf_src_interface))
+            logging.debug("Deleting loadbalancer at %s: interface: %s" % (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net
 
             # check if VNF exists

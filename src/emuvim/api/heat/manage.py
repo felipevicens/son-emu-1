@@ -6,8 +6,9 @@ from mininet.node import OVSSwitch, RemoteController
 
 # force full debug logging everywhere for now
 logging.getLogger().setLevel(logging.DEBUG)
-class OpenstackManage(object):
 
+
+class OpenstackManage(object):
     # openstackmanage is a singleton!
     __instance = None
 
@@ -16,7 +17,7 @@ class OpenstackManage(object):
             OpenstackManage.__instance = object.__new__(cls)
         return OpenstackManage.__instance
 
-    def __init__(self, ip = "0.0.0.0", port = 4000):
+    def __init__(self, ip="0.0.0.0", port=4000):
         self.endpoints = dict()
         self.cookies = set()
         self.cookies.add(0)
@@ -30,7 +31,7 @@ class OpenstackManage(object):
         self.flow_groups = dict()
 
         # we want one global chain api. this should not be datacenter dependent!
-        if not hasattr(self,"chain"):
+        if not hasattr(self, "chain"):
             self.chain = chain_api.ChainApi(ip, port, self)
         if not hasattr(self, "thread"):
             self.thread = threading.Thread(target=self.chain._start_flask, args=())
@@ -43,7 +44,7 @@ class OpenstackManage(object):
         self.endpoints[key] = ep
 
     def get_cookie(self):
-        cookie = int(max(self.cookies) +1)
+        cookie = int(max(self.cookies) + 1)
         self.cookies.add(cookie)
         return cookie
 
@@ -99,25 +100,26 @@ class OpenstackManage(object):
         src_sw = None
         dst_sw = None
         logging.debug("Find path from vnf %s to %s",
-                  src_vnf, dst_vnf)
+                      src_vnf, dst_vnf)
 
         for connected_sw in self.net.DCNetwork_graph.neighbors(src_vnf):
             link_dict = self.net.DCNetwork_graph[src_vnf][connected_sw]
             for link in link_dict:
                 for intfs in self.net[src_vnf].intfs.values():
                     if (link_dict[link]['src_port_id'] == intfs.name or
-                            link_dict[link]['src_port_name'] == intfs.name):  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                                link_dict[link][
+                                    'src_port_name'] == intfs.name):  # Fix: we might also get interface names, e.g, from a son-emu-cli call
                         # found the right link and connected switch
                         src_sw = connected_sw
                         break
-
 
         for connected_sw in self.net.DCNetwork_graph.neighbors(dst_vnf):
             link_dict = self.net.DCNetwork_graph[connected_sw][dst_vnf]
             for link in link_dict:
                 for intfs in self.net[dst_vnf].intfs.values():
                     if link_dict[link]['dst_port_id'] == intfs.name or \
-                            link_dict[link]['dst_port_name'] == intfs.name:  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                                    link_dict[link][
+                                        'dst_port_name'] == intfs.name:  # Fix: we might also get interface names, e.g, from a son-emu-cli call
                         # found the right link and connected
                         dst_sw = connected_sw
                         break
@@ -137,7 +139,7 @@ class OpenstackManage(object):
                 logging.debug("%r" % self.net.DCNetwork_graph[e][v])
             return "No path could be found between {0} and {1}".format(src_vnf, dst_vnf)
 
-        logging.info("Path between {0} and {1}: {2}".format(src_vnf,dst_vnf, path))
+        logging.info("Path between {0} and {1}: {2}".format(src_vnf, dst_vnf, path))
         return path, src_sw, dst_sw
 
     def convert_ryu_to_ofctl(self, flow, ofctl_cmd="add-flow"):
@@ -155,11 +157,12 @@ class OpenstackManage(object):
             if act.get("type") == "GROUP":
                 cmd += "group:%d" % act.get("group_id")
             return cmd.rstrip(",")
+
         cmd = "-O OpenFlow13 "
         target_switch = None
         # get the corresponding name of the datapath id
         for node in self.net.switches:
-            if isinstance(node, OVSSwitch) and int(node.dpid,16) == flow['dpid']:
+            if isinstance(node, OVSSwitch) and int(node.dpid, 16) == flow['dpid']:
                 target_switch = node
                 break
         if target_switch is None:
@@ -171,7 +174,7 @@ class OpenstackManage(object):
                 if "buckets" in flow:
                     for bucket in flow["buckets"]:
                         cmd += "bucket="
-                        #TODO: get correct weight field!
+                        # TODO: get correct weight field!
                         if flow.get("type") == "select":
                             cmd += "weight:%s," % bucket.get("weight", 0)
                         # buckets do not contain an action keyword!
