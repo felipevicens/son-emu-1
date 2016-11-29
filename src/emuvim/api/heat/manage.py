@@ -1,7 +1,9 @@
 import logging
+import re
 import chain_api
 import threading
 import networkx as nx
+from mininet.util import quietRun
 from mininet.node import OVSSwitch, RemoteController
 
 # force full debug logging everywhere for now
@@ -24,6 +26,7 @@ class OpenstackManage(object):
         self.ip = ip
         self.port = port
         self.net = None
+        self.floating_ips = dict()
         # to keep track which src_vnf(input port on the switch) handles a load balancer
         self.lb_flow_cookies = dict()
         # flow groups could be handled for each switch separately, but this global group counter should be easier to
@@ -247,3 +250,13 @@ class OpenstackManage(object):
 
         # unmap groupid from the interface
         del self.flow_groups[(vnf_src_name, vnf_src_interface)]
+
+    def checkIntf( intf ):
+        "Make sure intf exists and is not configured."
+        config = quietRun( 'ifconfig %s 2>/dev/null' % intf, shell=True )
+        if not config:
+            return False
+        ips = re.findall( r'\d+\.\d+\.\d+\.\d+', config )
+        if ips:
+            return False
+        return True

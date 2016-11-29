@@ -4,8 +4,8 @@ from flask_restful import Resource
 from flask import request, Response
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from ..resources import Net, Port
-from mininet.link import Link
 from datetime import datetime
+from mininet.link import Link, Intf
 import logging
 import json
 import uuid
@@ -49,6 +49,8 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronUpdatePort, "/v2.0/ports/<port_id>.json", "/v2.0/ports/<port_id>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NeutronDeletePort, "/v2.0/ports/<port_id>.json", "/v2.0/ports/<port_id>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(NeutronAddFloatingIp, "/v2.0/floatingips.json", "/v2.0/floatingips",
                               resource_class_kwargs={'api': self})
 
     def _start_flask(self):
@@ -660,6 +662,40 @@ class NeutronDeletePort(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")
+            return ex.message, 500
+
+
+class NeutronAddFloatingIp(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def post(self):
+        logging.debug("API CALL: Neutron - Create FloatingIP")
+        try:
+            #TODO: this is first implementation that will change with mgmt networks!
+            req = request.json
+            port_id = req["floatingip"]["port_id"]
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            if port is None:
+                return Response("Port with id %s does not exists." % port_id, status=404)
+
+            connected_sw = None
+            for link in self.api.compute.dc.net.links:
+                if str(link.intf1) == port.intf_name and \
+                                str(link.intf1.ip) == port.ip_address.split('/')[0]:
+                    connected_sw = link.intf2
+                    break
+            floating_interface = None
+            for x in range(200):
+                if not self.api.manage.checkIntf("eth-%d" % x):
+                    continue
+                floating_interface = Intf("eth-%d" % x, node=connected_sw)
+                break
+
+            port.floating_ip = floating_interface.ip
+
+        except Exception as ex:
+            logging.exception("Neutron: Create FloatingIP exception %s.", ex)
             return ex.message, 500
 
 
