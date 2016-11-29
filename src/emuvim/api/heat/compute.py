@@ -387,7 +387,7 @@ class OpenstackCompute(object):
 
     # Uses the container name to return the container ID
     def docker_container_id(self, container_name):
-        c = Client(**(kwargs_from_env()))
+        c = Client()
         detail = c.inspect_container(container_name)
         if bool(detail["State"]["Running"]):
             return detail['Id']
@@ -427,9 +427,16 @@ class OpenstackCompute(object):
         else:
             return mem_limit
 
+    def docker_mem(self, container_id):
+        out_dict = dict()
+        out_dict['MEM_used'] = self.docker_mem_used(container_id)
+        out_dict['MEM_limit'] = self.docker_max_mem(container_id)
+        out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
+        return out_dict
+
     # Network traffic of all network interfaces within the controller
     def docker_abs_net_io(self, container_id):
-        c = Client(**(kwargs_from_env()))
+        c = Client()
         command = c.exec_create(container_id, 'ifconfig')
         ifconfig = c.exec_start(command['Id'])
         sys_time = int(time.time() * 1000000000)
@@ -471,4 +478,4 @@ class OpenstackCompute(object):
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return len(f.read().split('\n'))-1
+            return {'PIDS': len(f.read().split('\n'))-1}
