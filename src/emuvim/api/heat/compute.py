@@ -387,21 +387,11 @@ class OpenstackCompute(object):
 
     # Uses the container name to return the container ID
     def docker_container_id(self, container_name):
-        c = Client(**(kwargs_from_env()))
+        c = Client()
         detail = c.inspect_container(container_name)
         if bool(detail["State"]["Running"]):
             return detail['Id']
         return None
-
-    # One way to go - not so nice, because we currently only get the seconds, the process was running
-    def docker_cpu(self, container_id):
-        first_cpu_usage = self.docker_abs_cpu(container_id)
-        time.sleep(1)
-        second_cpu_usage = self.docker_abs_cpu(container_id)
-
-        time_div = (int(second_cpu_usage['CPU_used_sysTime']) - int(first_cpu_usage['CPU_used_sysTime']))
-        usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
-        return {'CPU_%': usage_div / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']}
 
     # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
     def docker_abs_cpu(self, container_id):
@@ -412,7 +402,7 @@ class OpenstackCompute(object):
         cpu_usage = 0
         for number in numbers:
             cpu_usage += number
-        return {'CPU_used': cpu_usage, 'CPU_used_sysTime': sys_time, 'CPU_cores': len(numbers)}
+        return {'CPU_used': cpu_usage, 'CPU_used_systime': sys_time, 'CPU_cores': len(numbers)}
 
     # Bytes of memory used from the docker container
     def docker_mem_used(args, container_id):
@@ -437,11 +427,19 @@ class OpenstackCompute(object):
         else:
             return mem_limit
 
+    def docker_mem(self, container_id):
+        out_dict = dict()
+        out_dict['MEM_used'] = self.docker_mem_used(container_id)
+        out_dict['MEM_limit'] = self.docker_max_mem(container_id)
+        out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
+        return out_dict
+
     # Network traffic of all network interfaces within the controller
-    def docker_net_io(self, container_name):
-        c = Client(**(kwargs_from_env()))
-        command = c.exec_create(container_name, 'ifconfig')
+    def docker_abs_net_io(self, container_id):
+        c = Client()
+        command = c.exec_create(container_id, 'ifconfig')
         ifconfig = c.exec_start(command['Id'])
+        sys_time = int(time.time() * 1000000000)
 
         in_bytes = 0
         m = re.findall('RX bytes:(\d+)', str(ifconfig))
@@ -459,7 +457,7 @@ class OpenstackCompute(object):
         else:
             out_bytes = None
 
-        return {'NET_in': in_bytes, 'NET_out': out_bytes}
+        return {'NET_in': in_bytes, 'NET_out': out_bytes, 'NET_systime': sys_time}
 
     # Disk - read in Bytes - write in Bytes
     def docker_block_rw(self, container_id):
@@ -480,4 +478,4 @@ class OpenstackCompute(object):
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return len(f.read().split('\n'))-1
+            return {'PIDS': len(f.read().split('\n'))-1}
