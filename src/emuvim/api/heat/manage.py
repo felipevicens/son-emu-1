@@ -3,8 +3,9 @@ import re
 import chain_api
 import threading
 import networkx as nx
-from mininet.util import quietRun
-from mininet.node import OVSSwitch, RemoteController
+from emuvim.dcemulator.net import DCNetwork
+from mininet.node import OVSSwitch, RemoteController, Controller, Node
+from mininet.net import Mininet as mn
 
 # force full debug logging everywhere for now
 logging.getLogger().setLevel(logging.DEBUG)
@@ -25,8 +26,7 @@ class OpenstackManage(object):
         self.cookies.add(0)
         self.ip = ip
         self.port = port
-        self.net = None
-        self.floating_ips = dict()
+        self._net = None
         # to keep track which src_vnf(input port on the switch) handles a load balancer
         self.lb_flow_cookies = dict()
         # flow groups could be handled for each switch separately, but this global group counter should be easier to
@@ -41,6 +41,36 @@ class OpenstackManage(object):
             self.thread.daemon = True
             self.thread.name = self.chain.__class__
             self.thread.start()
+
+        # floating ip network setup
+        self.floating_switch = None
+        self.floating_netmask = "192.168.100.2/24"
+        self.floating_nodes = dict()
+
+    @property
+    def net(self):
+        return self._net
+
+    @net.setter
+    def net(self, value):
+        if self._net is None:
+            self.init_floating_network()
+        self._net = value
+
+    def init_floating_network(self):
+        if self.net is not None and self.floating_switch is None:
+            # floating ip network setup
+            self.floating_switch = self.net.addSwitch("fs1")
+            self.floating_netmask = "192.168.100.2/24"
+            self.floating_nodes = dict()
+            # this is the interface appearing on the physical host
+            self.floating_root = Node('root', inNamespace=False)
+
+            self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
+            self.floating_root.setIP(self.floating_netmask, intf=self.floating_intf)
+            self.floating_root.cmd('route add -net ' + self.floating_netmask + ' dev ' + str(self.floating_intf))
+
+            self.floating_switch.dpctl("add-flow", 'actions=NORMAL')
 
     def add_endpoint(self, ep):
         key = "%s:%s" % (ep.ip, ep.port)
@@ -250,13 +280,3 @@ class OpenstackManage(object):
 
         # unmap groupid from the interface
         del self.flow_groups[(vnf_src_name, vnf_src_interface)]
-
-    def checkIntf( intf ):
-        "Make sure intf exists and is not configured."
-        config = quietRun( 'ifconfig %s 2>/dev/null' % intf, shell=True )
-        if not config:
-            return False
-        ips = re.findall( r'\d+\.\d+\.\d+\.\d+', config )
-        if ips:
-            return False
-        return True

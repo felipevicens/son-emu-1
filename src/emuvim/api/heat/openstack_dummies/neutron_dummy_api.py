@@ -3,12 +3,13 @@ from flask import request, Response
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 from ..resources import Net, Port
 from datetime import datetime
+from mininet.node import Node
 from mininet.link import Link, Intf
 import logging
 import json
 import uuid
 import copy
-
+from mininet.util import quietRun
 
 class NeutronDummyApi(BaseOpenstackDummy):
     def __init__(self, ip, port, compute):
