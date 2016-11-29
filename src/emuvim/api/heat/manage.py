@@ -54,6 +54,7 @@ class OpenstackManage(object):
     @net.setter
     def net(self, value):
         if self._net is None:
+            self._net = value
             self.init_floating_network()
         self._net = value
 

@@ -662,3 +662,50 @@ class NeutronDeletePort(Resource):
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")
             return ex.message, 500
+
+
+class NeutronAddFloatingIp(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def post(self):
+        logging.debug("API CALL: Neutron - Create FloatingIP")
+        try:
+            #TODO: this is first implementation that will change with mgmt networks!
+            # Fiddle with floating_network !
+            #req = request.json
+            pass
+            #root = Node('root', inNamespace=False)
+            #switch = self.api.manage.net.getNodeByName("s1")
+            #intf = self.api.manage.net.addLink(root, switch).intf1
+            # root.setIP("192.168.2.0")
+            # add route
+            # root.cmd('route add -net ' + route + ' dev ' + str(intf))
+
+
+
+            # port_id = req["floatingip"]["port_id"]
+            # port = self.api.compute.find_port_by_name_or_id(port_id)
+            # if port is None:
+            #     return Response("Port with id %s does not exists." % port_id, status=404)
+            #
+            # connected_sw = None
+            # for link in self.api.compute.dc.net.links:
+            #     if str(link.intf1) == port.intf_name and \
+            #                     str(link.intf1.ip) == port.ip_address.split('/')[0]:
+            #         connected_sw = link.intf2
+            #         break
+            # floating_interface = None
+            # for x in range(200):
+            #     intf_name = "eth-%s" % x
+            #
+            #     if not self.api.manage.checkIntf(intf_name):
+            #         continue
+            #     floating_interface = Intf(intf_name, node=connected_sw)
+            #     break
+            #
+            # port.floating_ip = floating_interface.ip
+
+        except Exception as ex:
+            logging.exception("Neutron: Create FloatingIP exception %s.", ex)
+            return ex.message, 500
