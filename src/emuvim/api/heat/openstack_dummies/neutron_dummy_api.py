@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 -*-
-
 from flask_restful import Resource
 from flask import request, Response
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
@@ -480,12 +478,12 @@ class NeutronListPorts(Resource):
 
             if len(id_list) == 0:
                 for port in self.api.compute.ports.values():
-                    tmp_port_dict = create_port_dict(port, self.api.compute)
+                    tmp_port_dict = port.create_port_dict(self.api.compute)
                     port_list.append(tmp_port_dict)
             else:
                 for port in self.api.compute.ports.values():
                     if port.id in id_list:
-                        tmp_port_dict = create_port_dict(port, self.api.compute)
+                        tmp_port_dict = port.create_port_dict(self.api.compute)
                         port_list.append(tmp_port_dict)
 
             port_dict["ports"] = port_list
@@ -510,7 +508,7 @@ class NeutronShowPort(Resource):
             port = self.api.compute.find_port_by_name_or_id(port_name_or_id)
             if port is None:
                 return 'Port not found. (' + port_name_or_id + ')', 404
-            tmp_port_dict = create_port_dict(port, self.api.compute)
+            tmp_port_dict = port.create_port_dict(self.api.compute)
             tmp_dict = dict()
             if as_list:
                 tmp_dict["ports"] = [tmp_port_dict]
@@ -573,7 +571,7 @@ class NeutronCreatePort(Resource):
                     if net.id == net_id:
                         stack.ports[name] = port
 
-            return Response(json.dumps({'port': create_port_dict(port, self.api.compute)}), status=201,
+            return Response(json.dumps({'port': port.create_port_dict(self.api.compute)}), status=201,
                             mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
@@ -624,7 +622,7 @@ class NeutronUpdatePort(Resource):
             if "tenant_id" in port_dict["port"]:
                 pass
 
-            return Response(json.dumps({'port': create_port_dict(port, self.api.compute)}), status=200,
+            return Response(json.dumps({'port': port.create_port_dict(self.api.compute)}), status=200,
                             mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Update port exception.")
@@ -663,68 +661,3 @@ class NeutronDeletePort(Resource):
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")
             return ex.message, 500
-
-
-class NeutronAddFloatingIp(Resource):
-    def __init__(self, api):
-        self.api = api
-
-    def post(self):
-        logging.debug("API CALL: Neutron - Create FloatingIP")
-        try:
-            #TODO: this is first implementation that will change with mgmt networks!
-            req = request.json
-            port_id = req["floatingip"]["port_id"]
-            port = self.api.compute.find_port_by_name_or_id(port_id)
-            if port is None:
-                return Response("Port with id %s does not exists." % port_id, status=404)
-
-            connected_sw = None
-            for link in self.api.compute.dc.net.links:
-                if str(link.intf1) == port.intf_name and \
-                                str(link.intf1.ip) == port.ip_address.split('/')[0]:
-                    connected_sw = link.intf2
-                    break
-            floating_interface = None
-            for x in range(200):
-                if not self.api.manage.checkIntf("eth-%d" % x):
-                    continue
-                floating_interface = Intf("eth-%d" % x, node=connected_sw)
-                break
-
-            port.floating_ip = floating_interface.ip
-
-        except Exception as ex:
-            logging.exception("Neutron: Create FloatingIP exception %s.", ex)
-            return ex.message, 500
-
-
-def create_port_dict(port, compute):
-    port_dict = dict()
-    port_dict["admin_state_up"] = True  # TODO is it always true?
-    port_dict["device_id"] = "257614cc-e178-4c92-9c61-3b28d40eca44"  # TODO find real values
-    port_dict["device_owner"] = ""  # TODO do we have such things?
-    tmp_subnet_id = None
-    for net in compute.nets.values():
-        if port.net_name == net.name:
-            tmp_subnet_id = net.subnet_id
-    tmp_ip_address = None
-    if port.ip_address is not None:
-        tmp_ip_address = port.ip_address.rsplit('/', 1)[0]
-    port_dict["fixed_ips"] = [
-        {
-            "ip_address": tmp_ip_address,
-            "subnet_id": tmp_subnet_id
-        }
-    ]
-    port_dict["id"] = port.id
-    port_dict["mac_address"] = port.mac_address
-    port_dict["name"] = port.name
-
-    net = compute.find_network_by_name_or_id(port.net_name)
-    if net is not None:
-        port_dict["network_id"] = net.id
-
-    port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
-    port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
-    return port_dict
