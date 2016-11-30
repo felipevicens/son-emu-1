@@ -673,16 +673,7 @@ class NeutronAddFloatingIp(Resource):
         try:
             #TODO: this is first implementation that will change with mgmt networks!
             # Fiddle with floating_network !
-            #req = request.json
-            pass
-            #root = Node('root', inNamespace=False)
-            #switch = self.api.manage.net.getNodeByName("s1")
-            #intf = self.api.manage.net.addLink(root, switch).intf1
-            # root.setIP("192.168.2.0")
-            # add route
-            # root.cmd('route add -net ' + route + ' dev ' + str(intf))
-
-
+            req = request.json
 
             # port_id = req["floatingip"]["port_id"]
             # port = self.api.compute.find_port_by_name_or_id(port_id)
