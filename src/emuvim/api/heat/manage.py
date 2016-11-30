@@ -4,6 +4,9 @@ import chain_api
 import threading
 import networkx as nx
 from emuvim.dcemulator.net import DCNetwork
+from emuvim.api.heat.resources import Net, Port
+from emuvim.api.heat.openstack_dummies.neutron_dummy_api import NeutronDummyApi
+import uuid
 from mininet.node import OVSSwitch, RemoteController, Controller, Node
 from mininet.util import ipAdd
 from mininet.net import Mininet as mn
@@ -45,8 +48,10 @@ class OpenstackManage(object):
 
         # floating ip network setup
         self.floating_switch = None
-        self.floating_netmask = "192.168.100.2/24"
+        self.floating_network = None
+        self.floating_netmask = "192.168.100.0/24"
         self.floating_nodes = dict()
+        self.floating_intf = None
         self._floating_last_ip = 3
 
     @property
@@ -69,18 +74,25 @@ class OpenstackManage(object):
 
     def init_floating_network(self):
         if self.net is not None and self.floating_switch is None:
+            fn = self.floating_network = Net("floating-network")
+            fn.id = str(uuid.uuid4())
+            fn.set_cidr(self.floating_netmask)
+            fn.subnet_id = str(uuid.uuid4())
+            fn.subnet_name = fn.name + "-sub"
+            port = Port("root-port")
+            port.id = str(uuid.uuid4())
+            port.net_name = fn.name
+            root_ip = fn.get_new_ip_address(port.name)
+            port.ip_address = root_ip
             # floating ip network setup
             self.floating_switch = self.net.addSwitch("fs1")
-            self.floating_netmask = "192.168.100.2/24"
             # this is the interface appearing on the physical host
             self.floating_root = Node('root', inNamespace=False)
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
-
-            self.floating_root.setIP(self.floating_netmask, intf=self.floating_intf)
-            self.floating_root.cmd('route add -net ' + self.floating_netmask + ' dev ' + str(self.floating_intf))
-            self.floating_switch.dpctl("add-flow", 'actions=NORMAL')
-
-
+            self.floating_root.setIP(root_ip, intf=self.floating_intf)
+            self.floating_root.cmd('route add -net ' + root_ip + ' dev ' + str(self.floating_intf))
+            self.floating_switch.dpctl("add-flow", 'action=NORMAL')
+            self.floating_nodes[self.floating_root.name] = self.floating_root
 
     def add_endpoint(self, ep):
         key = "%s:%s" % (ep.ip, ep.port)

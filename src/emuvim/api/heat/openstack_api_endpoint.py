@@ -32,6 +32,7 @@ class OpenstackApiEndpoint():
 
     def connect_dc_network(self, dc_network):
         self.manage.net = dc_network
+        self.compute.nets[self.manage.floating_network.id] = self.manage.floating_network
         logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
             self.__class__.__name__, self.ip, self.port))
 
