@@ -345,6 +345,9 @@ class BalanceHost(Resource):
             lb_type = req.get('type', "ALL").upper()
             dest_vnf_outport_nrs = list()
 
+            if vnf_src_name not in self.api.manage.net:
+                return Response(u"The source VNF does not exist", status=500, mimetype="application/json")
+
             # find the switch belonging to the source interface, as well as the inport nr
             for connected_sw in self.api.manage.net.DCNetwork_graph.neighbors(vnf_src_name):
                 link_dict = self.api.manage.net.DCNetwork_graph[vnf_src_name][connected_sw]
@@ -402,8 +405,18 @@ class BalanceHost(Resource):
             index = 0
 
             # set up paths for each destination vnf individually
-            for dst_vnf_name in dest_intfs_mapping:
-                path, src_sw, dst_sw = self.api.manage._get_path(vnf_src_name, dst_vnf_name)
+            for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.iteritems():
+                path, src_sw, dst_sw = self.api.manage._get_path(vnf_src_name, dst_vnf_name,
+                                                                 vnf_src_interface, dst_vnf_interface)
+
+                if dst_vnf_name not in self.api.manage.net:
+                    self.delete(vnf_src_name, vnf_src_interface)
+                    return Response(u"The destination VNF %s does not exist" % dst_vnf_name,
+                                    status=500, mimetype="application/json")
+                if isinstance(path, dict):
+                    self.delete(vnf_src_name, vnf_src_interface)
+                    return Response(u"Can not find a valid path. Are you specifying the right interfaces?.",
+                                    status=404, mimetype="application/json")
                 dst_sw_outport_nr = dest_vnf_outport_nrs[index]
                 index += 1
                 current_hop = src_sw
@@ -508,7 +521,7 @@ class BalanceHost(Resource):
                 # set up chain to enable answers
                 flow_cookie = self.api.manage.get_cookie()
                 self.api.manage.network_action_start(dst_vnf_name, vnf_src_name,
-                                                     vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
+                                                     vnf_src_interface=dst_vnf_interface,
                                                      vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                      cookie=flow_cookie)
                 self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)

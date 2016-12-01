@@ -84,7 +84,9 @@ class OpenstackManage(object):
             root_ip = fn.get_new_ip_address(port.name)
             port.ip_address = root_ip
             # floating ip network setup
-            self.floating_switch = self.net.addSwitch("fs1")
+            # wierd way of getting a datacenter object
+            first_dc = self.net.dcs.values()[0]
+            self.floating_switch = self.net.addSwitch("fs1", dpid=hex(first_dc._get_next_dc_dpid())[2:])
             # this is the interface appearing on the physical host
             self.floating_root = Node('root', inNamespace=False)
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
@@ -152,7 +154,7 @@ class OpenstackManage(object):
             logging.exception("RPC error.")
             return ex.message
 
-    def _get_path(self, src_vnf, dst_vnf):
+    def _get_path(self, src_vnf, dst_vnf, src_vnf_intf, dst_vnf_intf):
         # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
         dst_sw = None
@@ -162,24 +164,22 @@ class OpenstackManage(object):
         for connected_sw in self.net.DCNetwork_graph.neighbors(src_vnf):
             link_dict = self.net.DCNetwork_graph[src_vnf][connected_sw]
             for link in link_dict:
-                for intfs in self.net[src_vnf].intfs.values():
-                    if (link_dict[link]['src_port_id'] == intfs.name or
-                                link_dict[link][
-                                    'src_port_name'] == intfs.name):  # Fix: we might also get interface names, e.g, from a son-emu-cli call
-                        # found the right link and connected switch
-                        src_sw = connected_sw
-                        break
+                if (link_dict[link]['src_port_id'] == src_vnf_intf or
+                            link_dict[link][
+                                'src_port_name'] == src_vnf_intf):
+                    # found the right link and connected switch
+                    src_sw = connected_sw
+                    break
 
         for connected_sw in self.net.DCNetwork_graph.neighbors(dst_vnf):
             link_dict = self.net.DCNetwork_graph[connected_sw][dst_vnf]
             for link in link_dict:
-                for intfs in self.net[dst_vnf].intfs.values():
-                    if link_dict[link]['dst_port_id'] == intfs.name or \
-                                    link_dict[link][
-                                        'dst_port_name'] == intfs.name:  # Fix: we might also get interface names, e.g, from a son-emu-cli call
-                        # found the right link and connected
-                        dst_sw = connected_sw
-                        break
+                if link_dict[link]['dst_port_id'] == dst_vnf_intf or \
+                                link_dict[link][
+                                    'dst_port_name'] == dst_vnf_intf:
+                    # found the right link and connected
+                    dst_sw = connected_sw
+                    break
         logging.debug("From switch %s to %s " % (src_sw, dst_sw))
 
         # get shortest path
