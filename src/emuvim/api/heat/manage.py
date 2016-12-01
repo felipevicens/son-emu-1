@@ -52,7 +52,6 @@ class OpenstackManage(object):
         self.floating_netmask = "192.168.100.0/24"
         self.floating_nodes = dict()
         self.floating_intf = None
-        self._floating_last_ip = 3
 
     @property
     def net(self):
@@ -65,23 +64,23 @@ class OpenstackManage(object):
             self.init_floating_network()
         self._net = value
 
-    @property
-    def floating_next_ip(self):
-        ip, netmask = self.floating_netmask.split("/")[0]
-        next_ip = ipAdd(self._floating_last_ip, ip, netmask) +"/"+ netmask
-        self._floating_last_ip += 1
-        return next_ip
-
     def init_floating_network(self):
         if self.net is not None and self.floating_switch is None:
+            # create a floating network
             fn = self.floating_network = Net("floating-network")
             fn.id = str(uuid.uuid4())
             fn.set_cidr(self.floating_netmask)
+
+            # create a subnet
             fn.subnet_id = str(uuid.uuid4())
             fn.subnet_name = fn.name + "-sub"
+
+            # create a port for the host
             port = Port("root-port")
             port.id = str(uuid.uuid4())
             port.net_name = fn.name
+
+            # get next free ip
             root_ip = fn.get_new_ip_address(port.name)
             port.ip_address = root_ip
             # floating ip network setup
@@ -91,8 +90,11 @@ class OpenstackManage(object):
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
             self.floating_root.cmd('route add -net ' + root_ip + ' dev ' + str(self.floating_intf))
-            self.floating_switch.dpctl("add-flow", 'action=NORMAL')
-            self.floating_nodes[self.floating_root.name] = self.floating_root
+            # for exclusive host-to-n connections
+            # self.floating_switch.dpctl("add-flow", 'in_port=1,actions=NORMAL')
+            # set up a simple learning switch
+            self.floating_switch.dpctl("add-flow", 'actions=NORMAL')
+            self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
 
     def add_endpoint(self, ep):
         key = "%s:%s" % (ep.ip, ep.port)

@@ -485,7 +485,12 @@ class NovaInterfaceToServer(Resource):
             network_dict = dict()
             network = None
 
-            if net is not None:
+
+            if net is not None and port is not None:
+                network_dict['id'] = port.intf_name
+                network_dict['ip'] = port.ip_address
+                network_dict[network_dict['id']] = network.name
+            elif net is not None:
                 network = self.api.compute.find_network_by_name_or_id(net)
                 port = self.api.compute.create_port("port:cp%s:man:%s" %
                                                     (len(self.api.compute.ports), str(uuid.uuid4())))
@@ -503,9 +508,22 @@ class NovaInterfaceToServer(Resource):
             else:
                 raise Exception("You can only attach interfaces by port or network at the moment")
 
-            dc.net.addLink(server.emulator_compute, dc.switch,
-                           params1=network_dict, cls=Link, intfName1=port.intf_name)
+            if network == self.api.manage.floating_network:
+                self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
+                dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
+                               params1=network_dict, cls=Link, intfName1=port.intf_name)
 
+                # if we want to have exclusive host-to-n connections we have to enable this
+                # link_dict = dc.net.DCNetwork_graph[server.name][self.api.manage.floating_switch]
+                # for link in link_dict:
+                #     if link_dict[link]['src_port_name'] == port.intf_name:
+                #         inport = int(link_dict[link]['dst_port_nr'])
+
+                # connect each VNF to the host only. No pinging between VNFs possible
+                # self.api.manage.floating_switch("add-flow", "in_port=%s,actions=OUTPUT:1" % inport)
+            else:
+                dc.net.addLink(server.emulator_compute, dc.switch,
+                               params1=network_dict, cls=Link, intfName1=port.intf_name)
             resp["port_state"] = "ACTIVE"
             resp["port_id"] = port.id
             resp["net_id"] = self.api.compute.find_network_by_name_or_id(port.net_name).id

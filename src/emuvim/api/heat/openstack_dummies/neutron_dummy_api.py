@@ -675,28 +675,40 @@ class NeutronAddFloatingIp(Resource):
             # Fiddle with floating_network !
             req = request.json
 
-            # port_id = req["floatingip"]["port_id"]
-            # port = self.api.compute.find_port_by_name_or_id(port_id)
-            # if port is None:
-            #     return Response("Port with id %s does not exists." % port_id, status=404)
-            #
-            # connected_sw = None
-            # for link in self.api.compute.dc.net.links:
-            #     if str(link.intf1) == port.intf_name and \
-            #                     str(link.intf1.ip) == port.ip_address.split('/')[0]:
-            #         connected_sw = link.intf2
-            #         break
-            # floating_interface = None
-            # for x in range(200):
-            #     intf_name = "eth-%s" % x
-            #
-            #     if not self.api.manage.checkIntf(intf_name):
-            #         continue
-            #     floating_interface = Intf(intf_name, node=connected_sw)
-            #     break
-            #
-            # port.floating_ip = floating_interface.ip
+            network_id = req["floatingip"]["floating_network_id"]
+            net = self.api.compute.find_network_by_name_or_id(network_id)
+            if net != self.api.manage.floating_network:
+                return Response("You have to specify the existing floating network", status=400)
 
+            port_id = req["floatingip"].get("port_id", None)
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            if port is not None:
+                if port.net_name != self.api.manage.floating_network.name:
+                    return Response("You have to specify a port in the floating network", status=400)
+
+                if port.floating_ip is not None:
+                    return Response("We allow only one floating ip per port", status=400)
+            else:
+                num_ports = len(self.api.compute.ports)
+                name = "port:cp%s:fl:%s" % (num_ports, str(uuid.uuid4()))
+                port = self.api.compute.create_port(name)
+                port.net_name = net.name
+                port.ip_address = net.get_new_ip_address(name)
+
+            port.floating_ip = port.ip_address
+
+            response = dict()
+            resp = response["floatingip"] = dict()
+
+            resp["floating_network_id"] = net.id
+            resp["status"] = "ACTIVE"
+            resp["id"] = net.id
+            resp["port_id"] = port.id
+            resp["floating_ip_address"] = port.floating_ip
+            resp["fixed_ip_address"] = port.floating_ip
+
+            return Response(json.dumps(response), status=200,
+                        mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Create FloatingIP exception %s.", ex)
             return ex.message, 500
