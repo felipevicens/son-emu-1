@@ -1,12 +1,15 @@
 from flask_restful import Resource
 from flask import request, Response
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
+from ..resources import Net, Port
 from datetime import datetime
+from mininet.node import Node
+from mininet.link import Link, Intf
 import logging
 import json
 import uuid
 import copy
-
+from mininet.util import quietRun
 
 class NeutronDummyApi(BaseOpenstackDummy):
     def __init__(self, ip, port, compute):
@@ -45,6 +48,8 @@ class NeutronDummyApi(BaseOpenstackDummy):
         self.api.add_resource(NeutronUpdatePort, "/v2.0/ports/<port_id>.json", "/v2.0/ports/<port_id>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NeutronDeletePort, "/v2.0/ports/<port_id>.json", "/v2.0/ports/<port_id>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(NeutronAddFloatingIp, "/v2.0/floatingips.json", "/v2.0/floatingips",
                               resource_class_kwargs={'api': self})
 
     def _start_flask(self):
@@ -656,4 +661,54 @@ class NeutronDeletePort(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")
+            return ex.message, 500
+
+
+class NeutronAddFloatingIp(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def post(self):
+        logging.debug("API CALL: Neutron - Create FloatingIP")
+        try:
+            #TODO: this is first implementation that will change with mgmt networks!
+            # Fiddle with floating_network !
+            req = request.json
+
+            network_id = req["floatingip"]["floating_network_id"]
+            net = self.api.compute.find_network_by_name_or_id(network_id)
+            if net != self.api.manage.floating_network:
+                return Response("You have to specify the existing floating network", status=400)
+
+            port_id = req["floatingip"].get("port_id", None)
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            if port is not None:
+                if port.net_name != self.api.manage.floating_network.name:
+                    return Response("You have to specify a port in the floating network", status=400)
+
+                if port.floating_ip is not None:
+                    return Response("We allow only one floating ip per port", status=400)
+            else:
+                num_ports = len(self.api.compute.ports)
+                name = "port:cp%s:fl:%s" % (num_ports, str(uuid.uuid4()))
+                port = self.api.compute.create_port(name)
+                port.net_name = net.name
+                port.ip_address = net.get_new_ip_address(name)
+
+            port.floating_ip = port.ip_address
+
+            response = dict()
+            resp = response["floatingip"] = dict()
+
+            resp["floating_network_id"] = net.id
+            resp["status"] = "ACTIVE"
+            resp["id"] = net.id
+            resp["port_id"] = port.id
+            resp["floating_ip_address"] = port.floating_ip
+            resp["fixed_ip_address"] = port.floating_ip
+
+            return Response(json.dumps(response), status=200,
+                        mimetype='application/json')
+        except Exception as ex:
+            logging.exception("Neutron: Create FloatingIP exception %s.", ex)
             return ex.message, 500

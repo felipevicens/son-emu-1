@@ -3,7 +3,8 @@ from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
 import json
-from datetime import datetime
+import uuid
+from mininet.link import Link
 
 
 class NovaDummyApi(BaseOpenstackDummy):
@@ -22,13 +23,16 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(NovaInterfaceToServer, "/v2.1/<id>/servers/<serverid>/os-interface",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(NovaShowAndDeleteInterfaceAtServer, "/v2.1/<id>/servers/<serverid>/os-interface/<portid>",
+                              resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors/",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavorsDetails, "/v2.1/<id>/flavors/detail",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavorById, "/v2.1/<id>/flavors/<flavorid>",
                               resource_class_kwargs={'api': self})
-
         self.api.add_resource(NovaListImages, "/v2.1/<id>/images",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListImagesDetails, "/v2.1/<id>/images/detail",
@@ -461,4 +465,105 @@ class NovaShowServerDetails(Resource):
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the server details." % __name__)
+            return ex.message, 500
+
+
+class NovaInterfaceToServer(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def post(self, id, serverid):
+        try:
+            server = self.api.compute.find_server_by_name_or_id(serverid)
+            if server is None:
+                return Response("Server with id or name %s does not exists." % serverid, status=404)
+            data = request.json.get("interfaceAttachment")
+            resp = dict()
+            port = data.get("port_id", None)
+            net = data.get("net_id", None)
+            dc = self.api.compute.dc
+            network_dict = dict()
+            network = None
+
+
+            if net is not None and port is not None:
+                network_dict['id'] = port.intf_name
+                network_dict['ip'] = port.ip_address
+                network_dict[network_dict['id']] = network.name
+            elif net is not None:
+                network = self.api.compute.find_network_by_name_or_id(net)
+                port = self.api.compute.create_port("port:cp%s:man:%s" %
+                                                    (len(self.api.compute.ports), str(uuid.uuid4())))
+                port.net_name = network.name
+                port.ip_address = network.get_new_ip_address(port.name)
+                network_dict['id'] = port.intf_name
+                network_dict['ip'] = port.ip_address
+                network_dict[network_dict['id']] = network.name
+            elif port is not None:
+                port = self.api.compute.find_port_by_name_or_id(port)
+                network_dict['id'] = port.intf_name
+                network_dict['ip'] = port.ip_address
+                network = self.api.compute.find_network_by_name_or_id(port.net_name)
+                network_dict[network_dict['id']] = network.name
+            else:
+                raise Exception("You can only attach interfaces by port or network at the moment")
+
+            if network == self.api.manage.floating_network:
+                self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
+                dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
+                               params1=network_dict, cls=Link, intfName1=port.intf_name)
+
+                # if we want to have exclusive host-to-n connections we have to enable this
+                # link_dict = dc.net.DCNetwork_graph[server.name][self.api.manage.floating_switch]
+                # for link in link_dict:
+                #     if link_dict[link]['src_port_name'] == port.intf_name:
+                #         inport = int(link_dict[link]['dst_port_nr'])
+
+                # connect each VNF to the host only. No pinging between VNFs possible
+                # self.api.manage.floating_switch("add-flow", "in_port=%s,actions=OUTPUT:1" % inport)
+            else:
+                dc.net.addLink(server.emulator_compute, dc.switch,
+                               params1=network_dict, cls=Link, intfName1=port.intf_name)
+            resp["port_state"] = "ACTIVE"
+            resp["port_id"] = port.id
+            resp["net_id"] = self.api.compute.find_network_by_name_or_id(port.net_name).id
+            resp["mac_addr"] = port.mac_address
+            resp["fixed_ips"] = list()
+            fixed_ips = dict()
+            fixed_ips["ip_address"] = port.ip_address
+            fixed_ips["subnet_id"] = network.subnet_name
+            resp["fixed_ips"].append(fixed_ips)
+            return Response(json.dumps({"interfaceAttachment": resp}), status=202, mimetype="application/json")
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not add interface to the server." % __name__)
+            return ex.message, 500
+
+
+class NovaShowAndDeleteInterfaceAtServer(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def delete(self, id, serverid, port_id):
+        try:
+            server = self.api.compute.find_server_by_name_or_id(serverid)
+            if server is None:
+                return Response("Server with id or name %s does not exists." % serverid, status=404)
+            port = self.api.compute.find_port_by_name_or_id(port_id)
+            if port is None:
+                return Response("Port with id or name %s does not exists." % port_id, status=404)
+
+            for link in self.api.compute.dc.net.links:
+                if str(link.intf1) == port.intf_name and \
+                                str(link.intf1.ip) == port.ip_address.split('/')[0]:
+                    self.api.compute.dc._remove_link(link.intf1.node.name, link)
+                    break
+
+            if self.api.manage.get_flow_group(server.name, port.intf_name) is not None:
+                self.api.manage.delete_loadbalancer(server.name, port.intf_name)
+
+            return Response("", status=202, mimetype="application/json")
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not detach interface to the server." % __name__)
             return ex.message, 500

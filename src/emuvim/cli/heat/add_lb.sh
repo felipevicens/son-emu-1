@@ -7,4 +7,19 @@
 
 # ovs-ofctl -O OpenFlow13 add-group dc1.s1 group_id=1,type=all,bucket=output:3,bucket=output:4,bucket=output:5
 
-curl -X POST -d '{"dst_vnf_interfaces": {"dc1_man_serv1": "port-cp1-man","dc1_man_serv2": "port-cp2-man","dc1_man_serv3": "port-cp3-man"}}' -H "Content-Type: application/json" http://localhost:4000/v1/lb/dc1_man_serv0/port-cp0-man
+# 4 DCs 1 server
+#curl -X POST -d '{"dst_vnf_interfaces": {"dc2_man_serv0": "port-cp0-man","dc3_man_serv0": "port-cp0-man","dc4_man_serv0": "port-cp0-man"}}' -H "Content-Type: application/json" http://localhost:4000/v1/lb/dc1_man_serv0/port-cp0-man
+
+
+# 2 DCs 2 servers each
+curl -X POST -d '{"dst_vnf_interfaces": {"dc1_man_serv1": "port-cp1-man","dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}}' -H "Content-Type: application/json" http://localhost:4000/v1/lb/dc1_man_serv0/port-cp0-man
+
+
+#curl -X POST -d '{"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man","dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}}' -H "Content-Type: application/json" http://localhost:4000/v1/lb/dc1_man_serv1/port-cp1-man
+
+# delete lb
+# curl -X DELETE -H "Content-Type: application/json" http://localhost:4000/v1/lb/dc1_man_serv0/port-cp0-man
+docker exec -d mn.dc1_man_serv0 ip r a 192.168.0.0/21 dev port-cp0-man  proto kernel  scope link  src 192.168.2.2
+docker exec -d mn.dc1_man_serv1 ip r a 192.168.0.0/21 dev port-cp1-man  proto kernel  scope link  src 192.168.2.3
+docker exec -d mn.dc2_man_serv0 ip r a 192.168.0.0/21 dev port-cp0-man  proto kernel  scope link  src 192.168.3.2
+docker exec -d mn.dc2_man_serv1 ip r a 192.168.0.0/21 dev port-cp1-man  proto kernel  scope link  src 192.168.3.3
