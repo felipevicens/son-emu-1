@@ -521,7 +521,7 @@ class BalanceHost(Resource):
                 # set up chain to enable answers
                 flow_cookie = self.api.manage.get_cookie()
                 self.api.manage.network_action_start(dst_vnf_name, vnf_src_name,
-                                                     vnf_src_interface=dest_intfs_mapping[dst_vnf_name],
+                                                     vnf_src_interface=dst_vnf_interface,
                                                      vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                      cookie=flow_cookie)
                 self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)
