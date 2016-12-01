@@ -152,7 +152,7 @@ class OpenstackManage(object):
             logging.exception("RPC error.")
             return ex.message
 
-    def _get_path(self, src_vnf, dst_vnf):
+    def _get_path(self, src_vnf, dst_vnf, src_vnf_intf, dst_vnf_intf):
         # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
         dst_sw = None
@@ -163,9 +163,9 @@ class OpenstackManage(object):
             link_dict = self.net.DCNetwork_graph[src_vnf][connected_sw]
             for link in link_dict:
                 for intfs in self.net[src_vnf].intfs.values():
-                    if (link_dict[link]['src_port_id'] == intfs.name or
+                    if (link_dict[link]['src_port_id'] == src_vnf_intf or
                                 link_dict[link][
-                                    'src_port_name'] == intfs.name):  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                                    'src_port_name'] == src_vnf_intf):
                         # found the right link and connected switch
                         src_sw = connected_sw
                         break
@@ -174,9 +174,9 @@ class OpenstackManage(object):
             link_dict = self.net.DCNetwork_graph[connected_sw][dst_vnf]
             for link in link_dict:
                 for intfs in self.net[dst_vnf].intfs.values():
-                    if link_dict[link]['dst_port_id'] == intfs.name or \
+                    if link_dict[link]['dst_port_id'] == dst_vnf_intf or \
                                     link_dict[link][
-                                        'dst_port_name'] == intfs.name:  # Fix: we might also get interface names, e.g, from a son-emu-cli call
+                                        'dst_port_name'] == dst_vnf_intf:
                         # found the right link and connected
                         dst_sw = connected_sw
                         break
