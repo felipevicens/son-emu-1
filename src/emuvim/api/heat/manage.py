@@ -84,7 +84,7 @@ class OpenstackManage(object):
             root_ip = fn.get_new_ip_address(port.name)
             port.ip_address = root_ip
             # floating ip network setup
-            self.floating_switch = self.net.addSwitch("fs1")
+            self.floating_switch = self.net.addSwitch("fs1", inNamespace=False)
             # this is the interface appearing on the physical host
             self.floating_root = Node('root', inNamespace=False)
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1

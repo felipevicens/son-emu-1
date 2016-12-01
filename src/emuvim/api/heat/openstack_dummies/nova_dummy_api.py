@@ -492,8 +492,11 @@ class NovaInterfaceToServer(Resource):
                 network_dict[network_dict['id']] = network.name
             elif net is not None:
                 network = self.api.compute.find_network_by_name_or_id(net)
-                port = self.api.compute.create_port("port:cp%s:man:%s" %
+                if network is None:
+                    return Response("Network with id or name %s does not exists." % net, status=404)
+                port = self.api.compute.create_port("port:cp%s:fl:%s" %
                                                     (len(self.api.compute.ports), str(uuid.uuid4())))
+
                 port.net_name = network.name
                 port.ip_address = network.get_new_ip_address(port.name)
                 network_dict['id'] = port.intf_name
