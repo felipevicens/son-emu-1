@@ -358,7 +358,7 @@ class BalanceHost(Resource):
                         break
 
             if src_sw is None or src_sw_inport_nr == 0:
-                return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                return Response(u"Source VNF or interface can not be found.",
                                 status=404, mimetype="application/json")
 
             # get all target interface outport numbers
@@ -377,6 +377,15 @@ class BalanceHost(Resource):
             # get first switch
             if (vnf_src_name, vnf_src_interface) not in self.api.manage.lb_flow_cookies:
                 self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)] = list()
+
+            src_intf = None
+            for intf in self.api.manage.net[vnf_src_name].intfs.values():
+                if intf.name == vnf_src_interface:
+                    src_intf = intf
+
+            if src_intf is None:
+                return Response(u"Source VNF or interface can not be found.",
+                                status=405, mimetype="application/json")
 
             group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
             group_add['priority'] = 0
@@ -478,11 +487,33 @@ class BalanceHost(Resource):
                             action['value'] = vlan | 0x1000
                             bucket['actions'].append(action)
 
+                            mac_addr = "00:00:00:00:00:00"
+                            ip_addr = "0.0.0.0"
+                            for intf in self.api.manage.net[dst_vnf_name].intfs.values():
+                                if intf.name == dst_vnf_interface:
+                                    mac_addr = str(intf.mac)
+                                    ip_addr = str(intf.ip)
+
+                            # rewrite dst_mac
+                            action = dict()
+                            action['type'] = 'SET_FIELD'
+                            action['field'] = 'eth_dst'
+                            action['value'] = mac_addr
+                            bucket['actions'].append(action)
+
+                            # rewrite dst_ip
+                            action = dict()
+                            action['type'] = 'SET_FIELD'
+                            action['field'] = 'ipv4_dst'
+                            action['value'] = ip_addr
+                            bucket['actions'].append(action)
+
                             # finally output the packet to the next switch
                             action = dict()
                             action['type'] = 'OUTPUT'
                             action['port'] = switch_outport_nr
                             bucket['actions'].append(action)
+
                             group_add["buckets"].append(bucket)
                             logging.debug(
                                 "Appending bucket %s. src vnf %s to dst vnf %s" % (bucket, vnf_src_name, dst_vnf_name))
@@ -507,6 +538,28 @@ class BalanceHost(Resource):
                         # dest is connected to the same switch so just choose the right port to forward to
                         bucket = dict()
                         bucket['actions'] = list()
+
+                        mac_addr = "00:00:00:00:00:00"
+                        ip_addr = "0.0.0.0"
+                        for intf in self.api.manage.net[dst_vnf_name].intfs.values():
+                            if intf.name == dst_vnf_interface:
+                                mac_addr = str(intf.mac)
+                                ip_addr = str(intf.ip)
+
+                        # rewrite dst_mac
+                        action = dict()
+                        action['type'] = 'SET_FIELD'
+                        action['field'] = 'eth_dst'
+                        action['value'] = mac_addr
+                        bucket['actions'].append(action)
+
+                        # rewrite dst_ip
+                        action = dict()
+                        action['type'] = 'SET_FIELD'
+                        action['field'] = 'ipv4_dst'
+                        action['value'] = ip_addr
+                        bucket['actions'].append(action)
+
                         action = dict()
                         action['type'] = 'OUTPUT'
                         action['port'] = dst_sw_outport_nr

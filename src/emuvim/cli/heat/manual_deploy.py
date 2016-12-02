@@ -96,8 +96,11 @@ def create_network_and_subnet(name, cidr=None, datacenter=0):
 
     return networkid
 
-def create_port(network_id, datacenter):
-    data = '{"port": {"network_id": "%s"} }' % (network_id)
+def create_port(network_id, datacenter, name = None):
+    if name is not None:
+        data = '{"port": {"network_id": "%s", "name": "%s"} }' % (network_id, name)
+    else:
+        data = '{"port": {"network_id": "%s"} }' % (network_id)
     resp = run_request("/ports", data=data, neutron=True, req="POST", dc=datacenter)
     return json.loads(resp.content)["port"]["id"]
 
@@ -116,11 +119,13 @@ def assign_floating_ip_to_server(server_id, datacenter):
     return json.loads(resp.content)
 
 def add_loadbalancer(server, intface, lb_data):
-    # ''
     data = json.dumps(lb_data)
     resp = run_request("/lb/%s/%s" % (str(server), str(intface)), data=data, chain=True, req="POST")
     return resp
 
+def set_chain(src_vnf, src_intf, dst_vnf, dst_intf):
+    data = '{}'
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="PUT")
 
 def sample_topo():
     for dc in xrange(4):
@@ -136,6 +141,37 @@ def sample_topo():
     add_loadbalancer("dc1_man_serv0", "port-cp0-man", lb_data)
 
 
+def lb_webservice_topo():
+    # create a firewall in each DC
+
+
+    for dc in xrange(4):
+        net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (dc + 2), datacenter=dc)
+
+        for x in xrange(1):
+            if dc == 0:
+                port = create_port(net, datacenter=dc)
+                server = create_server("fw%s" %x, "m1.tiny", "xschlef/firewall:latest", port, datacenter=dc)
+                # this is actually a race condition. If the floating interface is too slow then the FW will not set up
+                # correctly!
+                add_floatingip_to_server(server["server"]["id"], datacenter=dc)
+
+            for y in xrange(1):
+                port = create_port(net, datacenter=dc)
+                server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
+                # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
+
+    #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man","dc2_man_web0": "port-cp0-man",
+    #                                          "dc3_man_web0": "port-cp0-man","dc4_man_web0": "port-cp0-man"}, "type": "SELECT"}
+
+                lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
+
+    add_loadbalancer("dc1_man_fw0","port-cp0-man", lb_data)
+
+
+    pass
+
 if __name__ == "__main__":
-    sample_topo()
+    #sample_topo()
+    lb_webservice_topo()
 
