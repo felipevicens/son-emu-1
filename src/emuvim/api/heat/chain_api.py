@@ -25,6 +25,8 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHost, "/v1/lb/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(BalanceHostDcStack, "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>",
+                              resource_class_kwargs={'api': self})
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
@@ -306,6 +308,91 @@ class ChainVnfDcStackInterfaces(Resource):
         interface_dst = port_dst.intf_name
 
         return container_src, container_dst, interface_src, interface_dst
+
+class BalanceHostDcStack(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def post(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
+        req = request.json
+        if req is None or len(req) == 0:
+            return Response(u"You have to specify destination vnfs via the POST data.",
+                            status=500, mimetype="application/json")
+
+        # check src vnf/port
+        real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+        if type(real_src) is not tuple:
+            # something went wrong, real_src is a Response object
+            return real_src
+
+        container_src, interface_src = real_src
+
+        # check dst vnf/ports
+        dst_vnfs = req.get('dst_vnf_interfaces', list())
+
+        real_dst_dict = {}
+        for dst_vnf in dst_vnfs:
+            dst_dc = dst_vnf.get('pop', None)
+            dst_stack = dst_vnf.get('stack', None)
+            dst_server = dst_vnf.get('server', None)
+            dst_port = dst_vnf.get('port', None)
+            if dst_dc is not None and dst_stack is not None and dst_server is not None and dst_port is not None:
+                real_dst = self._findName(dst_dc, dst_stack, dst_server, dst_port)
+                if type(real_dst) is not tuple:
+                    # something went wrong, real_dst is a Response object
+                    return real_dst
+                real_dst_dict[real_dst[0]] = real_dst[1]
+
+        input_object = {"dst_vnf_interfaces":real_dst_dict, "type":req.get("type","all")}
+
+        # do call 
+        request.json = input_object
+        rec_balance = BalanceHost(self.api)
+        return rec_balance.post(container_src, interface_src)
+
+    # Tries to find real container and port name according to heat template names
+    # Returns a string or a Response object
+    def _findName(self, dc, stack, vnf, port):
+        # search for datacenters
+        if dc not in self.api.manage.net.dcs:
+            return Response(u"DC does not exist", status=500, mimetype="application/json")
+        dc_real = self.api.manage.net.dcs[dc]
+        # search for related OpenStackAPIs
+        api_real = None
+        from openstack_api_endpoint import OpenstackApiEndpoint
+        for api in OpenstackApiEndpoint.dc_apis:
+            if api.compute.dc == dc_real:
+                api_real = api
+        if api_real is None:
+            return Response(u"OpenStackAPI does not exist", status=500, mimetype="application/json")
+        # search for stacks
+        stack_real = None
+        for stackObj in api_real.compute.stacks.values():
+            if stackObj.stack_name == stack:
+                stack_real = stackObj
+        if stack_real is None:
+            return Response(u"Stack does not exist", status=500, mimetype="application/json")
+        # search for servers
+        server_real = None
+        for server in stack_real.servers.values():
+            if server.template_name == vnf:
+                server_real = server
+                break
+        if server_real is None:
+            return Response(u"VNF does not exist", status=500, mimetype="application/json")
+
+        container_real = server_real.name
+
+        # search for ports
+        port_real = None
+        if port in server_real.port_names:
+            port_real = stack_real.ports[port]
+        if port_real is None:
+            return Response(u"At least one Port does not exist", status=500, mimetype="application/json")
+
+        interface_real = port_real.intf_name
+
+        return container_real, interface_real
 
 
 class BalanceHost(Resource):
