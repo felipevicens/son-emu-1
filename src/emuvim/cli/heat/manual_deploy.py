@@ -118,6 +118,11 @@ def assign_floating_ip_to_server(server_id, datacenter):
     resp = run_request("/servers/%s/os-interface" % str(server_id), data=data, nova=True, req="POST", dc=datacenter)
     return json.loads(resp.content)
 
+def assign_intf_to_server(server_id, port_id, datacenter):
+    data = '{"interfaceAttachment":{"port_id":"%s"}}' % port_id
+    resp = run_request("/servers/%s/os-interface" % str(server_id), data=data, nova=True, req="POST", dc=datacenter)
+    return json.loads(resp.content)
+
 def add_loadbalancer(server, intface, lb_data):
     data = json.dumps(lb_data)
     resp = run_request("/lb/%s/%s" % (str(server), str(intface)), data=data, chain=True, req="POST")
@@ -145,7 +150,7 @@ def lb_webservice_topo():
     # create a firewall in each DC
 
 
-    for dc in xrange(4):
+    for dc in xrange(1):
         net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (dc + 2), datacenter=dc)
 
         for x in xrange(1):

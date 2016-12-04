@@ -1,13 +1,13 @@
 FROM      osrg/ryu
 MAINTAINER steven.vanrossem@intec.ugent.be
 
-RUN	apt-get update && apt-get install -y \
+RUN	apt-get update --fix-missing && apt-get install -y \
 	net-tools \
 	iproute \
 	inetutils-ping
 
 # install OpenvSwitch 
-RUN apt-get install -y openvswitch-switch openvswitch-common 
+RUN apt-get install -y openvswitch-switch openvswitch-common iptables ufw tcpdump netcat 
 
 
 ADD start_fw.sh start.sh
