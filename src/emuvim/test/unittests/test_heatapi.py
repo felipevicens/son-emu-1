@@ -71,6 +71,10 @@ class testRestApi(ApiBaseHeat):
         listapiversionnovaresponse = requests.get(url, headers=headers)
         self.assertEqual(listapiversionnovaresponse.status_code, 200)
         self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["id"], "v2.1")
+        self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["status"], "CURRENT")
+        self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["version"], "2.38")
+        self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["min_version"], "2.1")
+        self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["updated"], "2013-07-23T11:33:21Z")
         print(" ")
 
         print('->>>>>>> testNovaVersionShow ->>>>>>>>>>>>>>>')
@@ -79,6 +83,10 @@ class testRestApi(ApiBaseHeat):
         listapiversion21novaresponse = requests.get(url, headers=headers)
         self.assertEqual(listapiversion21novaresponse.status_code, 200)
         self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["id"], "v2.1")
+        self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["status"], "CURRENT")
+        self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["version"], "2.38")
+        self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["min_version"], "2.1")
+        self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["updated"], "2013-07-23T11:33:21Z")
         print(" ")
 
         print('->>>>>>> testNovaVersionListServerAPIs ->>>>>>>>>>>>>>>')
@@ -88,23 +96,6 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listserverapisnovaresponse.status_code, 200)
         self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
         print(" ")
-
-        print('->>>>>>> testNovaVersionListServerAPIsDetailed ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/detail"
-        listserverapisdetailedresponse = requests.get(url, headers=headers)
-        self.assertEqual(listserverapisdetailedresponse.status_code, 200)
-        self.assertNotEqual(json.loads(listserverapisdetailedresponse.content)["servers"][0]["name"], "")
-        print(" ")
-
-        #print('->>>>>>> testNovaShowServerDetails ->>>>>>>>>>>>>>>')
-        #print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        #url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"])
-        #listserverdetailsresponse = requests.get(url, headers=headers)
-        #self.assertEqual(listserverdetailsresponse.status_code, 200)
-        #print (listserverdetailsresponse.content)
-        #self.assertEqual(json.loads(listserverdetailsresponse.content)["server"], "")
-        #print(" ")
 
         print('->>>>>>> testNovaListFlavors ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -121,12 +112,103 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/detail"
         listflavorsdetailresponse = requests.get(url, headers=headers)
         self.assertEqual(listflavorsdetailresponse.status_code, 200)
-        print (listflavorsdetailresponse.content)
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
-        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"],["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][1]["name"],["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][2]["name"],["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         print(" ")
 
+        print('->>>>>>> testNovaListFlavorById ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/%s" % (json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"])
+        listflavorsbyidresponse = requests.get(url, headers=headers)
+        self.assertEqual(listflavorsbyidresponse.status_code, 200)
+        self.assertEqual(json.loads(listflavorsbyidresponse.content)["flavor"]["id"], json.loads(listflavorsdetailresponse.content)["flavors"][0]["id"])
+        print(" ")
+
+
+        print('->>>>>>> testNovaListImages ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/images"
+        listimagesresponse = requests.get(url, headers=headers)
+        self.assertEqual(listimagesresponse.status_code, 200)
+        self.assertIn(json.loads(listimagesresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        self.assertIn(json.loads(listimagesresponse.content)["images"][1]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        self.assertIn(json.loads(listimagesresponse.content)["images"][2]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        print(" ")
+
+        print('->>>>>>> testNovaListImagesDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/images/detail"
+        listimagesdetailsresponse = requests.get(url, headers=headers)
+        self.assertEqual(listimagesdetailsresponse.status_code, 200)
+        self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][1]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][2]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        self.assertEqual(json.loads(listimagesdetailsresponse.content)["images"][0]["metadata"]["architecture"],"x86_64")
+        print(" ")
+
+        print('->>>>>>> testNovaListImageById ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/images/%s" % (json.loads(listimagesdetailsresponse.content)["images"][0]["id"])
+        listimagebyidresponse = requests.get(url, headers=headers)
+        self.assertEqual(listimagebyidresponse.status_code, 200)
+        self.assertEqual(json.loads(listimagebyidresponse.content)["image"]["id"],json.loads(listimagesdetailsresponse.content)["images"][0]["id"])
+        print(" ")
+
+        print('->>>>>>> testNovaListImageByNonExistendId ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/images/non_existing_id"
+        listimagebynonexistingidresponse = requests.get(url, headers=headers)
+        self.assertEqual(listimagebynonexistingidresponse.status_code, 404)
+        print(" ")
+
+        #find ubintu id
+        for image in json.loads(listimagesresponse.content)["images"]:
+            if image["name"] == "ubuntu:trusty":
+                ubuntu_image_id = image["id"]
+
+
+
+        print('->>>>>>> testNovacreateServerInstance ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers"
+        data = '{"server": {"name": "X", "flavorRef": "%s", "imageRef":"%s"}}' % (json.loads(listflavorsresponse.content)["flavors"][0]["id"], ubuntu_image_id)
+        createserverinstance = requests.post(url, data=data, headers=headers)
+        self.assertEqual(createserverinstance.status_code, 200)
+        self.assertEqual(json.loads(createserverinstance.content)["server"]["image"]["id"], ubuntu_image_id)
+        print(" ")
+
+        print('->>>>>>> testNovacreateServerInstanceWithExistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers"
+        data = '{"server": {"name": "X", "flavorRef": "%s", "imageRef":"%s"}}' % (json.loads(listflavorsresponse.content)["flavors"][0]["id"], ubuntu_image_id)
+        createserverinstance = requests.post(url, data=data, headers=headers)
+        self.assertEqual(createserverinstance.status_code, 409)
+        print(" ")
+
+        print('->>>>>>> testNovaVersionListServerAPIsDetailed ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/detail"
+        listserverapisdetailedresponse = requests.get(url, headers=headers)
+        self.assertEqual(listserverapisdetailedresponse.status_code, 200)
+        self.assertEqual(json.loads(listserverapisdetailedresponse.content)["servers"][0]["status"], "ACTIVE")
+        print(" ")
+
+        print('->>>>>>> testNovaShowServerDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"])
+        listserverdetailsresponse = requests.get(url, headers=headers)
+        self.assertEqual(listserverdetailsresponse.status_code, 200)
+        print (listserverdetailsresponse.content)
+        self.assertEqual(json.loads(listserverdetailsresponse.content)["server"]["flavor"]["links"][0]["rel"], "bookmark")
+        print(" ")
+
+        print('->>>>>>> testNovaShowNonExistingServerDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/non_existing_server_id"
+        listnonexistingserverdetailsresponse = requests.get(url, headers=headers)
+        self.assertEqual(listnonexistingserverdetailsresponse.status_code, 404)
+        print(" ")
 
 
 
@@ -597,7 +679,6 @@ class testRestApi(ApiBaseHeat):
         deletestackdetailsresponse = requests.delete(url, headers=headers)
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
-
 
 
 if __name__ == '__main__':
