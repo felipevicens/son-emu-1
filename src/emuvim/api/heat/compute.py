@@ -117,7 +117,7 @@ class OpenstackCompute(object):
         # Stop all servers and their links of this stack
         for server in self.stacks[stack_id].servers.values():
             self._stop_compute(server)
-            self.delete_server(server.id)
+            self.delete_server(server)
         for net in self.stacks[stack_id].nets.values():
             self.delete_network(net.id)
         for port in self.stacks[stack_id].ports.values():
@@ -231,7 +231,8 @@ class OpenstackCompute(object):
                 network.append(network_dict)
         self.compute_nets[server.name] = network
 
-        c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        c = self.dc.startCompute(server.name, image=server.image, command=server.command,
+                                 network=network, flavor_name=server.flavor)
         server.emulator_compute = c
 
         for intf in c.intfs.values():
@@ -270,14 +271,14 @@ class OpenstackCompute(object):
                 self._remove_link(server.name, link)
 
         self.dc.stopCompute(server.name)
-        self.delete_server(server.name)
+        self.delete_server(server)
 
     def find_server_by_name_or_id(self, name_or_id):
         if name_or_id in self.computeUnits:
             return self.computeUnits[name_or_id]
 
         for server in self.computeUnits.values():
-            if server.id == name_or_id or server.template_name == name_or_id or server.full_name == name_or_id:
+            if server.name == name_or_id or server.template_name == name_or_id or server.full_name == name_or_id:
                 return server
         return None
 
@@ -289,16 +290,15 @@ class OpenstackCompute(object):
         self.computeUnits[server.id] = server
         return server
 
-    def delete_server(self, name_or_id):
-        server = self.find_server_by_name_or_id(name_or_id)
+    def delete_server(self, server):
         if server is None:
             return False
 
-        self.computeUnits.pop(name_or_id, None)
+        self.computeUnits.pop(server.id, None)
 
         # remove the server from any stack
         for stack in self.stacks.values():
-            stack.servers.pop(server.name, None)
+            stack.servers.pop(server.id, None)
 
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:
