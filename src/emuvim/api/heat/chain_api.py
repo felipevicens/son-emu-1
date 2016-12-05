@@ -466,8 +466,12 @@ class BalanceHost(Resource):
                 self.api.manage.lb_flow_cookies[(vnf_src_name, vnf_src_interface)] = list()
 
             src_intf = None
+            src_ip = None
+            src_mac_addr = None
             for intf in self.api.manage.net[vnf_src_name].intfs.values():
                 if intf.name == vnf_src_interface:
+                    src_mac_addr = intf.mac
+                    src_ip = intf.ip
                     src_intf = intf
 
             if src_intf is None:
@@ -513,6 +517,13 @@ class BalanceHost(Resource):
                     self.delete(vnf_src_name, vnf_src_interface)
                     return Response(u"Can not find a valid path. Are you specifying the right interfaces?.",
                                     status=404, mimetype="application/json")
+
+                mac_addr = "00:00:00:00:00:00"
+                ip_addr = "0.0.0.0"
+                for intf in self.api.manage.net[dst_vnf_name].intfs.values():
+                    if intf.name == dst_vnf_interface:
+                        mac_addr = str(intf.mac)
+                        ip_addr = str(intf.ip)
                 dst_sw_outport_nr = dest_vnf_outport_nrs[index]
                 index += 1
                 current_hop = src_sw
@@ -548,7 +559,6 @@ class BalanceHost(Resource):
                     match = 'in_port=%s' % switch_inport_nr
                     # possible Ryu actions, match fields:
                     # http://ryu.readthedocs.io/en/latest/app/ofctl_rest.html#add-a-flow-entry
-
                     # if a vlan is picked, the connection is routed through multiple switches
                     if vlan is not None:
                         flow = dict()
@@ -573,13 +583,6 @@ class BalanceHost(Resource):
                             # ryu expects the field to be masked
                             action['value'] = vlan | 0x1000
                             bucket['actions'].append(action)
-
-                            mac_addr = "00:00:00:00:00:00"
-                            ip_addr = "0.0.0.0"
-                            for intf in self.api.manage.net[dst_vnf_name].intfs.values():
-                                if intf.name == dst_vnf_interface:
-                                    mac_addr = str(intf.mac)
-                                    ip_addr = str(intf.ip)
 
                             # rewrite dst_mac
                             action = dict()
@@ -625,13 +628,6 @@ class BalanceHost(Resource):
                         # dest is connected to the same switch so just choose the right port to forward to
                         bucket = dict()
                         bucket['actions'] = list()
-
-                        mac_addr = "00:00:00:00:00:00"
-                        ip_addr = "0.0.0.0"
-                        for intf in self.api.manage.net[dst_vnf_name].intfs.values():
-                            if intf.name == dst_vnf_interface:
-                                mac_addr = str(intf.mac)
-                                ip_addr = str(intf.ip)
 
                         # rewrite dst_mac
                         action = dict()
