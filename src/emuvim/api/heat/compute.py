@@ -231,7 +231,8 @@ class OpenstackCompute(object):
                 network.append(network_dict)
         self.compute_nets[server.name] = network
 
-        c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        c = self.dc.startCompute(server.name, image=server.image, command=server.command,
+                                 network=network, flavor_name=server.flavor)
         server.emulator_compute = c
 
         for intf in c.intfs.values():
