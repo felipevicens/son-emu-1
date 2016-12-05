@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import requests
 import logging
 import json
@@ -10,13 +11,16 @@ nova_baseurl = "/v2.1/fc394f2ab2df4114bde39905f800dc57"
 
 logging.basicConfig(level=logging.DEBUG)
 
-def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False, headers=None):
-    if not nova and not neutron:
+def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False, chain=False, headers=None):
+    if not nova and not neutron and not chain:
         return False
+
     if nova:
-        url = "%s:%d%s%s" % (ip_or_hostname, nova_baseport + dc, nova_baseurl, resource)
+        url = "%s:%d%s%s" % (ip_or_hostname, (nova_baseport + dc), nova_baseurl, resource)
     if neutron:
-        url = "%s:%d%s%s" % (ip_or_hostname, neutron_baseport + dc, neutron_baseurl, resource)
+        url = "%s:%d%s%s" % (ip_or_hostname, (neutron_baseport + dc), neutron_baseurl, resource)
+    if chain:
+        url = "%s:%d%s%s" % (ip_or_hostname, 4000, "/v1", resource)
 
     if not headers:
         headers = {'Content-type': 'application/json'}
@@ -36,8 +40,6 @@ def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False,
     else:
         logging.debug("EMPTY RESPONSE")
     return resp
-
-
 
 
 def create_server(name, flavor, image, portid, datacenter=0):
@@ -72,6 +74,7 @@ def create_server(name, flavor, image, portid, datacenter=0):
            '"min_count": "1",' \
            '"networks": [{"port": "%s"}]}}' % (name, imageid, flavorid, portid)
     resp = run_request("/servers",data=data, nova=True, req="POST", dc=datacenter)
+    return json.loads(resp.content)
 
 
 def create_network_and_subnet(name, cidr=None, datacenter=0):
@@ -93,17 +96,90 @@ def create_network_and_subnet(name, cidr=None, datacenter=0):
 
     return networkid
 
-
-def create_port(network_id, datacenter=0):
-    data = '{"port": {"network_id": "%s"} }' % (network_id)
+def create_port(network_id, datacenter, name = None):
+    if name is not None:
+        data = '{"port": {"network_id": "%s", "name": "%s"} }' % (network_id, name)
+    else:
+        data = '{"port": {"network_id": "%s"} }' % (network_id)
     resp = run_request("/ports", data=data, neutron=True, req="POST", dc=datacenter)
     return json.loads(resp.content)["port"]["id"]
 
+def add_floatingip_to_server(server, datacenter):
+    resp = assign_floating_ip_to_server(server, datacenter)
+    return resp
 
-for dc in xrange(4):
-    net = create_network_and_subnet("test%s" % dc, "192.168.3.0/24", datacenter=dc)
+def create_floating_ip(datacenter):
+    data = '{"floatingip":{"floating_network_id":"floating-network"}}'
+    resp = run_request("/floatingips", data=data, neutron=True, req="POST", dc=datacenter)
+    return json.loads(resp.content)["floatingip"]["port_id"]
 
-    for x in xrange(1):
-        port = create_port(net, datacenter=dc)
-        create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
+def assign_floating_ip_to_server(server_id, datacenter):
+    data = '{"interfaceAttachment":{"net_id":"floating-network"}}'
+    resp = run_request("/servers/%s/os-interface" % str(server_id), data=data, nova=True, req="POST", dc=datacenter)
+    return json.loads(resp.content)
+
+def assign_intf_to_server(server_id, port_id, datacenter):
+    data = '{"interfaceAttachment":{"port_id":"%s"}}' % port_id
+    resp = run_request("/servers/%s/os-interface" % str(server_id), data=data, nova=True, req="POST", dc=datacenter)
+    return json.loads(resp.content)
+
+def add_loadbalancer(server, intface, lb_data):
+    data = json.dumps(lb_data)
+    resp = run_request("/lb/%s/%s" % (str(server), str(intface)), data=data, chain=True, req="POST")
+    return resp
+
+def set_chain(src_vnf, src_intf, dst_vnf, dst_intf):
+    data = '{}'
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="PUT")
+
+def sample_topo():
+    for dc in xrange(4):
+        net = create_network_and_subnet("test%s" % dc, "192.168.%d.0/24" % (dc+2), datacenter=dc)
+
+        for x in xrange(2):
+            port = create_port(net, datacenter=dc)
+            server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
+            add_floatingip_to_server(server["server"]["id"], datacenter=dc)
+
+    lb_data = {"dst_vnf_interfaces": {"dc1_man_serv1": "port-cp2-man","dc2_man_serv0": "port-cp0-man",
+                                      "dc2_man_serv1": "port-cp2-man"}}
+    add_loadbalancer("dc1_man_serv0", "port-cp0-man", lb_data)
+
+
+def lb_webservice_topo():
+    # create a firewall in each DC
+
+
+    for dc in xrange(4):
+        net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (2), datacenter=dc)
+
+        for x in xrange(1):
+            if dc == 0:
+                port = create_port(net, datacenter=dc)
+                server = create_server("fip%s" %x, "m1.tiny", "xschlef/floatingip:latest", port, datacenter=dc)
+                # this is actually a race condition. If the floating interface is too slow then the FW will not set up
+                # correctly!
+                add_floatingip_to_server(server["server"]["id"], datacenter=dc)
+
+            else:
+                port = create_port(net, datacenter=dc)
+                for y in xrange(1):
+                    port = create_port(net, datacenter=dc)
+                    server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
+                    # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
+
+    lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-cp1-man",
+                                              "dc3_man_web0": "port-cp1-man","dc4_man_web0": "port-cp1-man"},
+               "type": "SELECT"}
+
+                #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
+
+    add_loadbalancer("dc1_man_fip0","port-cp0-man", lb_data)
+
+
+    pass
+
+if __name__ == "__main__":
+    #sample_topo()
+    lb_webservice_topo()
 
