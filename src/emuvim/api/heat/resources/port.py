@@ -32,6 +32,26 @@ class Port:
     def get_short_id(self):
         return str(self.id)[:6]
 
+    def create_port_dict(self, compute):
+        port_dict = dict()
+        port_dict["admin_state_up"] = True  # TODO is it always true?
+        port_dict["device_id"] = "257614cc-e178-4c92-9c61-3b28d40eca44"  # TODO find real values
+        port_dict["device_owner"] = ""  # TODO do we have such things?
+        net = compute.find_network_by_name_or_id(self.net_name)
+        port_dict["fixed_ips"] = [
+            {
+                "ip_address": self.ip_address.rsplit('/', 1)[0] if self.ip_address is not None else None,
+                "subnet_id": net.subnet_id if net is not None else None
+            }
+        ]
+        port_dict["id"] = self.id
+        port_dict["mac_address"] = self.mac_address
+        port_dict["name"] = self.name
+        port_dict["network_id"] = net.id if net is not None else None
+        port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
+        port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
+        return port_dict
+
     def __eq__(self, other):
         if other is None:
             return False

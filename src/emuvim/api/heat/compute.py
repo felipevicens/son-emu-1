@@ -8,6 +8,7 @@ import time
 import re
 import uuid
 
+
 class HeatApiStackInvalidException(Exception):
     def __init__(self, value):
         self.value = value
@@ -23,7 +24,7 @@ class OpenstackCompute(object):
         self.computeUnits = dict()
         self.routers = dict()
         self.flavors = dict()
-        self._images= dict()
+        self._images = dict()
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
@@ -47,7 +48,6 @@ class OpenstackCompute(object):
                     self._images[imageName] = Image(imageName)
         return self._images
 
-
     def add_stack(self, stack):
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
@@ -64,7 +64,7 @@ class OpenstackCompute(object):
             for port_name in server.port_names:
                 if port_name not in stack.ports:
                     logging.warning("Server %s of stack %s has a port named %s that is not known." %
-                                  (server.name, stack.stack_name, port_name))
+                                    (server.name, stack.stack_name, port_name))
                     everything_ok = False
             if server.image is None:
                 logging.warning("Server %s holds no image." % (server.name))
@@ -75,7 +75,7 @@ class OpenstackCompute(object):
         for port in stack.ports.values():
             if port.net_name not in stack.nets:
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
-                              (port.name, stack.stack_name, port.net_name))
+                                (port.name, stack.stack_name, port.net_name))
                 everything_ok = False
             if port.intf_name is None:
                 logging.warning("Port %s has no interface name." % (port.name))
@@ -173,7 +173,8 @@ class OpenstackCompute(object):
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                       str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
+                                                    str(link.intf1.ip) == \
+                                                    old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
                                         # Add changed link
@@ -186,7 +187,8 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
+                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
+                                            0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -209,7 +211,7 @@ class OpenstackCompute(object):
         self.stacks[new_stack.id] = new_stack
         return True
 
-    def _start_compute(self, server, stack = None):
+    def _start_compute(self, server, stack=None):
         """ Starts a new compute object (docker container) inside the emulator
         Should only be called by stack modifications and not directly.
         :param server: emuvim.api.heat.resources.server
@@ -230,6 +232,7 @@ class OpenstackCompute(object):
         self.compute_nets[server.name] = network
 
         c = self.dc.startCompute(server.name, image=server.image, command=server.command, network=network)
+        server.emulator_compute = c
 
         for intf in c.intfs.values():
             for port_name in server.port_names:
@@ -240,7 +243,7 @@ class OpenstackCompute(object):
                             c.setMAC(port.mac_address)
                         else:
                             port.mac_address = intf.mac
-                        #TODO: mac addresses in neutron_dummy_api!
+                            # TODO: mac addresses in neutron_dummy_api!
 
         # Start the real emulator command now as specified in the dockerfile
         # ENV SON_EMU_CMD
@@ -387,21 +390,11 @@ class OpenstackCompute(object):
 
     # Uses the container name to return the container ID
     def docker_container_id(self, container_name):
-        c = Client(**(kwargs_from_env()))
+        c = Client()
         detail = c.inspect_container(container_name)
         if bool(detail["State"]["Running"]):
             return detail['Id']
         return None
-
-    # One way to go - not so nice, because we currently only get the seconds, the process was running
-    def docker_cpu(self, container_id):
-        first_cpu_usage = self.docker_abs_cpu(container_id)
-        time.sleep(1)
-        second_cpu_usage = self.docker_abs_cpu(container_id)
-
-        time_div = (int(second_cpu_usage['CPU_used_sysTime']) - int(first_cpu_usage['CPU_used_sysTime']))
-        usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
-        return {'CPU_%': usage_div / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']}
 
     # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
     def docker_abs_cpu(self, container_id):
@@ -412,7 +405,7 @@ class OpenstackCompute(object):
         cpu_usage = 0
         for number in numbers:
             cpu_usage += number
-        return {'CPU_used': cpu_usage, 'CPU_used_sysTime': sys_time, 'CPU_cores': len(numbers)}
+        return {'CPU_used': cpu_usage, 'CPU_used_systime': sys_time, 'CPU_cores': len(numbers)}
 
     # Bytes of memory used from the docker container
     def docker_mem_used(args, container_id):
@@ -430,18 +423,26 @@ class OpenstackCompute(object):
         if unit == 'kB':
             sys_value *= 1024
         if unit == 'MB':
-            sys_value *= 1024*1024
+            sys_value *= 1024 * 1024
 
         if sys_value < mem_limit:
             return sys_value
         else:
             return mem_limit
 
+    def docker_mem(self, container_id):
+        out_dict = dict()
+        out_dict['MEM_used'] = self.docker_mem_used(container_id)
+        out_dict['MEM_limit'] = self.docker_max_mem(container_id)
+        out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
+        return out_dict
+
     # Network traffic of all network interfaces within the controller
-    def docker_net_io(self, container_name):
-        c = Client(**(kwargs_from_env()))
-        command = c.exec_create(container_name, 'ifconfig')
+    def docker_abs_net_io(self, container_id):
+        c = Client()
+        command = c.exec_create(container_id, 'ifconfig')
         ifconfig = c.exec_start(command['Id'])
+        sys_time = int(time.time() * 1000000000)
 
         in_bytes = 0
         m = re.findall('RX bytes:(\d+)', str(ifconfig))
@@ -459,7 +460,7 @@ class OpenstackCompute(object):
         else:
             out_bytes = None
 
-        return {'NET_in': in_bytes, 'NET_out': out_bytes}
+        return {'NET_in': in_bytes, 'NET_out': out_bytes, 'NET_systime': sys_time}
 
     # Disk - read in Bytes - write in Bytes
     def docker_block_rw(self, container_id):
@@ -480,4 +481,4 @@ class OpenstackCompute(object):
     # Number of PIDS of that docker container
     def docker_PIDS(self, container_id):
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return len(f.read().split('\n'))-1
+            return {'PIDS': len(f.read().split('\n'))-1}
