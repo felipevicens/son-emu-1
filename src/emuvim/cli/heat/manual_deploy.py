@@ -150,28 +150,31 @@ def lb_webservice_topo():
     # create a firewall in each DC
 
 
-    for dc in xrange(1):
-        net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (dc + 2), datacenter=dc)
+    for dc in xrange(4):
+        net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (2), datacenter=dc)
 
         for x in xrange(1):
             if dc == 0:
                 port = create_port(net, datacenter=dc)
-                server = create_server("fw%s" %x, "m1.tiny", "xschlef/firewall:latest", port, datacenter=dc)
+                server = create_server("fip%s" %x, "m1.tiny", "xschlef/floatingip:latest", port, datacenter=dc)
                 # this is actually a race condition. If the floating interface is too slow then the FW will not set up
                 # correctly!
                 add_floatingip_to_server(server["server"]["id"], datacenter=dc)
 
-            for y in xrange(1):
+            else:
                 port = create_port(net, datacenter=dc)
-                server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
-                # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
+                for y in xrange(1):
+                    port = create_port(net, datacenter=dc)
+                    server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
+                    # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
 
-    #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man","dc2_man_web0": "port-cp0-man",
-    #                                          "dc3_man_web0": "port-cp0-man","dc4_man_web0": "port-cp0-man"}, "type": "SELECT"}
+    lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-cp1-man",
+                                              "dc3_man_web0": "port-cp1-man","dc4_man_web0": "port-cp1-man"},
+               "type": "SELECT"}
 
-                lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
+                #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
 
-    add_loadbalancer("dc1_man_fw0","port-cp0-man", lb_data)
+    add_loadbalancer("dc1_man_fip0","port-cp0-man", lb_data)
 
 
     pass
