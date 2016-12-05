@@ -271,7 +271,7 @@ class OpenstackCompute(object):
                 self._remove_link(server.name, link)
 
         self.dc.stopCompute(server.name)
-        self.delete_server(server.name)
+        self.delete_server(server.id)
 
     def find_server_by_name_or_id(self, name_or_id):
         if name_or_id in self.computeUnits:
@@ -295,11 +295,11 @@ class OpenstackCompute(object):
         if server is None:
             return False
 
-        self.computeUnits.pop(name_or_id, None)
+        self.computeUnits.pop(server.id, None)
 
         # remove the server from any stack
         for stack in self.stacks.values():
-            stack.servers.pop(server.name, None)
+            stack.servers.pop(server.id, None)
 
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:
