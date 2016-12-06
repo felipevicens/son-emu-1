@@ -408,6 +408,13 @@ class OpenstackManage(object):
                     if path.index(current_hop) == 0:  # first node
                         # set up a new bucket for forwarding
                         bucket = dict()
+                        if lb_type == "SELECT":
+                            bucket["weight"] = 1
+
+                        # FF is destined to fail because we can only monitor ports and if the VNF is on another switch
+                        # we will always just monitor the port leaving the DC
+                        if lb_type == "FF":
+                            bucket["watch_port"] = switch_outport_nr
                         bucket['actions'] = list()
 
                         # set the vland field according to new ryu syntax
