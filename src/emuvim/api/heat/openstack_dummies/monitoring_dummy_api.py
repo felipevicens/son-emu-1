@@ -170,9 +170,8 @@ class MonitorVnfDcStack(Resource):
         try:
             docker_id = self.api.compute.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(self.api.compute.docker_abs_cpu(docker_id))
+            out_dict.update(MonitorVnf(self.api).monitoring_over_time(docker_id))
             out_dict.update(self.api.compute.docker_mem(docker_id))
-            out_dict.update(self.api.compute.docker_abs_net_io(docker_id))
             out_dict.update(self.api.compute.docker_block_rw(docker_id))
             out_dict.update(self.api.compute.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)

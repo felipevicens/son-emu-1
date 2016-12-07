@@ -314,41 +314,70 @@ class BalanceHostDcStack(Resource):
         self.api = api
 
     def post(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
-        req = request.json
-        if req is None or len(req) == 0:
-            return Response(u"You have to specify destination vnfs via the POST data.",
-                            status=500, mimetype="application/json")
+        try:
+            req = request.json
+            if req is None or len(req) == 0:
+                return Response(u"You have to specify destination vnfs via the POST data.",
+                                status=500, mimetype="application/json")
 
-        # check src vnf/port
-        real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-        if type(real_src) is not tuple:
-            # something went wrong, real_src is a Response object
-            return real_src
+            # check src vnf/port
+            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+            if type(real_src) is not tuple:
+                # something went wrong, real_src is a Response object
+                return real_src
 
-        container_src, interface_src = real_src
+            container_src, interface_src = real_src
 
-        # check dst vnf/ports
-        dst_vnfs = req.get('dst_vnf_interfaces', list())
+            # check dst vnf/ports
+            dst_vnfs = req.get('dst_vnf_interfaces', list())
 
-        real_dst_dict = {}
-        for dst_vnf in dst_vnfs:
-            dst_dc = dst_vnf.get('pop', None)
-            dst_stack = dst_vnf.get('stack', None)
-            dst_server = dst_vnf.get('server', None)
-            dst_port = dst_vnf.get('port', None)
-            if dst_dc is not None and dst_stack is not None and dst_server is not None and dst_port is not None:
-                real_dst = self._findName(dst_dc, dst_stack, dst_server, dst_port)
-                if type(real_dst) is not tuple:
-                    # something went wrong, real_dst is a Response object
-                    return real_dst
-                real_dst_dict[real_dst[0]] = real_dst[1]
+            real_dst_dict = {}
+            for dst_vnf in dst_vnfs:
+                dst_dc = dst_vnf.get('pop', None)
+                dst_stack = dst_vnf.get('stack', None)
+                dst_server = dst_vnf.get('server', None)
+                dst_port = dst_vnf.get('port', None)
+                if dst_dc is not None and dst_stack is not None and dst_server is not None and dst_port is not None:
+                    real_dst = self._findName(dst_dc, dst_stack, dst_server, dst_port)
+                    if type(real_dst) is not tuple:
+                        # something went wrong, real_dst is a Response object
+                        return real_dst
+                    real_dst_dict[real_dst[0]] = real_dst[1]
 
-        input_object = {"dst_vnf_interfaces":real_dst_dict, "type":req.get("type","all")}
+            input_object = {"dst_vnf_interfaces":real_dst_dict, "type":req.get("type","all")}
 
-        # do call 
-        request.json = input_object
-        rec_balance = BalanceHost(self.api)
-        return rec_balance.post(container_src, interface_src)
+            self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
+
+            return Response(u"Loadbalancer of type %s set up at %s:%s" % (req.get("type", "ALL"),
+                                                                          vnf_src_name, vnf_src_interface),
+                            status=200, mimetype="application/json")
+
+        except Exception as e:
+            logging.exception(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
+                              (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))
+            return Response(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
+                            (__name__, src_dc, src_stack,  vnf_src_name, vnf_src_interface, e), status=500, mimetype="application/json")
+
+
+    def delete(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
+        try:
+            # check src vnf/port
+            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+            if type(real_src) is not tuple:
+                # something went wrong, real_src is a Response object
+                return real_src
+
+            container_src, interface_src = real_src
+
+            self.api.manage.delete_loadbalancer(container_src, interface_src)
+
+            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                            status=200, mimetype="application/json")
+        except Exception as e:
+            logging.exception(u"%s: Error deleting the loadbalancer at %s %s %s%s.\n %s" %
+                              (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))
+            return Response(u"%s: Error deleting the loadbalancer at %s %s %s%s." %
+                            (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface), status=500, mimetype="application/json")
 
     # Tries to find real container and port name according to heat template names
     # Returns a string or a Response object
