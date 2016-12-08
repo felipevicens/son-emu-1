@@ -77,6 +77,13 @@ class MonitorVnf(Resource):
         self.api = api
 
     def get(self, vnf_name):
+        """
+        Calculates the workload for the specified docker container. Requires at least one second, to calculate
+        the network traffic and cpu usage over time.
+        :param vnf_name: Specifies the docker container via name.
+        :return: Returns a json response with network, cpu and memory usage over time, and specifies the storage
+        access, the number of running processes and the current system time.
+        """
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
@@ -128,6 +135,12 @@ class MonitorVnfAbs(Resource):
         self.api = api
 
     def get(self, vnf_name):
+        """
+        Calculates the workload for the specified docker container, to this point of time.
+        :param vnf_name: Specifies the docker container via name.
+        :return: Returns a json response with network, cpu, memory usage and storage access, as absolute values from
+        startup till this point of time. It also contains the number of running processes and the current system time.
+        """
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
