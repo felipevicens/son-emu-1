@@ -1,6 +1,7 @@
 from flask_restful import Resource
 from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
+from emuvim.api.heat.docker_util import DockerUtil
 import logging
 import json
 import time
@@ -91,42 +92,17 @@ class MonitorVnf(Resource):
                             status=500, mimetype="application/json")
 
         try:
-            docker_id = self.api.compute.docker_container_id(vnf_name)
+            docker_id = DockerUtil.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(self.monitoring_over_time(docker_id))
-            out_dict.update(self.api.compute.docker_mem(docker_id))
-            out_dict.update(self.api.compute.docker_block_rw(docker_id))
-            out_dict.update(self.api.compute.docker_PIDS(docker_id))
+            out_dict.update(DockerUtil.monitoring_over_time(docker_id))
+            out_dict.update(DockerUtil.docker_mem(docker_id))
+            out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
             return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
-
-    def monitoring_over_time(self, container_id):
-        """
-        Calculates the cpu workload and the network traffic per second.
-        :param container_id: The full docker container ID
-        :return: A dictionary with network traffic per second (in and out), the cpu workload and the number of cpu
-        cores available.
-        """
-        first_cpu_usage = self.api.compute.docker_abs_cpu(container_id)
-        first = self.api.compute.docker_abs_net_io(container_id)
-        time.sleep(1)
-        second_cpu_usage = self.api.compute.docker_abs_cpu(container_id)
-        second = self.api.compute.docker_abs_net_io(container_id)
-
-        time_div = (int(second['NET_systime']) - int(first['NET_systime']))
-        in_div = int(second['NET_in']) - int(first['NET_in'])
-        out_div = int(second['NET_out']) - int(first['NET_out'])
-        out_dict = {'NET_in/s': int(in_div*1000000000 / float(time_div)+0.5),
-                    'NET_out/s': int(out_div*1000000000 / float(time_div)+0.5)}
-
-        time_div = (int(second_cpu_usage['CPU_used_systime']) - int(first_cpu_usage['CPU_used_systime']))
-        usage_div = int(second_cpu_usage['CPU_used']) - int(first_cpu_usage['CPU_used'])
-        out_dict.update({'CPU_%': usage_div / float(time_div), 'CPU_cores': first_cpu_usage['CPU_cores']})
-        return out_dict
 
 
 class MonitorVnfAbs(Resource):
@@ -148,13 +124,13 @@ class MonitorVnfAbs(Resource):
                             status=500,
                             mimetype="application/json")
         try:
-            docker_id = self.api.compute.docker_container_id(vnf_name)
+            docker_id = DockerUtil.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(self.api.compute.docker_abs_cpu(docker_id))
-            out_dict.update(self.api.compute.docker_mem(docker_id))
-            out_dict.update(self.api.compute.docker_abs_net_io(docker_id))
-            out_dict.update(self.api.compute.docker_block_rw(docker_id))
-            out_dict.update(self.api.compute.docker_PIDS(docker_id))
+            out_dict.update(DockerUtil.docker_abs_cpu(docker_id))
+            out_dict.update(DockerUtil.docker_mem(docker_id))
+            out_dict.update(DockerUtil.docker_abs_net_io(docker_id))
+            out_dict.update(DockerUtil.docker_block_rw(docker_id))
+            out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
             return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
@@ -181,12 +157,12 @@ class MonitorVnfDcStack(Resource):
             vnf_name = 'mn.' + vnf_name
 
         try:
-            docker_id = self.api.compute.docker_container_id(vnf_name)
+            docker_id = DockerUtil.docker_container_id(vnf_name)
             out_dict = dict()
-            out_dict.update(MonitorVnf(self.api).monitoring_over_time(docker_id))
-            out_dict.update(self.api.compute.docker_mem(docker_id))
-            out_dict.update(self.api.compute.docker_block_rw(docker_id))
-            out_dict.update(self.api.compute.docker_PIDS(docker_id))
+            out_dict.update(DockerUtil.monitoring_over_time(docker_id))
+            out_dict.update(DockerUtil.docker_mem(docker_id))
+            out_dict.update(DockerUtil.docker_block_rw(docker_id))
+            out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
             return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")

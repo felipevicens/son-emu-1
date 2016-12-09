@@ -1,11 +1,8 @@
 from mininet.link import Link
 from resources import *
 from docker import Client
-from docker.utils import kwargs_from_env
 import logging
 import threading
-import time
-import re
 import uuid
 
 
@@ -173,8 +170,7 @@ class OpenstackCompute(object):
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                    str(link.intf1.ip) == \
-                                                    old_stack.ports[port_name].ip_address.split('/')[0]:
+                                       str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
                                         # Add changed link
@@ -187,8 +183,7 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
-                                            0]:
+                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -260,17 +255,26 @@ class OpenstackCompute(object):
                 t.start()
 
     def _stop_compute(self, server):
+        """
+        Determines which links should be removed before removing the server itself.
+        :param server: The server that should be removed
+        :return:
+        """
         logging.debug("Stopping container %s with full name %s" % (server.name, server.full_name))
         link_names = list()
         for port_name in server.port_names:
             link_names.append(self.find_port_by_name_or_id(port_name).intf_name)
-            self.delete_port(port_name)
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
+                # Remove all self created links that connect the server to the main switch
                 self._remove_link(server.name, link)
 
+        # Stop the server and the remaining connection to the datacenter switch
         self.dc.stopCompute(server.name)
+        # Only now delete all its ports and the server itself
+        for port_name in server.port_names:
+            self.delete_port(port_name)
         self.delete_server(server)
 
     def find_server_by_name_or_id(self, name_or_id):
@@ -387,98 +391,3 @@ class OpenstackCompute(object):
             if self.dc.net[server_name].intfs[intf_key].link == link:
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
-
-    # Uses the container name to return the container ID
-    def docker_container_id(self, container_name):
-        c = Client()
-        detail = c.inspect_container(container_name)
-        if bool(detail["State"]["Running"]):
-            return detail['Id']
-        return None
-
-    # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
-    def docker_abs_cpu(self, container_id):
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
-            line = f.readline()
-        sys_time = int(time.time() * 1000000000)
-        numbers = [int(x) for x in line.split()]
-        cpu_usage = 0
-        for number in numbers:
-            cpu_usage += number
-        return {'CPU_used': cpu_usage, 'CPU_used_systime': sys_time, 'CPU_cores': len(numbers)}
-
-    # Bytes of memory used from the docker container
-    def docker_mem_used(args, container_id):
-        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
-            return int(f.readline())
-
-    # Bytes of memory the docker container could use
-    def docker_max_mem(self, container_id):
-        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.limit_in_bytes', 'r') as f:
-            mem_limit = int(f.readline())
-        with open('/proc/meminfo', 'r') as f:
-            line = f.readline().split()
-        sys_value = int(line[1])
-        unit = line[2]
-        if unit == 'kB':
-            sys_value *= 1024
-        if unit == 'MB':
-            sys_value *= 1024 * 1024
-
-        if sys_value < mem_limit:
-            return sys_value
-        else:
-            return mem_limit
-
-    def docker_mem(self, container_id):
-        out_dict = dict()
-        out_dict['MEM_used'] = self.docker_mem_used(container_id)
-        out_dict['MEM_limit'] = self.docker_max_mem(container_id)
-        out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-        return out_dict
-
-    # Network traffic of all network interfaces within the controller
-    def docker_abs_net_io(self, container_id):
-        c = Client()
-        command = c.exec_create(container_id, 'ifconfig')
-        ifconfig = c.exec_start(command['Id'])
-        sys_time = int(time.time() * 1000000000)
-
-        in_bytes = 0
-        m = re.findall('RX bytes:(\d+)', str(ifconfig))
-        if m:
-            for number in m:
-                in_bytes += int(number)
-        else:
-            in_bytes = None
-
-        out_bytes = 0
-        m = re.findall('TX bytes:(\d+)', str(ifconfig))
-        if m:
-            for number in m:
-                out_bytes += int(number)
-        else:
-            out_bytes = None
-
-        return {'NET_in': in_bytes, 'NET_out': out_bytes, 'NET_systime': sys_time}
-
-    # Disk - read in Bytes - write in Bytes
-    def docker_block_rw(self, container_id):
-        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            read = f.readline().split()
-            write = f.readline().split()
-        rw_dict = dict()
-        if len(read) < 3:
-            rw_dict['BLOCK_read'] = 0
-        else:
-            rw_dict['BLOCK_read'] = read[2]
-        if len(write) < 3:
-            rw_dict['BLOCK_write'] = 0
-        else:
-            rw_dict['BLOCK_write'] = write[2]
-        return rw_dict
-
-    # Number of PIDS of that docker container
-    def docker_PIDS(self, container_id):
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return {'PIDS': len(f.read().split('\n'))-1}
