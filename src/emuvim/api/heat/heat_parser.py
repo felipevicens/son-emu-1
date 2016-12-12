@@ -68,10 +68,9 @@ class HeatParser:
         """
         if "OS::Neutron::Net" in resource['type']:
             try:
-                net = self.compute.find_network_by_name_or_id(resource['properties']['name'])
-                if net is None:
-                    net = self.compute.create_network(resource['properties']['name'])
-                stack.nets[resource['properties']['name']] = net
+                net_name = resource['properties']['name']
+                if net_name not in stack.nets:
+                    stack.nets[net_name] = self.compute.create_network(net_name, True)
 
             except Exception as e:
                 logging.warning('Could not create Net: ' + e.message)
@@ -80,10 +79,11 @@ class HeatParser:
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
             try:
                 net_name = resource['properties']['network']['get_resource']
-                net = self.compute.find_network_by_name_or_id(net_name)
-                if net is None:
-                    net = self.compute.create_network(net_name)
+                if net_name not in stack.nets:
+                    net = self.compute.create_network(net_name, True)
                     stack.nets[net_name] = net
+                else:
+                    net = stack.nets[net_name]
 
                 net.subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -98,10 +98,12 @@ class HeatParser:
         if 'OS::Neutron::Port' in resource['type']:
             try:
                 port_name = resource['properties']['name']
-                port = self.compute.find_port_by_name_or_id(port_name)
-                if port is None:
-                    port = self.compute.create_port(port_name)
-                stack.ports[port_name] = port
+                if port_name not in stack.ports:
+                    port = self.compute.create_port(port_name, True)
+                    stack.ports[port_name] = port
+                else:
+                    port = stack.ports[port_name]
+
                 if resource['properties']['network']['get_resource'] in stack.nets:
                     net = stack.nets[resource['properties']['network']['get_resource']]
                     if net.subnet_id is not None:
@@ -126,35 +128,25 @@ class HeatParser:
                                  self.shorten_server_name(str(resource['properties']['name']), stack)
                 nw_list = resource['properties']['networks']
 
-                server = self.compute.find_server_by_name_or_id(shortened_name)
-                if server is None:
-                    server = self.compute.create_server(shortened_name)
-
-                stack.servers[shortened_name] = server
+                if shortened_name not in stack.servers:
+                    server = self.compute.create_server(shortened_name, True)
+                    stack.servers[shortened_name] = server
+                else:
+                    server = stack.servers[shortened_name]
 
                 server.full_name = compute_name
                 server.template_name = str(resource['properties']['name'])
                 server.command = resource['properties'].get('command', '/bin/sh')
                 server.image = resource['properties']['image']
-
-                flavor = resource['properties']['flavor']
-                if isinstance(flavor, dict):
-                    self.compute.add_flavor(flavor['flavorName'],
-                                            flavor['vcpu'],
-                                            flavor['ram'], 'MB',
-                                            flavor['storage'], 'GB')
-                    server.flavor = flavor['flavorName']
-                else:
-                    server.flavor = flavor
+                server.flavor = resource['properties']['flavor']
 
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     # just create a port
                     # we don't know which network it belongs to yet, but the resource will appear later in a valid
                     # template
-                    port = self.compute.find_port_by_name_or_id(port_name)
-                    if port is None:
-                        self.compute.create_port(port_name)
+                    if port_name not in stack.ports:
+                        stack.ports[port_name] = self.compute.create_port(port_name, True)
                     server.port_names.append(port_name)
                 return
             except Exception as e:

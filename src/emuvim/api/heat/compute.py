@@ -102,6 +102,7 @@ class OpenstackCompute(object):
             return False
 
         stack = self.stacks[stackid]
+        self.update_compute_dicts(stack)
 
         # Create the networks first
         for server in stack.servers.values():
@@ -157,6 +158,9 @@ class OpenstackCompute(object):
             if router.name in new_stack.routers:
                 new_stack.routers[router.name].id = router.id
 
+        # Update the compute dicts to now contain the new_stack components
+        self.update_compute_dicts(new_stack)
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -205,6 +209,22 @@ class OpenstackCompute(object):
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
+
+    def update_compute_dicts(self, stack):
+        for server in stack.servers.values():
+            self.computeUnits[server.id] = server
+            if isinstance(server.flavor, dict):
+                self.compute.add_flavor(server.flavor['flavorName'],
+                                        server.flavor['vcpu'],
+                                        server.flavor['ram'], 'MB',
+                                        server.flavor['storage'], 'GB')
+                server.flavor = server.flavor['flavorName']
+        for router in stack.routers.values():
+            self.routers[router.id] = router
+        for net in stack.nets.values():
+            self.nets[net.id] = net
+        for port in stack.ports.values():
+            self.ports[port.id] = port
 
     def _start_compute(self, server, stack=None):
         """ Starts a new compute object (docker container) inside the emulator
@@ -286,12 +306,13 @@ class OpenstackCompute(object):
                 return server
         return None
 
-    def create_server(self, name):
-        if self.find_server_by_name_or_id(name) is not None:
+    def create_server(self, name, stack_operation=False):
+        if self.find_server_by_name_or_id(name) is not None and not stack_operation:
             raise Exception("Server with name %s already exists." % name)
         server = Server(name)
         server.id = str(uuid.uuid4())
-        self.computeUnits[server.id] = server
+        if not stack_operation:
+            self.computeUnits[server.id] = server
         return server
 
     def delete_server(self, server):
@@ -313,14 +334,15 @@ class OpenstackCompute(object):
 
         return None
 
-    def create_network(self, name):
+    def create_network(self, name, stack_operation=False):
         logging.debug("Creating network with name %s" % name)
-        if self.find_network_by_name_or_id(name) is not None:
+        if self.find_network_by_name_or_id(name) is not None and not stack_operation:
             logging.warning("Creating network with name %s failed, as it already exists" % name)
             raise Exception("Network with name %s already exists." % name)
         network = Net(name)
         network.id = str(uuid.uuid4())
-        self.nets[network.id] = network
+        if not stack_operation:
+            self.nets[network.id] = network
         return network
 
     def delete_network(self, name_or_id):
@@ -333,16 +355,16 @@ class OpenstackCompute(object):
 
         self.nets.pop(net.id, None)
 
-    def create_port(self, name):
+    def create_port(self, name, stack_operation=False):
         port = self.find_port_by_name_or_id(name)
-        if port is not None:
+        if port is not None and not stack_operation:
             logging.warning("Creating port with name %s failed, as it already exists" % name)
             raise Exception("Port with name %s already exists." % name)
         logging.debug("Creating port with name %s" % name)
         port = Port(name)
         port.id = str(uuid.uuid4())
-        self.ports[port.id] = port
-
+        if not stack_operation:
+            self.ports[port.id] = port
         return port
 
     def find_port_by_name_or_id(self, name_or_id):
