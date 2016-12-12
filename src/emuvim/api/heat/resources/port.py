@@ -1,7 +1,9 @@
+port_counter = 0
 
 class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
-        self.name = None
+        self.name = name
+        self.intf_name = None
         self.set_name(name)
         self.id = None
         self.template_name = name
@@ -11,23 +13,24 @@ class Port:
         self.net_name = None
 
     def set_name(self, name):
+        global port_counter
         self.name = name
         split_name = name.split(':')
         if len(split_name) >= 3:
             if split_name[2] == 'input' or split_name[2] == 'in':
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  'in'
             elif split_name[2] == 'output' or split_name[2] == 'out':
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  'out'
             else:
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  split_name[2][:4]
         else:
-            self.intf_name = name
+            self.intf_name = name[:8]
+
+        self.intf_name = self.intf_name[:8] + '-' + str(port_counter)[:4]
+        port_counter += 1
 
     def get_short_id(self):
         return str(self.id)[:6]

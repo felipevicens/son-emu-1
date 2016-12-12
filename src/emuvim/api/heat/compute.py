@@ -214,7 +214,7 @@ class OpenstackCompute(object):
         for server in stack.servers.values():
             self.computeUnits[server.id] = server
             if isinstance(server.flavor, dict):
-                self.compute.add_flavor(server.flavor['flavorName'],
+                self.add_flavor(server.flavor['flavorName'],
                                         server.flavor['vcpu'],
                                         server.flavor['ram'], 'MB',
                                         server.flavor['storage'], 'GB')
