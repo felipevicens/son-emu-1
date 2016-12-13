@@ -157,15 +157,16 @@ class MonitorVnfDcStack(Resource):
             vnf_name = 'mn.' + vnf_name
 
         try:
+
             docker_id = DockerUtil.docker_container_id(vnf_name)
             out_dict = dict()
             out_dict.update(DockerUtil.monitoring_over_time(docker_id))
             out_dict.update(DockerUtil.docker_mem(docker_id))
-            out_dict.update(DockerUtil.docker_block_rw(docker_id))
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
             return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
