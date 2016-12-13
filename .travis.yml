@@ -24,7 +24,9 @@ install:
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd
   - sudo git clone https://github.com/CN-UPB/son-emu.git
-  - if [[ "${TRAVIS_PULL_REQUEST}" = "false" ]]; then git pull origin pull/${TRAVIS_PULL_REQUEST}/head; fi
+  - cd ~/son-emu/
+  - if [ "$TRAVIS_PULL_REQUEST" == "true" ]; then git fetch origin pull/$TRAVIS_PULL_REQUEST/head:pr-$TRAVIS_PULL_REQUEST ; fi
+  - if [ "$TRAVIS_PULL_REQUEST" == "true" ]; then git checkout pr-$TRAVIS_PULL_REQUEST ; fi
   - cd ~/son-emu/ansible
   - sudo ansible-playbook -i "localhost," -c local install.yml
   - cd ~/son-emu
