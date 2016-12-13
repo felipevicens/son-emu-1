@@ -1,10 +1,15 @@
-port_counter = 0
+import logging
+import threading
+
+lock = threading.Lock()
+intf_names = {}
+
 
 class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
         self.name = name
         self.intf_name = None
-        self.set_name(name)
+        self.create_intf_name()
         self.id = None
         self.template_name = name
         self.ip_address = ip_address
@@ -12,10 +17,8 @@ class Port:
         self.floating_ip = floating_ip
         self.net_name = None
 
-    def set_name(self, name):
-        global port_counter
-        self.name = name
-        split_name = name.split(':')
+    def create_intf_name(self):
+        split_name = self.name.split(':')
         if len(split_name) >= 3:
             if split_name[2] == 'input' or split_name[2] == 'in':
                 self.intf_name = split_name[0][:4] + '-' + \
@@ -27,10 +30,24 @@ class Port:
                 self.intf_name = split_name[0][:4] + '-' + \
                                  split_name[2][:4]
         else:
-            self.intf_name = name[:8]
+            self.intf_name = self.name[:9]
 
-        self.intf_name = self.intf_name[:8] + '-' + str(port_counter)[:4]
-        port_counter += 1
+        global lock
+        lock.acquire()
+        counter = 0
+        global intf_names
+        self.intf_name = self.intf_name[:9] + '-' + str(counter)[:4]
+        while self.intf_name in intf_names and counter < 999:
+            counter += 1
+            self.intf_name = '-'.join(self.intf_name.split('-')[:-1]) + '-' + str(counter)[:4]
+
+        if counter >= 1000:
+            logging.ERROR("Port %s could not create unique interface name (%s)", self.name, self.intf_name)
+            lock.release()
+            return
+
+        intf_names[self.intf_name] = self.name
+        lock.release()
 
     def get_short_id(self):
         return str(self.id)[:6]
@@ -72,3 +89,11 @@ class Port:
                      self.mac_address,
                      self.floating_ip,
                      self.net_name))
+
+    def __del__(self):
+        global lock
+        lock.acquire()
+        global intf_names
+        if self.intf_name in intf_names and intf_names[self.intf_name] == self.name:
+            del intf_names[self.intf_name]
+        lock.release()
