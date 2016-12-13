@@ -1,11 +1,8 @@
 from mininet.link import Link
 from resources import *
 from docker import Client
-from docker.utils import kwargs_from_env
 import logging
 import threading
-import time
-import re
 import uuid
 
 
@@ -105,6 +102,7 @@ class OpenstackCompute(object):
             return False
 
         stack = self.stacks[stackid]
+        self.update_compute_dicts(stack)
 
         # Create the networks first
         for server in stack.servers.values():
@@ -160,6 +158,9 @@ class OpenstackCompute(object):
             if router.name in new_stack.routers:
                 new_stack.routers[router.name].id = router.id
 
+        # Update the compute dicts to now contain the new_stack components
+        self.update_compute_dicts(new_stack)
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -173,8 +174,7 @@ class OpenstackCompute(object):
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                    str(link.intf1.ip) == \
-                                                    old_stack.ports[port_name].ip_address.split('/')[0]:
+                                       str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
                                         # Add changed link
@@ -187,8 +187,7 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
-                                            0]:
+                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -210,6 +209,22 @@ class OpenstackCompute(object):
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
+
+    def update_compute_dicts(self, stack):
+        for server in stack.servers.values():
+            self.computeUnits[server.id] = server
+            if isinstance(server.flavor, dict):
+                self.add_flavor(server.flavor['flavorName'],
+                                        server.flavor['vcpu'],
+                                        server.flavor['ram'], 'MB',
+                                        server.flavor['storage'], 'GB')
+                server.flavor = server.flavor['flavorName']
+        for router in stack.routers.values():
+            self.routers[router.id] = router
+        for net in stack.nets.values():
+            self.nets[net.id] = net
+        for port in stack.ports.values():
+            self.ports[port.id] = port
 
     def _start_compute(self, server, stack=None):
         """ Starts a new compute object (docker container) inside the emulator
@@ -260,17 +275,26 @@ class OpenstackCompute(object):
                 t.start()
 
     def _stop_compute(self, server):
+        """
+        Determines which links should be removed before removing the server itself.
+        :param server: The server that should be removed
+        :return:
+        """
         logging.debug("Stopping container %s with full name %s" % (server.name, server.full_name))
         link_names = list()
         for port_name in server.port_names:
             link_names.append(self.find_port_by_name_or_id(port_name).intf_name)
-            self.delete_port(port_name)
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) in link_names:
+                # Remove all self created links that connect the server to the main switch
                 self._remove_link(server.name, link)
 
+        # Stop the server and the remaining connection to the datacenter switch
         self.dc.stopCompute(server.name)
+        # Only now delete all its ports and the server itself
+        for port_name in server.port_names:
+            self.delete_port(port_name)
         self.delete_server(server)
 
     def find_server_by_name_or_id(self, name_or_id):
@@ -282,12 +306,13 @@ class OpenstackCompute(object):
                 return server
         return None
 
-    def create_server(self, name):
-        if self.find_server_by_name_or_id(name) is not None:
+    def create_server(self, name, stack_operation=False):
+        if self.find_server_by_name_or_id(name) is not None and not stack_operation:
             raise Exception("Server with name %s already exists." % name)
         server = Server(name)
         server.id = str(uuid.uuid4())
-        self.computeUnits[server.id] = server
+        if not stack_operation:
+            self.computeUnits[server.id] = server
         return server
 
     def delete_server(self, server):
@@ -309,14 +334,15 @@ class OpenstackCompute(object):
 
         return None
 
-    def create_network(self, name):
+    def create_network(self, name, stack_operation=False):
         logging.debug("Creating network with name %s" % name)
-        if self.find_network_by_name_or_id(name) is not None:
+        if self.find_network_by_name_or_id(name) is not None and not stack_operation:
             logging.warning("Creating network with name %s failed, as it already exists" % name)
             raise Exception("Network with name %s already exists." % name)
         network = Net(name)
         network.id = str(uuid.uuid4())
-        self.nets[network.id] = network
+        if not stack_operation:
+            self.nets[network.id] = network
         return network
 
     def delete_network(self, name_or_id):
@@ -329,16 +355,16 @@ class OpenstackCompute(object):
 
         self.nets.pop(net.id, None)
 
-    def create_port(self, name):
+    def create_port(self, name, stack_operation=False):
         port = self.find_port_by_name_or_id(name)
-        if port is not None:
+        if port is not None and not stack_operation:
             logging.warning("Creating port with name %s failed, as it already exists" % name)
             raise Exception("Port with name %s already exists." % name)
         logging.debug("Creating port with name %s" % name)
         port = Port(name)
         port.id = str(uuid.uuid4())
-        self.ports[port.id] = port
-
+        if not stack_operation:
+            self.ports[port.id] = port
         return port
 
     def find_port_by_name_or_id(self, name_or_id):
@@ -387,98 +413,3 @@ class OpenstackCompute(object):
             if self.dc.net[server_name].intfs[intf_key].link == link:
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
-
-    # Uses the container name to return the container ID
-    def docker_container_id(self, container_name):
-        c = Client()
-        detail = c.inspect_container(container_name)
-        if bool(detail["State"]["Running"]):
-            return detail['Id']
-        return None
-
-    # Absolute number of nanoseconds the docker container used the CPU till startup and the current system time
-    def docker_abs_cpu(self, container_id):
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
-            line = f.readline()
-        sys_time = int(time.time() * 1000000000)
-        numbers = [int(x) for x in line.split()]
-        cpu_usage = 0
-        for number in numbers:
-            cpu_usage += number
-        return {'CPU_used': cpu_usage, 'CPU_used_systime': sys_time, 'CPU_cores': len(numbers)}
-
-    # Bytes of memory used from the docker container
-    def docker_mem_used(args, container_id):
-        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
-            return int(f.readline())
-
-    # Bytes of memory the docker container could use
-    def docker_max_mem(self, container_id):
-        with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.limit_in_bytes', 'r') as f:
-            mem_limit = int(f.readline())
-        with open('/proc/meminfo', 'r') as f:
-            line = f.readline().split()
-        sys_value = int(line[1])
-        unit = line[2]
-        if unit == 'kB':
-            sys_value *= 1024
-        if unit == 'MB':
-            sys_value *= 1024 * 1024
-
-        if sys_value < mem_limit:
-            return sys_value
-        else:
-            return mem_limit
-
-    def docker_mem(self, container_id):
-        out_dict = dict()
-        out_dict['MEM_used'] = self.docker_mem_used(container_id)
-        out_dict['MEM_limit'] = self.docker_max_mem(container_id)
-        out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
-        return out_dict
-
-    # Network traffic of all network interfaces within the controller
-    def docker_abs_net_io(self, container_id):
-        c = Client()
-        command = c.exec_create(container_id, 'ifconfig')
-        ifconfig = c.exec_start(command['Id'])
-        sys_time = int(time.time() * 1000000000)
-
-        in_bytes = 0
-        m = re.findall('RX bytes:(\d+)', str(ifconfig))
-        if m:
-            for number in m:
-                in_bytes += int(number)
-        else:
-            in_bytes = None
-
-        out_bytes = 0
-        m = re.findall('TX bytes:(\d+)', str(ifconfig))
-        if m:
-            for number in m:
-                out_bytes += int(number)
-        else:
-            out_bytes = None
-
-        return {'NET_in': in_bytes, 'NET_out': out_bytes, 'NET_systime': sys_time}
-
-    # Disk - read in Bytes - write in Bytes
-    def docker_block_rw(self, container_id):
-        with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
-            read = f.readline().split()
-            write = f.readline().split()
-        rw_dict = dict()
-        if len(read) < 3:
-            rw_dict['BLOCK_read'] = 0
-        else:
-            rw_dict['BLOCK_read'] = read[2]
-        if len(write) < 3:
-            rw_dict['BLOCK_write'] = 0
-        else:
-            rw_dict['BLOCK_write'] = write[2]
-        return rw_dict
-
-    # Number of PIDS of that docker container
-    def docker_PIDS(self, container_id):
-        with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
-            return {'PIDS': len(f.read().split('\n'))-1}
