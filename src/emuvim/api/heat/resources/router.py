@@ -1,8 +1,9 @@
+import uuid
 
 class Router:
     def __init__(self, name, id=None):
         self.name = name
-        self.id = id
+        self.id = id if id is not None else str(uuid.uuid4())
         self.subnet_names = list()
 
     def add_subnet(self, subnet_name):
