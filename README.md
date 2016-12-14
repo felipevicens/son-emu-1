@@ -1,4 +1,4 @@
-[![Build Status](http://jenkins.sonata-nfv.eu/buildStatus/icon?job=son-emu)](http://jenkins.sonata-nfv.eu/job/son-emu)
+[![Build Status](https://travis-ci.org/CN-UPB/son-emu.svg?branch=master)](https://travis-ci.org/CN-UPB/son-emu)
 
 # son-emu
 This is the repository of [SONATA's](http://sonata-nfv.eu) emulation platform.
