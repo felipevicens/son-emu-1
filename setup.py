@@ -55,7 +55,8 @@ setup(name='emuvim',
           'docker-py==1.7.1',
           'requests',
           'prometheus_client',
-          'urllib3'
+          'urllib3',
+          'simplejson'
       ],
       zip_safe=False,
       entry_points={
