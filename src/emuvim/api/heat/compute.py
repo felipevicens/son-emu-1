@@ -177,6 +177,9 @@ class OpenstackCompute(object):
                                        str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
+                                        out = new_stack.ports[port_name].update_intf_name(
+                                            old_stack.ports[port_name].intf_name)
+
                                         # Add changed link
                                         self._add_link(server.name,
                                                        new_stack.ports[port_name].ip_address,
@@ -318,12 +321,16 @@ class OpenstackCompute(object):
     def delete_server(self, server):
         if server is None:
             return False
+        name_parts = server.name.split('_')
+        if len(name_parts) < 3:
+            return False
 
-        self.computeUnits.pop(server.id, None)
-
-        # remove the server from any stack
         for stack in self.stacks.values():
-            stack.servers.pop(server.id, None)
+            if stack.stack_name == name_parts[1]:
+                stack.servers.pop(server.id, None)
+                self.computeUnits.pop(server.id, None)
+                return True
+        return False
 
     def find_network_by_name_or_id(self, name_or_id):
         if name_or_id in self.nets:

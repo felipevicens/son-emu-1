@@ -49,6 +49,27 @@ class Port:
         intf_names[self.intf_name] = self.name
         lock.release()
 
+    def update_intf_name(self, new_intf_name):
+        if self.intf_name == new_intf_name:
+            return True
+
+        global lock
+        lock.acquire()
+        global intf_names
+        ok = False
+        if intf_names.get(new_intf_name) == None:
+            ok = True
+        elif intf_names[new_intf_name] == self.name:
+            ok = True
+
+        if ok:
+            intf_names[new_intf_name] = self.name
+            if intf_names[self.intf_name] == self.name:
+                del intf_names[self.intf_name]
+            self.intf_name = new_intf_name
+        lock.release()
+        return ok
+
     def get_short_id(self):
         return str(self.id)[:6]
 
