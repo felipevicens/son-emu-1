@@ -9,7 +9,7 @@ class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
         self.name = name
         self.intf_name = None
-        self.create_intf_name()
+        self.__create_intf_name()
         self.id = None
         self.template_name = name
         self.ip_address = ip_address
@@ -17,7 +17,22 @@ class Port:
         self.floating_ip = floating_ip
         self.net_name = None
 
-    def create_intf_name(self):
+    def set_name(self, name):
+        if self.name == name:
+            return
+
+        # Delete old interface name
+        global lock
+        lock.acquire()
+        if intf_names[self.intf_name] == self.name:
+            del intf_names[self.intf_name]
+        lock.release()
+
+        self.name = name
+        # Create new interface name
+        self.__create_intf_name()
+
+    def __create_intf_name(self):
         split_name = self.name.split(':')
         if len(split_name) >= 3:
             if split_name[2] == 'input' or split_name[2] == 'in':
