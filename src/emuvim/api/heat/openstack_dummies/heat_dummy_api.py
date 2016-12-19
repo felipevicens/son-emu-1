@@ -71,6 +71,14 @@ class HeatCreateStack(Resource):
         self.api = api
 
     def post(self, tenant_id):
+        """
+        Create and deploy a new stack.
+        :param tenant_id:
+        :return: 409, if the stack name was already used.
+        400, if the heat template could not be parsed properly.
+        500, if any exception occurred while creation.
+        200, if everything worked out.
+        """
         logging.debug("HEAT: Create Stack")
 
         try:
@@ -107,6 +115,13 @@ class HeatCreateStack(Resource):
             return ex.message, 500
 
     def get(self, tenant_id):
+        """
+        Calculates informations about the requested stack.
+        :param tenant_id:
+        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
+        500, if any exception occurred.
+        200, if everything worked out.
+        """
         logging.debug("HEAT: Stack List")
         try:
             return_stacks = dict()
@@ -135,6 +150,15 @@ class HeatShowStack(Resource):
         self.api = api
 
     def get(self, tenant_id, stack_name_or_id, stack_id=None):
+        """
+        Calculates detailed informations about the requested stack.
+        :param tenant_id:
+        :param stack_name_or_id:
+        :param stack_id:
+        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
+        500, if any exception occurred.
+        200, if everything worked out.
+        """
         logging.debug("HEAT: Show Stack")
         try:
             stack = None
@@ -193,6 +217,16 @@ class HeatUpdateStack(Resource):
         self.api = api
 
     def put(self, tenant_id, stack_name_or_id, stack_id=None):
+        """
+        Updates an existing stack with a new heat template.
+        :param tenant_id:
+        :param stack_name_or_id: Specifies the stack, which should be updated.
+        :param stack_id:
+        :return: 404, if the requested stack could not be found.
+        400, if the stack creation (because of errors in the heat template) or the stack update failed.
+        500, if any exception occurred while updating.
+        202, if everything worked out.
+        """
         logging.debug("Heat: Update Stack")
         try:
             old_stack = None
@@ -235,6 +269,14 @@ class HeatDeleteStack(Resource):
         self.api = api
 
     def delete(self, tenant_id, stack_name_or_id, stack_id=None):
+        """
+        Deletes an existing stack.
+        :param tenant_id:
+        :param stack_name_or_id: Specifies the stack, which should be deleted.
+        :param stack_id:
+        :return: 500, if any exception occurred while deletion.
+        204, if everything worked out.
+        """
         logging.debug("Heat: Delete Stack")
         try:
             if stack_name_or_id in self.api.compute.stacks:
