@@ -168,11 +168,13 @@ class NovaListServersApi(Resource):
             req = request.json
             server_dict = request.json['server']
             networks = server_dict.get('networks', None)
-            if self.api.compute.find_server_by_name_or_id(server_dict['name']) is not None:
-                return Response("Server with name %s already exists." % server_dict['name'], status=409)
+            name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
+
+            if self.api.compute.find_server_by_name_or_id(name) is not None:
+                return Response("Server with name %s already exists." % name, status=409)
             # TODO: not finished!
             resp = dict()
-            name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
+
             server = self.api.compute.create_server(name)
             server.full_name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"]
 
