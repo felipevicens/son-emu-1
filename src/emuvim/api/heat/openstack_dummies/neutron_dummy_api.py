@@ -204,6 +204,7 @@ class NeutronShowNetwork(Resource):
 
             return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
+
         except Exception as ex:
             logging.exception("Neutron: Show network exception.")
             return ex.message, 500
