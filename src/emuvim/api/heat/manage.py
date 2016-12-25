@@ -271,8 +271,9 @@ class OpenstackManage(object):
         src_sw_inport_nr = 0
         src_sw = None
         dest_intfs_mapping = lb_data.get('dst_vnf_interfaces', dict())
-
         dest_vnf_outport_nrs = list()
+
+        logging.debug("Call to add_loadbalancer at %s intfs:%s" % (vnf_src_name, vnf_src_interface))
 
         if vnf_src_name not in net:
             raise Exception(u"Source VNF does not exists.")
@@ -317,23 +318,7 @@ class OpenstackManage(object):
         # set up paths for each destination vnf individually
         index = 0
         cookie = self.get_cookie()
-
-        # set up the actual load balancing rule as a multipath
-        cmd = '"in_port=%s' % src_sw_inport_nr
-        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
-        cmd += ',ip'
-        cmd += ',actions='
-        # push 0x01 into the first register
-        cmd += 'load:0x1->NXM_NX_REG0[]'
-        # load balance modulo n over all dest interfaces
-        cmd += 'multipath(symmetric_l4, 1024, modulo_n, %s, 0, NXM_NX_REG1[0.12]' % len(dest_intfs_mapping)
-        # reuse the cookie as table entry as it will be unique
-        cmd += 'resubmit(, %s)"' % cookie
-
         main_cmd = "add-flow -OOpenFlow13"
-        # actuall add the flow
-        src_sw.dpctl(main_cmd, cmd)
-
         self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(cookie)
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.iteritems():
             path, src_sw, dst_sw = self._get_path(vnf_src_name, dst_vnf_name,
@@ -388,44 +373,62 @@ class OpenstackManage(object):
                     if path.index(current_hop) == 0:  # first node
                         # flow #index set up
                         cmd = '"in_port=%s' % src_sw_inport_nr
-                        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
+                        cmd += ',cookie=%s' % cookie
                         cmd += ',table=%s' % cookie
                         cmd += ',ip'
                         cmd += ',reg1=%s' % index
                         cmd += ',actions='
                         # set vlan id
                         cmd += ',push_vlan:0x8100'
-                        cmd += ',set_field:%s->vlan_vid' % vlan | 0x1000
+                        masked_vlan = vlan | 0x1000
+                        cmd += ',set_field:%s->vlan_vid' % masked_vlan
                         cmd += ',set_field:%s->eth_dst' % target_mac
                         cmd += ',set_field:%s->ip_dst' % target_ip
+                        cmd += ',output:%s"' % switch_outport_nr
                     elif path.index(current_hop) == len(path) - 1:  # last switch
                         # remove any vlan tags
                         cmd += ',dl_vlan=%s' % vlan
-                        cmd += ',actions=pop_vlan'
+                        cmd += ',actions=pop_vlan,output:%s"' % switch_outport_nr
                         # set up arp replys at the port so the dst nodes know the src
                         self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
                     else:  # middle nodes
-                        cmd += ',dl_vlan=%s' % vlan
-                    cmd += ',actions=output:%s"' % switch_outport_nr
+                        cmd += ',dl_vlan=%s,actions=output:%s"' % (vlan, switch_outport_nr)
+                # output the packet at the correct outport
                 else:
-                    # dest is connected to the same switch so just choose the right port to forward to
                     cmd += ',actions=output:%s"' % switch_outport_nr
 
                 # excecute the command on the target switch
-                current_hop.dpctl(main_cmd, cmd)
+                logging.debug(cmd)
+                net[current_hop].dpctl(main_cmd, cmd)
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
                     switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
                     current_hop = next_hop
 
             # set up chain to enable answers
-            flow_cookie = self.get_cookie()
+            flow_cookie = cookie
             self.network_action_start(dst_vnf_name, vnf_src_name,
                                                  vnf_src_interface=dst_vnf_interface,
                                                  vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                  cookie=flow_cookie)
             self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)
             index += 1
+
+        # set up the actual load balancing rule as a multipath
+        cmd = '"in_port=%s' % src_sw_inport_nr
+        cmd += ',cookie=%s' % (cookie)
+        cmd += ',ip'
+        cmd += ',actions='
+        # push 0x01 into the first register
+        cmd += 'load:0x1->NXM_NX_REG0[]'
+        # load balance modulo n over all dest interfaces
+        cmd += ',multipath(symmetric_l4,1024,modulo_n,%s,0,NXM_NX_REG1[0..12])' % len(dest_intfs_mapping)
+        # reuse the cookie as table entry as it will be unique
+        cmd += ',resubmit(, %s)"' % cookie
+
+        # actuall add the flow
+        logging.debug("Switch: %s, CMD: %s" % (src_sw, cmd))
+        net[src_sw].dpctl(main_cmd, cmd)
 
     def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
         if cookie is None:
@@ -434,13 +437,13 @@ class OpenstackManage(object):
 
         # first set up ARP requests for the source node, so it will always 'find' a partner
         cmd = '"in_port=%s' % port_nr
-        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
+        cmd += ',cookie=%s' % cookie
         cmd += ',arp'
         # set target arp ip
         cmd += ',arp_tpa=%s' % target_ip
         cmd += ',actions='
         # set message type to ARP reply
-        cmd += ',load:0x2->NXM_OF_ARP_OP[]'
+        cmd += 'load:0x2->NXM_OF_ARP_OP[]'
         # set src ip as dst ip
         cmd += ',move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[]'
         # set src mac
@@ -448,14 +451,14 @@ class OpenstackManage(object):
         # set src as target
         cmd += ',move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[], move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[]'
         # set target mac as hex
-        cmd += ',load:0x%s->NXM_NX_ARP_SHA[]"' % "".join(target_mac.split(':'))
+        cmd += ',load:0x%s->NXM_NX_ARP_SHA[]' % "".join(target_mac.split(':'))
         # set target ip as hex
         octets = target_ip.split('.')
         dst_ip_hex = '{:02X}{:02X}{:02X}{:02X}'.format(*map(int, octets))
         cmd += ',load:0x%s->NXM_OF_ARP_SPA[]' % dst_ip_hex
         # output to incoming port remember the closing "
         cmd += ',IN_PORT"'
-        switch.dpctl(main_cmd, cmd)
+        self.net[switch].dpctl(main_cmd, cmd)
         logging.debug(
             "Set up ARP reply at %s port %s." % (switch, port_nr))
 
