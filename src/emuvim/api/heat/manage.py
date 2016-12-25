@@ -86,9 +86,12 @@ class OpenstackManage(object):
             # floating ip network setup
             # wierd way of getting a datacenter object
             first_dc = self.net.dcs.values()[0]
+            # set a dpid for the switch. for this we have to get the id of the next possible dc
             self.floating_switch = self.net.addSwitch("fs1", dpid=hex(first_dc._get_next_dc_dpid())[2:])
             # this is the interface appearing on the physical host
             self.floating_root = Node('root', inNamespace=False)
+            self.net.hosts.append(self.floating_root)
+            self.net.nameToNode['root'] = self.floating_root
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
             self.floating_root.cmd('route add -net ' + root_ip + ' dev ' + str(self.floating_intf))
@@ -263,16 +266,12 @@ class OpenstackManage(object):
 
         target_switch.dpctl(ofctl_cmd, cmd)
 
-
     def add_loadbalancer(self, vnf_src_name, vnf_src_interface, lb_data):
         net = self.net
         src_sw_inport_nr = 0
         src_sw = None
         dest_intfs_mapping = lb_data.get('dst_vnf_interfaces', dict())
 
-        # use all as default, as it is easiest for debugging purposes
-        # ryu expects the type to be uppercase
-        lb_type = lb_data.get('type', "ALL").upper()
         dest_vnf_outport_nrs = list()
 
         if vnf_src_name not in net:
@@ -299,52 +298,43 @@ class OpenstackManage(object):
                 for link in link_dict:
                     if link_dict[link]['src_port_name'] == dest_intfs_mapping[vnf_name]:
                         dest_vnf_outport_nrs.append(int(link_dict[link]['dst_port_nr']))
-
-        # setup group table for load balancing on the first switch
-        group_add = dict()
         # get first switch
         if (vnf_src_name, vnf_src_interface) not in self.lb_flow_cookies:
             self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)] = list()
 
         src_intf = None
         src_ip = None
-        src_mac_addr = None
+        src_mac = None
         for intf in net[vnf_src_name].intfs.values():
             if intf.name == vnf_src_interface:
-                src_mac_addr = intf.mac
+                src_mac = intf.mac
                 src_ip = intf.ip
                 src_intf = intf
 
         if src_intf is None:
             raise Exception(u"Source VNF or interface can not be found.")
 
-        group_add['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
-        group_add['priority'] = 0
-        group_add['type'] = lb_type
-        group_id = self.get_flow_group(vnf_src_name, vnf_src_interface)
-        group_add['group_id'] = group_id
-        group_add['buckets'] = list()
-
-        flows = list()
-        # set up an initial flow that will set the LB group at the src interface
-        flow = dict()
-        flow['dpid'] = int(net.getNodeByName(src_sw).dpid, 16)
-        flow['match'] = net._parse_match('in_port=%s' % src_sw_inport_nr)
-        # cookie used by this flow
-        cookie = self.get_cookie()
-        self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(cookie)
-        flow['cookie'] = cookie
-        flow['priority'] = 1000
-        action = dict()
-        action['type'] = "GROUP"
-        action['group_id'] = int(group_id)
-        flow['actions'] = list()
-        flow['actions'].append(action)
-        logging.debug(flow)
-        flows.append(flow)
-        index = 0
-
         # set up paths for each destination vnf individually
+        index = 0
+        cookie = self.get_cookie()
+
+        # set up the actual load balancing rule as a multipath
+        cmd = '"in_port=%s' % src_sw_inport_nr
+        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
+        cmd += ',ip'
+        cmd += ',actions='
+        # push 0x01 into the first register
+        cmd += 'load:0x1->NXM_NX_REG0[]'
+        # load balance modulo n over all dest interfaces
+        cmd += 'multipath(symmetric_l4, 1024, modulo_n, %s, 0, NXM_NX_REG1[0.12]' % len(dest_intfs_mapping)
+        # reuse the cookie as table entry as it will be unique
+        cmd += 'resubmit(, %s)"' % cookie
+
+        main_cmd = "add-flow -OOpenFlow13"
+        # actuall add the flow
+        src_sw.dpctl(main_cmd, cmd)
+
+        self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(cookie)
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.iteritems():
             path, src_sw, dst_sw = self._get_path(vnf_src_name, dst_vnf_name,
                                                              vnf_src_interface, dst_vnf_interface)
@@ -356,17 +346,16 @@ class OpenstackManage(object):
                 self.delete_loadbalancer(vnf_src_name, vnf_src_interface)
                 raise Exception(u"Can not find a valid path. Are you specifying the right interfaces?.")
 
-            mac_addr = "00:00:00:00:00:00"
-            ip_addr = "0.0.0.0"
+            target_mac = "00:01:02:03:04:05"
+            target_ip = "0.0.0.0"
             for intf in net[dst_vnf_name].intfs.values():
                 if intf.name == dst_vnf_interface:
-                    mac_addr = str(intf.mac)
-                    ip_addr = str(intf.ip)
+                    target_mac = str(intf.mac)
+                    target_ip = str(intf.ip)
             dst_sw_outport_nr = dest_vnf_outport_nrs[index]
-            index += 1
             current_hop = src_sw
             switch_inport_nr = src_sw_inport_nr
-
+            self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
             # choose free vlan if path contains more than 1 switch
             if len(path) > 1:
                 vlan = net.vlans.pop()
@@ -374,7 +363,6 @@ class OpenstackManage(object):
                 vlan = None
 
             for i in range(0, len(path)):
-                current_node = net.getNodeByName(current_hop)
                 if path.index(current_hop) < len(path) - 1:
                     next_hop = path[path.index(current_hop) + 1]
                 else:
@@ -394,106 +382,37 @@ class OpenstackManage(object):
                     index_edge_out = 0
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
-                match = 'in_port=%s' % switch_inport_nr
-                # possible Ryu actions, match fields:
-                # http://ryu.readthedocs.io/en/latest/app/ofctl_rest.html#add-a-flow-entry
+                cmd = '"in_port=%s' % switch_inport_nr
                 # if a vlan is picked, the connection is routed through multiple switches
                 if vlan is not None:
-                    flow = dict()
-                    flow['dpid'] = int(current_node.dpid, 16)
-                    flow['cookie'] = cookie
-                    flow['priority'] = 0
-
-                    flow['actions'] = list()
                     if path.index(current_hop) == 0:  # first node
-                        # set up a new bucket for forwarding
-                        bucket = dict()
-                        if lb_type == "SELECT":
-                            bucket["weight"] = 1
-
-                        # FF is destined to fail because we can only monitor ports and if the VNF is on another switch
-                        # we will always just monitor the port leaving the DC
-                        if lb_type == "FF":
-                            bucket["watch_port"] = switch_outport_nr
-                        bucket['actions'] = list()
-
-                        # set the vland field according to new ryu syntax
-                        action = dict()
-                        action['type'] = 'PUSH_VLAN'  # Push a new VLAN tag if a input frame is non-VLAN-tagged
-                        action['ethertype'] = 33024  # Ethertype 0x8100(=33024): IEEE 802.1Q VLAN-tagged frame
-                        bucket['actions'].append(action)
-                        action = dict()
-                        action['type'] = 'SET_FIELD'
-                        action['field'] = 'vlan_vid'
-                        # ryu expects the field to be masked
-                        action['value'] = vlan | 0x1000
-                        bucket['actions'].append(action)
-
-                        # rewrite dst_mac
-                        action = dict()
-                        action['type'] = 'SET_FIELD'
-                        action['field'] = 'eth_dst'
-                        action['value'] = mac_addr
-                        bucket['actions'].append(action)
-
-                        # rewrite dst_ip
-                        action = dict()
-                        action['type'] = 'SET_FIELD'
-                        action['field'] = 'ipv4_dst'
-                        action['value'] = ip_addr
-                        bucket['actions'].append(action)
-
-                        # finally output the packet to the next switch
-                        action = dict()
-                        action['type'] = 'OUTPUT'
-                        action['port'] = switch_outport_nr
-                        bucket['actions'].append(action)
-
-                        group_add["buckets"].append(bucket)
-                        logging.debug(
-                            "Appending bucket %s. src vnf %s to dst vnf %s" % (bucket, vnf_src_name, dst_vnf_name))
-                    elif path.index(current_hop) == len(path) - 1:  # last node
-                        match += ',dl_vlan=%s' % vlan
-                        action = dict()
-                        action['type'] = 'POP_VLAN'
-                        flow['actions'].append(action)
+                        # flow #index set up
+                        cmd = '"in_port=%s' % src_sw_inport_nr
+                        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
+                        cmd += ',table=%s' % cookie
+                        cmd += ',ip'
+                        cmd += ',reg1=%s' % index
+                        cmd += ',actions='
+                        # set vlan id
+                        cmd += ',push_vlan:0x8100'
+                        cmd += ',set_field:%s->vlan_vid' % vlan | 0x1000
+                        cmd += ',set_field:%s->eth_dst' % target_mac
+                        cmd += ',set_field:%s->ip_dst' % target_ip
+                    elif path.index(current_hop) == len(path) - 1:  # last switch
+                        # remove any vlan tags
+                        cmd += ',dl_vlan=%s' % vlan
+                        cmd += ',actions=pop_vlan'
+                        # set up arp replys at the port so the dst nodes know the src
+                        self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
                     else:  # middle nodes
-                        match += ',dl_vlan=%s' % vlan
-
-                    if not path.index(current_hop) == 0:
-                        # this needs to be set for every hop that is not the first one
-                        # as the first one is handled in the group entry
-                        action = dict()
-                        action['type'] = 'OUTPUT'
-                        action['port'] = switch_outport_nr
-                        flow['actions'].append(action)
-                        flow['match'] = net._parse_match(match)
-                        flows.append(flow)
+                        cmd += ',dl_vlan=%s' % vlan
+                    cmd += ',actions=output:%s"' % switch_outport_nr
                 else:
                     # dest is connected to the same switch so just choose the right port to forward to
-                    bucket = dict()
-                    bucket['actions'] = list()
+                    cmd += ',actions=output:%s"' % switch_outport_nr
 
-                    # rewrite dst_mac
-                    action = dict()
-                    action['type'] = 'SET_FIELD'
-                    action['field'] = 'eth_dst'
-                    action['value'] = mac_addr
-                    bucket['actions'].append(action)
-
-                    # rewrite dst_ip
-                    action = dict()
-                    action['type'] = 'SET_FIELD'
-                    action['field'] = 'ipv4_dst'
-                    action['value'] = ip_addr
-                    bucket['actions'].append(action)
-
-                    action = dict()
-                    action['type'] = 'OUTPUT'
-                    action['port'] = dst_sw_outport_nr
-                    bucket['actions'].append(action)
-                    group_add["buckets"].append(bucket)
-
+                # excecute the command on the target switch
+                current_hop.dpctl(main_cmd, cmd)
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
                     switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
@@ -506,16 +425,39 @@ class OpenstackManage(object):
                                                  vnf_dst_interface=vnf_src_interface, bidirectional=False,
                                                  cookie=flow_cookie)
             self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)
+            index += 1
 
-        # always create the group before adding the flow entries
-        logging.debug("Setting up groupentry %s" % group_add)
-        if net.controller == RemoteController:
-            net.ryu_REST("stats/groupentry/add", data=group_add)
+    def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
+        if cookie is None:
+            cookie = self.get_cookie()
+        main_cmd = "add-flow -OOpenFlow13"
 
-        for flow in flows:
-            logging.debug("Setting up flowentry %s" % flow)
-            if net.controller == RemoteController:
-                net.ryu_REST('stats/flowentry/add', data=flow)
+        # first set up ARP requests for the source node, so it will always 'find' a partner
+        cmd = '"in_port=%s' % port_nr
+        cmd += ',cookie=%s/%s' % (cookie, '0xffffffffffffffff')
+        cmd += ',arp'
+        # set target arp ip
+        cmd += ',arp_tpa=%s' % target_ip
+        cmd += ',actions='
+        # set message type to ARP reply
+        cmd += ',load:0x2->NXM_OF_ARP_OP[]'
+        # set src ip as dst ip
+        cmd += ',move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[]'
+        # set src mac
+        cmd += ',set_field:%s->eth_src' % target_mac
+        # set src as target
+        cmd += ',move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[], move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[]'
+        # set target mac as hex
+        cmd += ',load:0x%s->NXM_NX_ARP_SHA[]"' % "".join(target_mac.split(':'))
+        # set target ip as hex
+        octets = target_ip.split('.')
+        dst_ip_hex = '{:02X}{:02X}{:02X}{:02X}'.format(*map(int, octets))
+        cmd += ',load:0x%s->NXM_OF_ARP_SPA[]' % dst_ip_hex
+        # output to incoming port remember the closing "
+        cmd += ',IN_PORT"'
+        switch.dpctl(main_cmd, cmd)
+        logging.debug(
+            "Set up ARP reply at %s port %s." % (switch, port_nr))
 
     def delete_loadbalancer(self, vnf_src_name, vnf_src_interface):
         '''
