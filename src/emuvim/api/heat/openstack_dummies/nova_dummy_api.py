@@ -517,15 +517,6 @@ class NovaInterfaceToServer(Resource):
                 self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
                 dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
-
-                # if we want to have exclusive host-to-n connections we have to enable this
-                # link_dict = dc.net.DCNetwork_graph[server.name][self.api.manage.floating_switch]
-                # for link in link_dict:
-                #     if link_dict[link]['src_port_name'] == port.intf_name:
-                #         inport = int(link_dict[link]['dst_port_nr'])
-
-                # connect each VNF to the host only. No pinging between VNFs possible
-                # self.api.manage.floating_switch("add-flow", "in_port=%s,actions=OUTPUT:1" % inport)
             else:
                 dc.net.addLink(server.emulator_compute, dc.switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
