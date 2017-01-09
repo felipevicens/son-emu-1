@@ -82,7 +82,7 @@ class HeatCreateStack(Resource):
         logging.debug("HEAT: Create Stack")
 
         try:
-            stack_dict = request.json
+            stack_dict = json.loads(request.data)
             for stack in self.api.compute.stacks.values():
                 if stack.stack_name == stack_dict['stack_name']:
                     return [], 409
@@ -239,7 +239,7 @@ class HeatUpdateStack(Resource):
             if old_stack is None:
                 return 'Could not resolve Stack - ID', 404
 
-            stack_dict = request.json
+            stack_dict = json.loads(request.data)
 
             stack = Stack()
             stack.stack_name = old_stack.stack_name

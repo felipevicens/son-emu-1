@@ -223,7 +223,7 @@ class NeutronCreateNetwork(Resource):
         """
         logging.debug("API CALL: Neutron - Create network")
         try:
-            network_dict = request.json
+            network_dict = json.loads(request.data)
             name = network_dict['network']['name']
             net = self.api.compute.find_network_by_name_or_id(name)
             if net is not None:
@@ -252,7 +252,7 @@ class NeutronUpdateNetwork(Resource):
         try:
             if network_id in self.api.compute.nets:
                 net = self.api.compute.nets[network_id]
-                network_dict = request.json
+                network_dict = json.loads(request.data)
                 old_net = copy.copy(net)
 
                 if "status" in network_dict["network"]:
@@ -405,7 +405,7 @@ class NeutronCreateSubnet(Resource):
         """
         logging.debug("API CALL: Neutron - Create subnet")
         try:
-            subnet_dict = request.json
+            subnet_dict = json.loads(request.data)
             net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
 
             if net is None:
@@ -458,7 +458,7 @@ class NeutronUpdateSubnet(Resource):
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
-                    subnet_dict = request.json
+                    subnet_dict = json.loads(request.data)
 
                     if "name" in subnet_dict["subnet"]:
                         net.subnet_name = subnet_dict["subnet"]["name"]
@@ -622,7 +622,7 @@ class NeutronCreatePort(Resource):
         """
         logging.debug("API CALL: Neutron - Create port")
         try:
-            port_dict = request.json
+            port_dict = json.loads(request.data)
             net_id = port_dict['port']['network_id']
 
             if net_id not in self.api.compute.nets:
@@ -687,7 +687,7 @@ class NeutronUpdatePort(Resource):
         """
         logging.debug("API CALL: Neutron - Update port")
         try:
-            port_dict = request.json
+            port_dict = json.loads(request.data)
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
                 return Response("Port with id %s does not exists." % port_id, status=404)
@@ -781,7 +781,7 @@ class NeutronAddFloatingIp(Resource):
         try:
             #TODO: this is first implementation that will change with mgmt networks!
             # Fiddle with floating_network !
-            req = request.json
+            req = json.loads(request.data)
 
             network_id = req["floatingip"]["floating_network_id"]
             net = self.api.compute.find_network_by_name_or_id(network_id)
