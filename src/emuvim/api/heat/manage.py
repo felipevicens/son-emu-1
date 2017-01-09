@@ -11,10 +11,6 @@ from mininet.node import OVSSwitch, RemoteController, Controller, Node
 from mininet.util import ipAdd
 from mininet.net import Mininet as mn
 
-# force full debug logging everywhere for now
-logging.getLogger().setLevel(logging.DEBUG)
-
-
 class OpenstackManage(object):
     # openstackmanage is a singleton!
     __instance = None
@@ -94,7 +90,7 @@ class OpenstackManage(object):
             self.net.nameToNode['root'] = self.floating_root
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
-            self.floating_root.cmd('route add -net ' + root_ip + ' dev ' + str(self.floating_intf))
+            #self.floating_root.cmd('route add -net "' + root_ip + '" dev ' + str(self.floating_intf))
             # for exclusive host-to-n connections
             # self.floating_switch.dpctl("add-flow", 'in_port=1,actions=NORMAL')
             # set up a simple learning switch
@@ -130,7 +126,8 @@ class OpenstackManage(object):
                 weight=kwargs.get('weight'),
                 match=kwargs.get('match'),
                 bidirectional=kwargs.get('bidirectional'),
-                cookie=kwargs.get('cookie', cookie))
+                cookie=kwargs.get('cookie', cookie),
+                path=kwargs.get('path'))
             return cookie
         except Exception as ex:
             logging.exception("RPC error.")
@@ -161,7 +158,7 @@ class OpenstackManage(object):
         # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
         dst_sw = None
-        logging.debug("Find path from vnf %s to %s",
+        logging.debug("Find shortest path from vnf %s to %s",
                       src_vnf, dst_vnf)
 
         for connected_sw in self.net.DCNetwork_graph.neighbors(src_vnf):
@@ -199,90 +196,28 @@ class OpenstackManage(object):
                 logging.debug("%r" % self.net.DCNetwork_graph[e][v])
             return "No path could be found between {0} and {1}".format(src_vnf, dst_vnf)
 
-        logging.info("Path between {0} and {1}: {2}".format(src_vnf, dst_vnf, path))
+        logging.info("Shortest path between {0} and {1}: {2}".format(src_vnf, dst_vnf, path))
         return path, src_sw, dst_sw
 
-    def convert_ryu_to_ofctl(self, flow, ofctl_cmd="add-flow"):
-        def convert_action_to_string(act):
-            cmd = ""
-            # remember to escape strings as the commandline is used!
-            if act.get("type") == "POP_VLAN":
-                cmd += "strip_vlan,"
-            if act.get("type") == "PUSH_VLAN":
-                cmd += "push_vlan:%s," % hex(act.get("ethertype"))
-            if "field" in act and "vlan_vid" in act["field"] and act.get("type") == "SET_FIELD":
-                cmd += "set_field=%s-\>vlan_vid," % act.get("value")
-            if act.get("type") == "OUTPUT":
-                cmd += "output:%s," % int(act.get('port'))
-            if act.get("type") == "GROUP":
-                cmd += "group:%d" % act.get("group_id")
-            return cmd.rstrip(",")
-
-        cmd = "-O OpenFlow13 "
-        target_switch = None
-        # get the corresponding name of the datapath id
-        for node in self.net.switches:
-            if isinstance(node, OVSSwitch) and int(node.dpid, 16) == flow['dpid']:
-                target_switch = node
-                break
-        if target_switch is None:
-            raise Exception("Convert_ryu_to_ofctl: Failed to find datapath id %s" % flow['dpid'])
-        if ofctl_cmd == "add-flow" or ofctl_cmd == "add-group":
-            if "group_id" in flow:
-                cmd += "group_id=%s," % flow.get("group_id")
-                cmd += "type=%s," % flow.get("type").lower()
-                if "buckets" in flow:
-                    for bucket in flow["buckets"]:
-                        cmd += "bucket="
-                        # TODO: get correct weight field!
-                        if flow.get("type") == "select":
-                            cmd += "weight:%s," % bucket.get("weight", 0)
-                        # buckets do not contain an action keyword!
-                        for action in bucket.get("actions"):
-                            cmd += "%s," % convert_action_to_string(action)
-                    cmd = cmd.rstrip(",")
-
-            else:
-                if "priority" in flow:
-                    cmd += "priority=%s," % flow.get("priority")
-                if "cookie" in flow:
-                    cmd += "cookie=%s," % flow.get("cookie")
-                if "match" in flow:
-                    for key, match in flow.get("match").iteritems():
-                        cmd += "%s=%s," % (key, match)
-                    cmd = cmd.rstrip(",")
-
-                cmd += ",actions="
-                for action in flow.get("actions"):
-                    cmd += "%s," % convert_action_to_string(action)
-
-        if ofctl_cmd == "del-flows":
-            cmd += "cookie=%s/%s" % (flow.get("cookie"), flow.get("cookie_mask"))
-        if ofctl_cmd == "del-groups":
-            cmd += "group_id=%s" % flow.get("group_id")
-
-        cmd = cmd.rstrip(",")
-        logging.debug("Converted string is: %s %s" % (ofctl_cmd, cmd))
-
-        target_switch.dpctl(ofctl_cmd, cmd)
-
-    def add_loadbalancer(self, vnf_src_name, vnf_src_interface, lb_data):
+    def add_loadbalancer(self, src_vnf_name, src_vnf_interface, lb_data):
         net = self.net
         src_sw_inport_nr = 0
         src_sw = None
         dest_intfs_mapping = lb_data.get('dst_vnf_interfaces', dict())
+        # a custom path can be specified as a list of switches
+        custom_paths = lb_data.get('path', dict())
         dest_vnf_outport_nrs = list()
 
-        logging.debug("Call to add_loadbalancer at %s intfs:%s" % (vnf_src_name, vnf_src_interface))
+        logging.debug("Call to add_loadbalancer at %s intfs:%s" % (src_vnf_name, src_vnf_interface))
 
-        if vnf_src_name not in net:
+        if src_vnf_name not in net:
             raise Exception(u"Source VNF does not exists.")
 
         # find the switch belonging to the source interface, as well as the inport nr
-        for connected_sw in net.DCNetwork_graph.neighbors(vnf_src_name):
-            link_dict = net.DCNetwork_graph[vnf_src_name][connected_sw]
+        for connected_sw in net.DCNetwork_graph.neighbors(src_vnf_name):
+            link_dict = net.DCNetwork_graph[src_vnf_name][connected_sw]
             for link in link_dict:
-                if link_dict[link]['src_port_name'] == vnf_src_interface:
+                if link_dict[link]['src_port_name'] == src_vnf_interface:
                     src_sw = connected_sw
                     src_sw_inport_nr = link_dict[link]['dst_port_nr']
                     break
@@ -300,14 +235,14 @@ class OpenstackManage(object):
                     if link_dict[link]['src_port_name'] == dest_intfs_mapping[vnf_name]:
                         dest_vnf_outport_nrs.append(int(link_dict[link]['dst_port_nr']))
         # get first switch
-        if (vnf_src_name, vnf_src_interface) not in self.lb_flow_cookies:
-            self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)] = list()
+        if (src_vnf_name, src_vnf_interface) not in self.lb_flow_cookies:
+            self.lb_flow_cookies[(src_vnf_name, src_vnf_interface)] = list()
 
         src_intf = None
         src_ip = None
         src_mac = None
-        for intf in net[vnf_src_name].intfs.values():
-            if intf.name == vnf_src_interface:
+        for intf in net[src_vnf_name].intfs.values():
+            if intf.name == src_vnf_interface:
                 src_mac = intf.mac
                 src_ip = intf.ip
                 src_intf = intf
@@ -319,19 +254,26 @@ class OpenstackManage(object):
         index = 0
         cookie = self.get_cookie()
         main_cmd = "add-flow -OOpenFlow13"
-        self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(cookie)
+        self.lb_flow_cookies[(src_vnf_name, src_vnf_interface)].append(cookie)
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.iteritems():
-            path, src_sw, dst_sw = self._get_path(vnf_src_name, dst_vnf_name,
-                                                             vnf_src_interface, dst_vnf_interface)
+            path, src_sw, dst_sw = self._get_path(src_vnf_name, dst_vnf_name,
+                                                  src_vnf_interface, dst_vnf_interface)
+
+            # use custom path if one is supplied
+            # json does not support hashing on tuples so we use nested dicts
+            if dst_vnf_name in custom_paths:
+                if dst_vnf_interface in custom_paths[dst_vnf_name]:
+                    path = custom_paths[dst_vnf_name][dst_vnf_interface]
+                    logging.debug("Taking custom path from %s to %s: %s" % (src_vnf_name, dst_vnf_name, path))
 
             if dst_vnf_name not in net:
-                self.delete_loadbalancer(vnf_src_name, vnf_src_interface)
-                raise Exception(u"The destination VNF %s does not exist"% dst_vnf_name)
+                self.delete_loadbalancer(src_vnf_name, src_vnf_interface)
+                raise Exception(u"The destination VNF %s does not exist" % dst_vnf_name)
             if isinstance(path, dict):
-                self.delete_loadbalancer(vnf_src_name, vnf_src_interface)
+                self.delete_loadbalancer(src_vnf_name, src_vnf_interface)
                 raise Exception(u"Can not find a valid path. Are you specifying the right interfaces?.")
 
-            target_mac = "00:01:02:03:04:05"
+            target_mac = "fa:17:00:03:13:37"
             target_ip = "0.0.0.0"
             for intf in net[dst_vnf_name].intfs.values():
                 if intf.name == dst_vnf_interface:
@@ -348,14 +290,12 @@ class OpenstackManage(object):
                 vlan = None
 
             for i in range(0, len(path)):
-                if path.index(current_hop) < len(path) - 1:
-                    next_hop = path[path.index(current_hop) + 1]
+                if i < len(path) - 1:
+                    next_hop = path[i+1]
                 else:
                     # last switch reached
                     next_hop = dst_vnf_name
-
                 next_node = net.getNodeByName(next_hop)
-
                 if next_hop == dst_vnf_name:
                     switch_outport_nr = dst_sw_outport_nr
                     logging.info("end node reached: {0}".format(dst_vnf_name))
@@ -367,7 +307,7 @@ class OpenstackManage(object):
                     index_edge_out = 0
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
-                cmd = '"in_port=%s' % switch_inport_nr
+                cmd = '",priority=1,in_port=%s' % switch_inport_nr
                 # if a vlan is picked, the connection is routed through multiple switches
                 if vlan is not None:
                     if path.index(current_hop) == 0:  # first node
@@ -385,14 +325,19 @@ class OpenstackManage(object):
                         cmd += ',set_field:%s->eth_dst' % target_mac
                         cmd += ',set_field:%s->ip_dst' % target_ip
                         cmd += ',output:%s"' % switch_outport_nr
-                    elif path.index(current_hop) == len(path) - 1:  # last switch
+                    elif next_hop == dst_vnf_name:  # last switch
                         # remove any vlan tags
                         cmd += ',dl_vlan=%s' % vlan
                         cmd += ',actions=pop_vlan,output:%s"' % switch_outport_nr
                         # set up arp replys at the port so the dst nodes know the src
                         self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
                     else:  # middle nodes
-                        cmd += ',dl_vlan=%s,actions=output:%s"' % (vlan, switch_outport_nr)
+                        # if we have a circle in the path we need to specify this, as openflow will ignore the packet
+                        # if we just output it on the same port as it came in
+                        if switch_inport_nr == switch_outport_nr:
+                            cmd += ',dl_vlan=%s,actions=IN_PORT"' % (vlan)
+                        else:
+                            cmd += ',dl_vlan=%s,actions=output:%s"' % (vlan, switch_outport_nr)
                 # output the packet at the correct outport
                 else:
                     cmd += ',actions=output:%s"' % switch_outport_nr
@@ -406,15 +351,13 @@ class OpenstackManage(object):
                     current_hop = next_hop
 
             # set up chain to enable answers
-            flow_cookie = cookie
-            self.network_action_start(dst_vnf_name, vnf_src_name,
-                                                 vnf_src_interface=dst_vnf_interface,
-                                                 vnf_dst_interface=vnf_src_interface, bidirectional=False,
-                                                 cookie=flow_cookie)
-            self.lb_flow_cookies[(vnf_src_name, vnf_src_interface)].append(flow_cookie)
+            self.network_action_start(dst_vnf_name, src_vnf_name,
+                                      vnf_src_interface=dst_vnf_interface,
+                                      vnf_dst_interface=src_vnf_interface, bidirectional=False,
+                                      cookie=cookie, path=list(reversed(path)))
             index += 1
 
-        # set up the actual load balancing rule as a multipath
+        # set up the actual load balancing rule as a multipath on the very first switch
         cmd = '"in_port=%s' % src_sw_inport_nr
         cmd += ',cookie=%s' % (cookie)
         cmd += ',ip'
@@ -426,7 +369,7 @@ class OpenstackManage(object):
         # reuse the cookie as table entry as it will be unique
         cmd += ',resubmit(, %s)"' % cookie
 
-        # actuall add the flow
+        # actually add the flow
         logging.debug("Switch: %s, CMD: %s" % (src_sw, cmd))
         net[src_sw].dpctl(main_cmd, cmd)
 
