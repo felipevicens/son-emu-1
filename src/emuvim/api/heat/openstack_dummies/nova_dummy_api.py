@@ -165,8 +165,7 @@ class NovaListServersApi(Resource):
         :return:
         '''
         try:
-            req = request.json
-            server_dict = request.json['server']
+            server_dict = json.loads(request.data)['server']
             networks = server_dict.get('networks', None)
             name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
 
@@ -479,7 +478,7 @@ class NovaInterfaceToServer(Resource):
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
-            data = request.json.get("interfaceAttachment")
+            data = json.loads(request.data).get("interfaceAttachment")
             resp = dict()
             port = data.get("port_id", None)
             net = data.get("net_id", None)

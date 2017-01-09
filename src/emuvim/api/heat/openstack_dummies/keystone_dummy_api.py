@@ -130,7 +130,7 @@ class KeystoneGetToken(Resource):
         logging.debug("API CALL: Keystone - Get token")
         try:
             ret = dict()
-            req = request.json
+            req = json.loads(request.data)
             ret['access'] = dict()
             ret['access']['token'] = dict()
             token = ret['access']['token']
