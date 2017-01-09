@@ -33,6 +33,14 @@ class Port:
         self.__create_intf_name()
 
     def __create_intf_name(self):
+        """
+        Creates the interface name, while using the first 4 letters of the port name, the specification, if it is an
+        'in' / 'out' port or something else, and a counter value if the name is already used. The counter starts
+        for each name at 0 and can go up to 999. After creating the name each port will post its interface name
+        into the global dictionary and adding his full name. Thus each port can determine if his desired interface
+        name is already used and choose the next one.
+        :return:
+        """
         split_name = self.name.split(':')
         if len(split_name) >= 3:
             if split_name[2] == 'input' or split_name[2] == 'in':
@@ -51,10 +59,11 @@ class Port:
         lock.acquire()
         counter = 0
         global intf_names
-        self.intf_name = self.intf_name[:9] + '-' + str(counter)[:4]
+        intf_len = len(self.intf_name)
+        self.intf_name = self.intf_name + '-' + str(counter)[:4]
         while self.intf_name in intf_names and counter < 999:
             counter += 1
-            self.intf_name = '-'.join(self.intf_name.split('-')[:-1]) + '-' + str(counter)[:4]
+            self.intf_name = self.intf_name[:intf_len] + '-' + str(counter)[:4]
 
         if counter >= 1000:
             logging.ERROR("Port %s could not create unique interface name (%s)", self.name, self.intf_name)
@@ -65,6 +74,14 @@ class Port:
         lock.release()
 
     def update_intf_name(self, new_intf_name):
+        """
+        The port interface name will be set to the give name, if it is not used yet or if the dictionary entry for
+        the new interface name contains the name of the port (this will occur if a stack will be updated and the
+        old stack also contains the same connection).
+        :param new_intf_name: The new interface name (string).
+        :return: True, if the interface name is now the new interface name.
+        False, if the new interface name is already used.
+        """
         if self.intf_name == new_intf_name:
             return True
 

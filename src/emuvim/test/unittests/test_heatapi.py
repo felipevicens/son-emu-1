@@ -217,8 +217,7 @@ class testRestApi(ApiBaseHeat):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
-        requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),
-                                            headers=headers)
+        requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
         # test_heatapi_keystone_get_token = open("test_heatapi_keystone_get_token.json").read()
         print(" ")
 
@@ -717,6 +716,75 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
 
+    def test_CombinedTesting(self):
+        headers = {'Content-type': 'application/json'}
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__),
+                                                               "test_heatapi_template_create_stack.json")).read()
+        test_heatapi_template_update_stack = open(os.path.join(os.path.dirname(__file__),
+                                                               "test_heatapi_template_update_stack.json")).read()
+        print(" ")
+
+        print('->>>>>>> CombinedCreateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
+        createstackresponse = requests.post(url,
+                                            data=json.dumps(json.loads(test_heatapi_template_create_stack)),
+                                            headers=headers)
+        self.assertEqual(createstackresponse.status_code, 200)
+        self.assertNotEqual(json.loads(createstackresponse.content)["stack"]["id"], "")
+        print(" ")
+
+        print('->>>>>>> CombinedNeutronListPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports"
+        listportsesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsesponse.status_code, 200)
+        self.assertEqual(len(json.loads(listportsesponse.content)["ports"]), 9)
+        for port in json.loads(listportsesponse.content)["ports"]:
+            self.assertEqual(len(str(port['fixed_ips'][0]['subnet_id'])), 36)
+        print(" ")
+
+        print('->>>>>>> CombinedNeutronListNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks"
+        listnetworksesponse = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse.status_code, 200)
+        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 9)
+        for net in json.loads(listnetworksesponse.content)["networks"]:
+            self.assertEqual(len(str(net['subnets'][0])), 36)
+        print(" ")
+
+        print('->>>>>>> CombinedUpdateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/%s"% \
+              json.loads(createstackresponse.content)['stack']['id']
+        updatestackresponse = requests.put(url,
+                                           data=json.dumps(json.loads(test_heatapi_template_update_stack)),
+                                           headers=headers)
+        self.assertEqual(updatestackresponse.status_code, 202)
+        liststackdetailsresponse = requests.get(url, headers=headers)
+        self.assertEqual(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"], "UPDATE_COMPLETE")
+        print(" ")
+
+        print('->>>>>>> CombinedNeutronListPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/ports"
+        listportsesponse = requests.get(url, headers=headers)
+        self.assertEqual(listportsesponse.status_code, 200)
+        self.assertEqual(len(json.loads(listportsesponse.content)["ports"]), 18)
+        for port in json.loads(listportsesponse.content)["ports"]:
+            self.assertEqual(len(str(port['fixed_ips'][0]['subnet_id'])), 36)
+        print(" ")
+
+        print('->>>>>>> CombinedNeutronListNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/networks"
+        listnetworksesponse = requests.get(url, headers=headers)
+        self.assertEqual(listnetworksesponse.status_code, 200)
+        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 13)
+        for net in json.loads(listnetworksesponse.content)["networks"]:
+            self.assertEqual(len(str(net['subnets'][0])), 36)
+        print(" ")
 
 if __name__ == '__main__':
     unittest.main()
