@@ -177,7 +177,7 @@ class OpenstackCompute(object):
                                        str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
-                                        out = new_stack.ports[port_name].update_intf_name(
+                                        new_stack.ports[port_name].update_intf_name(
                                             old_stack.ports[port_name].intf_name)
 
                                         # Add changed link
