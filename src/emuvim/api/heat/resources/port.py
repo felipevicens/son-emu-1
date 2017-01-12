@@ -39,6 +39,7 @@ class Port:
         for each name at 0 and can go up to 999. After creating the name each port will post its interface name
         into the global dictionary and adding his full name. Thus each port can determine if his desired interface
         name is already used and choose the next one.
+
         :return:
         """
         split_name = self.name.split(':')
@@ -78,9 +79,10 @@ class Port:
         The port interface name will be set to the give name, if it is not used yet or if the dictionary entry for
         the new interface name contains the name of the port (this will occur if a stack will be updated and the
         old stack also contains the same connection).
+
         :param new_intf_name: The new interface name (string).
         :return: True, if the interface name is now the new interface name.
-        False, if the new interface name is already used.
+            False, if the new interface name is already used.
         """
         if self.intf_name == new_intf_name:
             return True

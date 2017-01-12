@@ -81,9 +81,10 @@ class MonitorVnf(Resource):
         """
         Calculates the workload for the specified docker container. Requires at least one second, to calculate
         the network traffic and cpu usage over time.
+
         :param vnf_name: Specifies the docker container via name.
         :return: Returns a json response with network, cpu and memory usage over time, and specifies the storage
-        access, the number of running processes and the current system time.
+            access, the number of running processes and the current system time.
         """
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
@@ -113,9 +114,10 @@ class MonitorVnfAbs(Resource):
     def get(self, vnf_name):
         """
         Calculates the workload for the specified docker container, to this point of time.
+
         :param vnf_name: Specifies the docker container via name.
         :return: Returns a json response with network, cpu, memory usage and storage access, as absolute values from
-        startup till this point of time. It also contains the number of running processes and the current system time.
+            startup till this point of time. It also contains the number of running processes and the current system time.
         """
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name

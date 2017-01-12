@@ -161,6 +161,7 @@ class NovaListServersApi(Resource):
     def post(self, id):
         '''
         Creates a server instance
+
         :param id: tenant id
         :return:
         '''
@@ -399,6 +400,7 @@ class NovaListImageById(Resource):
     def get(self, id, imageid):
         '''
         Gets an image by id from the emulator with openstack nova compliant return values.
+
         :param id: tenantid, we ignore this most of the time
         :param imageid: id of the image. If it is 1 the dummy CREATE-IMAGE is returned
         :return:

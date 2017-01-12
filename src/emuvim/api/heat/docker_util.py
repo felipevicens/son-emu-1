@@ -8,6 +8,7 @@ class DockerUtil(object):
     def docker_container_id(container_name):
         """
         Uses the container name to return the container ID.
+
         :param container_name: The full name of the docker container.
         :return: Returns the container ID or None if the container is not running or could not be found.
         """
@@ -21,9 +22,10 @@ class DockerUtil(object):
     def docker_abs_cpu(container_id):
         """
         Absolute number of nanoseconds, the docker container utilized the CPU till startup and the current system time
+
         :param container_id: The full ID of the docker container.
         :return: Returns a dict with CPU_used in nanoseconds, the current system time in nanoseconds and the number of
-        CPU cores available.
+            CPU cores available.
         """
         with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
             line = f.readline()
@@ -38,6 +40,7 @@ class DockerUtil(object):
     def docker_mem_used(container_id):
         """
         Bytes of memory used from the docker container
+
         :param container_id: The full ID of the docker container.
         :return: Returns the memory utilization in bytes.
         """
@@ -48,6 +51,7 @@ class DockerUtil(object):
     def docker_max_mem(container_id):
         """
         Bytes of memory the docker container could use.
+
         :param container_id: The full ID of the docker container.
         :return: Returns the bytes of memory the docker container could use.
         """
@@ -71,9 +75,10 @@ class DockerUtil(object):
     def docker_mem(container_id):
         """
         Calculates the current, maximal and percentage usage of the specified docker container
+
         :param container_id: The full ID of the docker container.
         :return: Returns a dictionary with the total memory usage, the maximal available memory and the percentage
-        memory usage.
+            memory usage.
         """
         out_dict = dict()
         out_dict['MEM_used'] = DockerUtil.docker_mem_used(container_id)
@@ -85,9 +90,10 @@ class DockerUtil(object):
     def docker_abs_net_io(container_id):
         """
         Network traffic of all network interfaces within the controller.
+
         :param container_id: The full ID of the docker container.
         :return: Returns the absolute network I/O till container startup, in bytes. The return dict also contains the
-        system time.
+            system time.
         """
         c = Client()
         command = c.exec_create(container_id, 'ifconfig')
@@ -116,6 +122,7 @@ class DockerUtil(object):
     def docker_block_rw(container_id):
         """
         Determines the disk read and write access from the controller since startup.
+
         :param container_id: The full ID of the docker container.
         :return: Returns a dictionary with the total disc I/O since container startup, in bytes.
         """
@@ -138,6 +145,7 @@ class DockerUtil(object):
     def docker_PIDS(container_id):
         """
         Determines the number of processes within the docker container.
+
         :param container_id: The full ID of the docker container.
         :return: Returns the number of PIDS within a dictionary.
         """
@@ -148,9 +156,10 @@ class DockerUtil(object):
     def monitoring_over_time(container_id):
         """
         Calculates the cpu workload and the network traffic per second.
+
         :param container_id: The full docker container ID
         :return: A dictionary with disk read and write per second, network traffic per second (in and out),
-        the cpu workload and the number of cpu cores available.
+            the cpu workload and the number of cpu cores available.
         """
         first_cpu_usage = DockerUtil.docker_abs_cpu(container_id)
         first = DockerUtil.docker_abs_net_io(container_id)
