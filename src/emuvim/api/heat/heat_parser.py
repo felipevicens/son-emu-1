@@ -19,6 +19,7 @@ class HeatParser:
     def parse_input(self, input_dict, stack, dc_label):
         """
         It will parse the input dictionary into the corresponding classes, which are then stored within the stack.
+
         :param input_dict: Dictionary with the template version and resources.
         :param stack: Reference of the stack that should finally contain all created classes.
         :param dc_label: String that contains the label of the used data center.
@@ -61,6 +62,7 @@ class HeatParser:
         the corresponding class, with its required parameters, for further calculations (like deploying the stack).
         If it is not possible to create the class, because of unresolved dependencies, it will buffer the resource
         within the 'self.bufferResource' list.
+
         :param resource: Dict which contains all important informations about the type and parameters.
         :param stack: Reference of the stack that should finally contain the created class.
         :param dc_label: String that contains the label of the used data center
@@ -204,6 +206,7 @@ class HeatParser:
         """
         Shortens the server name to a maximum of 12 characters plus the iterator string, if the original name was
         used before.
+
         :param server_name: The original server name.
         :param stack: A reference to the used stack.
         :return: A string with max. 12 characters plus iterator string.
@@ -218,6 +221,7 @@ class HeatParser:
     def shorten_name(self, name, max_size):
         """
         Shortens the name to max_size characters and replaces all '-' with '_'.
+
         :param name: The original string.
         :param max_size: The number of allowed characters.
         :return: String with at most max_size characters and without '-'.
@@ -230,6 +234,7 @@ class HeatParser:
     def check_template_version(self, version_string):
         """
         Checks if a version string is equal or later than 30.04.2015
+
         :param version_string: String with the version.
         :return: True: if the version is equal or later 30.04.2015. - False: else
         """

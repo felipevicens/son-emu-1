@@ -53,6 +53,7 @@ class OpenstackCompute(object):
     def check_stack(self, stack):
         """
         Checks all dependencies of all servers, ports and routers and their most important parameters.
+
         :param stack: A reference of the stack that should be checked.
         :return: True: if the stack is completely fine. - False: else
         """
@@ -127,6 +128,7 @@ class OpenstackCompute(object):
         """
         Determines differences within the old and the new stack and deletes, create or changes only parts that
         differ between the two stacks.
+
         :param old_stack_id: The ID of the old stack.
         :param new_stack: A reference of the new stack.
         :return: True: if the old stack could be updated to the new stack without any error. - False: else
@@ -232,6 +234,7 @@ class OpenstackCompute(object):
     def _start_compute(self, server, stack=None):
         """ Starts a new compute object (docker container) inside the emulator
         Should only be called by stack modifications and not directly.
+
         :param server: emuvim.api.heat.resources.server
         :param stack: emuvim.api.heat.resources.stack
         :return:
@@ -280,6 +283,7 @@ class OpenstackCompute(object):
     def _stop_compute(self, server):
         """
         Determines which links should be removed before removing the server itself.
+
         :param server: The server that should be removed
         :return:
         """

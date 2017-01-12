@@ -89,6 +89,7 @@ class ChainVnf(Resource):
         '''
         A PUT request to "/v1/chain/<src_vnf>/<dst_vnf>/" will create a chain between the two VNFs.
         The interfaces will be guessed.
+
         :param src_vnf:
         :param dst_vnf:
         :return:
@@ -122,6 +123,7 @@ class ChainVnf(Resource):
         '''
         A DELETE request at "/v1/chain/<src_vnf>/<dst_vnf>/"
         Will delete a previously set up chain between two interfaces
+
         :param src_vnf:
         :param dst_vnf:
         :return:
@@ -164,6 +166,7 @@ class ChainVnfInterfaces(Resource):
         '''
          A put request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
          will create a chain between two interfaces at the specified vnfs
+
         :param src_vnf:
         :param src_intfs:
         :param dst_vnf:
@@ -187,6 +190,7 @@ class ChainVnfInterfaces(Resource):
         '''
         A DELETE request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
         will delete a previously created chain.
+
         :param src_vnf:
         :param src_intfs:
         :param dst_vnf:
@@ -442,6 +446,7 @@ class BalanceHost(Resource):
         {"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man",
         "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}, "type": "ALL"}
         and specifies the balanced nodes
+
         :param vnf_src_name:
         :param vnf_src_interface:
         :return: flask Response
@@ -467,6 +472,7 @@ class BalanceHost(Resource):
     def delete(self, vnf_src_name, vnf_src_interface):
         '''
         Will delete a load balancer that sits behind a specified interface at a vnf
+
         :param vnf_src_name:  the targeted vnf
         :param vnf_src_interface:  the interface behind which the load balancer is sitting
         :return: flask Response
