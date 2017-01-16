@@ -7,6 +7,10 @@ import uuid
 import logging
 
 class HeatParser:
+    """
+    The HeatParser will try to parse a heat string submitted to it and convert it to a stack dictionary that can
+    be instantiated in son-emu.
+    """
     def __init__(self, compute):
         self.description = None
         self.parameter_groups = None

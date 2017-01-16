@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
-from emuvim.api.heat.docker_util import DockerUtil
+import emuvim.api.heat.docker_util as DockerUtil
 import logging
 import json
 import time
