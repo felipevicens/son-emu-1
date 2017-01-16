@@ -1,18 +1,18 @@
 import logging
-import re
-import chain_api
 import threading
-import networkx as nx
-from emuvim.dcemulator.net import DCNetwork
-from emuvim.api.heat.resources import Net, Port
-from emuvim.api.heat.openstack_dummies.neutron_dummy_api import NeutronDummyApi
 import uuid
-from mininet.node import OVSSwitch, RemoteController, Controller, Node
-from mininet.util import ipAdd
-from mininet.net import Mininet as mn
+import networkx as nx
+import chain_api
+from emuvim.api.heat.resources import Net, Port
+from mininet.node import OVSSwitch, RemoteController, Node
+
 
 class OpenstackManage(object):
-    # openstackmanage is a singleton!
+    """
+    OpenstackManage is a singleton and management component for the emulator.
+    It is the brain of the Openstack component and manages everything that is not datacenter specific like
+    network chains or load balancers.
+    """
     __instance = None
 
     def __new__(cls):
@@ -61,6 +61,12 @@ class OpenstackManage(object):
         self._net = value
 
     def init_floating_network(self):
+        """
+        Initialize the floating network component for the emulator.
+        Will not do anything if already initialized.
+
+        :return:
+        """
         if self.net is not None and self.floating_switch is None:
             # create a floating network
             fn = self.floating_network = Net("floating-network")
@@ -98,15 +104,33 @@ class OpenstackManage(object):
             self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
 
     def add_endpoint(self, ep):
+        """
+        Registers an openstack endpoint with manage
+
+        :param ep: :py:class: base_openstack_dummy
+        :return:
+        """
         key = "%s:%s" % (ep.ip, ep.port)
         self.endpoints[key] = ep
 
     def get_cookie(self):
+        """
+        Get an unused cookie.
+
+        :return: integer
+        """
         cookie = int(max(self.cookies) + 1)
         self.cookies.add(cookie)
         return cookie
 
     def get_flow_group(self, src_vnf_name, src_vnf_interface):
+        """
+        Gets free group that is not currently used by any other flow for the specified interface / VNF.
+
+        :param src_vnf_name: Source VNF name
+        :param src_vnf_interface: Source VNF interface name
+        :return: integer
+        """
         if (src_vnf_name, src_vnf_interface) not in self.flow_groups:
             grp = int(len(self.flow_groups) + 1)
             self.flow_groups[(src_vnf_name, src_vnf_interface)] = grp
@@ -115,6 +139,14 @@ class OpenstackManage(object):
         return grp
 
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
+        """
+        Starts a network chain for a source destination pair
+
+        :param vnf_src_name: Name of the source VNF
+        :param vnf_dst_name: Name of the source VNF interface
+        :param kwargs: vnf_dst_interface, vnf_dst_interface, cmd='add-flows' | 'del-flows', weight, match, bidirectional, cookie
+        :return:
+        """
         try:
             cookie = kwargs.get('cookie', self.get_cookie())
             self.cookies.add(cookie)
@@ -134,9 +166,14 @@ class OpenstackManage(object):
             return ex.message
 
     def network_action_stop(self, vnf_src_name, vnf_dst_name, **kwargs):
-        # call DCNetwork method, not really datacenter specific API for now...
-        # provided dc name needs to be part of API endpoint
-        # no check if vnfs are really connected to this datacenter...
+        """
+        Stops a network chain for a source destination pair
+
+        :param vnf_src_name: Name of the source VNF
+        :param vnf_dst_name: Name of the source VNF interface
+        :param kwargs: vnf_dst_interface, vnf_dst_interface, cmd='add-flows' | 'del-flows', weight, match, bidirectional, cookie
+        :return:
+        """
         try:
             c = self.net.setChain(
                 vnf_src_name, vnf_dst_name,
@@ -155,6 +192,15 @@ class OpenstackManage(object):
             return ex.message
 
     def _get_path(self, src_vnf, dst_vnf, src_vnf_intf, dst_vnf_intf):
+        """
+        Own implementation of the get_path function from DCNetwork, because we just want the path
+
+        :param src_vnf: Name of the source VNF
+        :param dst_vnf: Name of the destination VNF
+        :param src_vnf_intf: Name of the source VNF interface
+        :param dst_vnf_intf: Name of the destination VNF interface
+        :return: path, src_sw, dst_sw
+        """
         # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
         dst_sw = None
@@ -200,6 +246,16 @@ class OpenstackManage(object):
         return path, src_sw, dst_sw
 
     def add_loadbalancer(self, src_vnf_name, src_vnf_interface, lb_data):
+        """
+        This function will set up a loadbalancer at the given interface.
+        lb_data may look like this: {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
+                                             "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
+
+        :param src_vnf_name: Name of the source VNF
+        :param src_vnf_interface: Name of the destination VNF
+        :param lb_data: A dictionary containing the destination data as well as custom path settings
+        :return: None
+        """
         net = self.net
         src_sw_inport_nr = 0
         src_sw = None
@@ -365,6 +421,8 @@ class OpenstackManage(object):
         # push 0x01 into the first register
         cmd += 'load:0x1->NXM_NX_REG0[]'
         # load balance modulo n over all dest interfaces
+        # TODO: in newer openvswitch implementations this should be changed to symmetric_l3l4+udp
+        # to balance any kind of traffic
         cmd += ',multipath(symmetric_l4,1024,modulo_n,%s,0,NXM_NX_REG1[0..12])' % len(dest_intfs_mapping)
         # reuse the cookie as table entry as it will be unique
         cmd += ',resubmit(, %s)"' % cookie
@@ -374,6 +432,17 @@ class OpenstackManage(object):
         net[src_sw].dpctl(main_cmd, cmd)
 
     def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
+        """
+        Sets up a custom ARP reply behind an interface.
+        An ARP request coming out of that interface for target_ip will be answered with target IP/MAC.
+
+        :param switch: The switch belonging to the interface
+        :param port_nr: The port number at the switch that is connected to the interface
+        :param target_ip: The IP for which to set up the ARP reply
+        :param target_mac: The MAC address of the target interface
+        :param cookie: cookie to identify the ARP request, if None a new one will be picked
+        :return: cookie
+        """
         if cookie is None:
             cookie = self.get_cookie()
         main_cmd = "add-flow -OOpenFlow13"
@@ -404,13 +473,15 @@ class OpenstackManage(object):
         self.net[switch].dpctl(main_cmd, cmd)
         logging.debug(
             "Set up ARP reply at %s port %s." % (switch, port_nr))
+        return cookie
 
     def delete_loadbalancer(self, vnf_src_name, vnf_src_interface):
         '''
         Removes a loadbalancer that is configured for the node and interface
-        :param vnf_src_name:
-        :param vnf_src_interface:
-        :return:
+
+        :param src_vnf_name: Name of the source VNF
+        :param src_vnf_interface: Name of the destination VNF
+        :return: None
         '''
         flows = list()
         # we have to call delete-group for each switch
