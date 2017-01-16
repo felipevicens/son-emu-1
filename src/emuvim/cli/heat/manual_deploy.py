@@ -180,13 +180,12 @@ def lb_webservice_topo():
                     # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
 
     lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
-                                             "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"},
-             "path": {"dc4_man_web0": { "port-man-6" : ["dc1.s1", "s1", "dc4.s1"]}}}
+                                             "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
 
     add_loadbalancer("dc1_man_fip0","port-man-0", lb_data)
 
 if __name__ == "__main__":
     #sample_topo()
-    #lb_webservice_topo()
-    chain_topo_test()
+    lb_webservice_topo()
+    #chain_topo_test()
 

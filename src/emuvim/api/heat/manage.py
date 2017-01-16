@@ -107,7 +107,7 @@ class OpenstackManage(object):
         """
         Registers an openstack endpoint with manage
 
-        :param ep: :py:class: base_openstack_dummy
+        :param ep: :py:class: openstack_api_endpoint
         :return:
         """
         key = "%s:%s" % (ep.ip, ep.port)
@@ -249,7 +249,7 @@ class OpenstackManage(object):
         """
         This function will set up a loadbalancer at the given interface.
         lb_data may look like this: {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
-                                             "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
+        "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
 
         :param src_vnf_name: Name of the source VNF
         :param src_vnf_interface: Name of the destination VNF
