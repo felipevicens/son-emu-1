@@ -10,9 +10,6 @@ Welcome to son-emu's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   autogen/heat.openstack_dummies.rst
-   autogen/heat.resources.rst
-   autogen/heat.rst 
    autogen/modules.rst
 
 

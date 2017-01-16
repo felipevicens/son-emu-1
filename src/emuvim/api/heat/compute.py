@@ -15,6 +15,13 @@ class HeatApiStackInvalidException(Exception):
 
 
 class OpenstackCompute(object):
+    """
+    This class is a datacenter specific compute object that tracks all containers that are running in a datacenter,
+    as well as networks and configured ports.
+    It has some stack dependet logic and can check if a received stack is valid.
+
+    It also handles start and stop of containers.
+    """
     def __init__(self):
         self.dc = None
         self.stacks = dict()
