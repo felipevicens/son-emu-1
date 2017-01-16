@@ -18,7 +18,7 @@ venv
 # sphinx documentation aux files
 doc/_build
 doc/_static
-doc/_template
+doc/_templates
 
 # vim swp files
 *.swp

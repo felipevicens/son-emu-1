@@ -1,3 +1,11 @@
+"""Openstack manage component of PG Sandman.
+
+.. module:: manage
+    :synopsis: Module containing the OpenstackManage class.
+.. moduleauthor: PG Sandman
+
+"""
+
 import logging
 import threading
 import uuid
@@ -64,8 +72,6 @@ class OpenstackManage(object):
         """
         Initialize the floating network component for the emulator.
         Will not do anything if already initialized.
-
-        :return:
         """
         if self.net is not None and self.floating_switch is None:
             # create a floating network
@@ -107,8 +113,8 @@ class OpenstackManage(object):
         """
         Registers an openstack endpoint with manage
 
-        :param ep: :py:class: openstack_api_endpoint
-        :return:
+        :param ep: Openstack API endpoint
+        :type ep: :class:`heat.openstack_api_endpoint`
         """
         key = "%s:%s" % (ep.ip, ep.port)
         self.endpoints[key] = ep
@@ -117,7 +123,8 @@ class OpenstackManage(object):
         """
         Get an unused cookie.
 
-        :return: integer
+        :return: Cookie
+        :rtype: ``int``
         """
         cookie = int(max(self.cookies) + 1)
         self.cookies.add(cookie)
@@ -128,8 +135,11 @@ class OpenstackManage(object):
         Gets free group that is not currently used by any other flow for the specified interface / VNF.
 
         :param src_vnf_name: Source VNF name
+        :type src_vnf_name: ``str``
         :param src_vnf_interface: Source VNF interface name
-        :return: integer
+        :type src_vnf_interface: ``str``
+        :return: Flow group identifier.
+        :rtype: ``int``
         """
         if (src_vnf_name, src_vnf_interface) not in self.flow_groups:
             grp = int(len(self.flow_groups) + 1)
@@ -143,9 +153,23 @@ class OpenstackManage(object):
         Starts a network chain for a source destination pair
 
         :param vnf_src_name: Name of the source VNF
+        :type vnf_src_name: ``str``
         :param vnf_dst_name: Name of the source VNF interface
-        :param kwargs: vnf_dst_interface, vnf_dst_interface, cmd='add-flows' | 'del-flows', weight, match, bidirectional, cookie
-        :return:
+        :type vnf_dst_name: ``str``
+        :param \**kwargs: See below
+
+        :Keyword Arguments:
+            * *vnf_src_interface* (``str``): Name of source interface.
+            * *vnf_dst_interface* (``str``): Name of destination interface.
+            * *weight* (``int``): This value is fed into the shortest path computation if no path is specified.
+            * *match* (``str``): A custom match entry for the openflow flow rules. Only vlanid or port possible.
+            * *bidirectional* (``bool``): If set the chain will be set in both directions, else it will just set up \
+                            from source to destination.
+            * *cookie* (``int``): Cookie value used by openflow. Used to identify the flows in the switches to be \
+                            able to modify the correct flows.
+            * *no_route* (``bool``): If set a layer 3 route to the target interface will not be set up.
+        :return: The cookie chosen for the flow.
+        :rtype: ``int``
         """
         try:
             cookie = kwargs.get('cookie', self.get_cookie())
@@ -160,6 +184,16 @@ class OpenstackManage(object):
                 bidirectional=kwargs.get('bidirectional'),
                 cookie=kwargs.get('cookie', cookie),
                 path=kwargs.get('path'))
+
+            # add route to dst ip to this interface
+            if not kwargs.get('no_route'):
+                src_node = self.net.getNodeByName(vnf_src_name)
+                dst_node = self.net.getNodeByName(vnf_dst_name)
+                src_node.setHostRoute(dst_node.intf(kwargs.get('vnf_dst_interface')).IP(),
+                                      kwargs.get('vnf_src_interface'))
+                if kwargs.get('bidirectional'):
+                    dst_node.setHostRoute(src_node.intf(kwargs.get('vnf_src_interface')).IP(),
+                                          kwargs.get('vnf_dst_interface'))
             return cookie
         except Exception as ex:
             logging.exception("RPC error.")
@@ -167,12 +201,21 @@ class OpenstackManage(object):
 
     def network_action_stop(self, vnf_src_name, vnf_dst_name, **kwargs):
         """
-        Stops a network chain for a source destination pair
+        Starts a network chain for a source destination pair
 
         :param vnf_src_name: Name of the source VNF
+        :type vnf_src_name: ``str``
         :param vnf_dst_name: Name of the source VNF interface
-        :param kwargs: vnf_dst_interface, vnf_dst_interface, cmd='add-flows' | 'del-flows', weight, match, bidirectional, cookie
-        :return:
+        :type vnf_dst_name: ``str``
+        :param \**kwargs: See below
+
+        :Keyword Arguments:
+            * *vnf_src_interface* (``str``): Name of source interface.
+            * *vnf_dst_interface* (``str``): Name of destination interface.
+            * *bidirectional* (``bool``): If set the chain will be torn down in both directions, else it will just\
+                            be torn down from source to destination.
+            * *cookie* (``int``): Cookie value used by openflow. Used to identify the flows in the switches to be \
+                            able to modify the correct flows.
         """
         try:
             c = self.net.setChain(
@@ -193,13 +236,19 @@ class OpenstackManage(object):
 
     def _get_path(self, src_vnf, dst_vnf, src_vnf_intf, dst_vnf_intf):
         """
-        Own implementation of the get_path function from DCNetwork, because we just want the path
+        Own implementation of the get_path function from DCNetwork, because we just want the path and not set up
+        flows on the way.
 
         :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
         :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
         :param src_vnf_intf: Name of the source VNF interface
+        :type src_vnf_intf: ``str``
         :param dst_vnf_intf: Name of the destination VNF interface
+        :type dst_vnf_intf: ``str``
         :return: path, src_sw, dst_sw
+        :rtype: ``list``, ``str``, ``str``
         """
         # modified version of the _chainAddFlow from emuvim.dcemulator.net._chainAddFlow
         src_sw = None
@@ -248,13 +297,18 @@ class OpenstackManage(object):
     def add_loadbalancer(self, src_vnf_name, src_vnf_interface, lb_data):
         """
         This function will set up a loadbalancer at the given interface.
-        lb_data may look like this: {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
-        "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
 
         :param src_vnf_name: Name of the source VNF
+        :type src_vnf_name: ``str``
         :param src_vnf_interface: Name of the destination VNF
+        :type src_vnf_interface: ``str``
         :param lb_data: A dictionary containing the destination data as well as custom path settings
-        :return: None
+        :type lb_data: ``dict``
+
+        :Example:
+        lbdata = {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
+        "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}, "path": {"dc2_man_web0": {"port-man-2": [ "dc1.s1",\
+        "s1", "dc2.s1"]}}}
         """
         net = self.net
         src_sw_inport_nr = 0
@@ -433,15 +487,21 @@ class OpenstackManage(object):
 
     def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
         """
-        Sets up a custom ARP reply behind an interface.
-        An ARP request coming out of that interface for target_ip will be answered with target IP/MAC.
+        Sets up a custom ARP reply at a switch.
+        An ARP request coming in on the `port_nr` for `target_ip` will be answered with target IP/MAC.
 
         :param switch: The switch belonging to the interface
+        :type switch: ``str``
         :param port_nr: The port number at the switch that is connected to the interface
+        :type port_nr: ``int``
         :param target_ip: The IP for which to set up the ARP reply
+        :type target_ip: ``str``
         :param target_mac: The MAC address of the target interface
+        :type target_mac: ``str``
         :param cookie: cookie to identify the ARP request, if None a new one will be picked
+        :type cookie: ``int`` or ``None``
         :return: cookie
+        :rtype: ``int``
         """
         if cookie is None:
             cookie = self.get_cookie()
@@ -473,7 +533,6 @@ class OpenstackManage(object):
         self.net[switch].dpctl(main_cmd, cmd)
         logging.debug(
             "Set up ARP reply at %s port %s." % (switch, port_nr))
-        return cookie
 
     def delete_loadbalancer(self, vnf_src_name, vnf_src_interface):
         '''
@@ -481,7 +540,6 @@ class OpenstackManage(object):
 
         :param src_vnf_name: Name of the source VNF
         :param src_vnf_interface: Name of the destination VNF
-        :return: None
         '''
         flows = list()
         # we have to call delete-group for each switch
