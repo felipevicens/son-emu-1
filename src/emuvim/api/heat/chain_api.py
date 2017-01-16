@@ -31,6 +31,8 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHostDcStack, "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(QueryTopology, "/v1/topo/",
+                              resource_class_kwargs={'api': self})
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
@@ -571,3 +573,32 @@ class BalanceHost(Resource):
                               (__name__, vnf_src_name, vnf_src_interface, e))
             return Response(u"%s: Error deleting the loadbalancer at %s%s." %
                             (__name__, vnf_src_name, vnf_src_interface), status=500, mimetype="application/json")
+
+class QueryTopology(Resource):
+    """
+    Handles requests at "/v1/topo/"
+    """
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self):
+        """
+        Answers GET requests for the current network topology.
+
+        :return: 200 if successful with the network graph as json, else 500
+        """
+        try:
+            logging.debug("Querying topology")
+            graph = self.api.manage.net.DCNetwork_graph
+            topology = dict()
+            for n in graph:
+                topology[n] = graph[n]
+
+            return Response(json.dumps(topology),
+                            status=200, mimetype="application/json")
+        except Exception as e:
+            logging.exception(u"%s: Error querying topology.\n %s" %
+                              (__name__, e))
+            return Response(u"%s: Error querying topology.\n %s" %
+                              (__name__, e), status=500, mimetype="application/json")

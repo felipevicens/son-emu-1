@@ -540,7 +540,6 @@ class OpenstackManage(object):
 
         :param src_vnf_name: Name of the source VNF
         :param src_vnf_interface: Name of the destination VNF
-        :return: None
         '''
         flows = list()
         # we have to call delete-group for each switch
