@@ -161,12 +161,12 @@ class NovaListServersApi(Resource):
     def post(self, id):
         '''
         Creates a server instance
+
         :param id: tenant id
         :return:
         '''
         try:
-            req = request.json
-            server_dict = request.json['server']
+            server_dict = json.loads(request.data)['server']
             networks = server_dict.get('networks', None)
             name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
 
@@ -400,6 +400,7 @@ class NovaListImageById(Resource):
     def get(self, id, imageid):
         '''
         Gets an image by id from the emulator with openstack nova compliant return values.
+
         :param id: tenantid, we ignore this most of the time
         :param imageid: id of the image. If it is 1 the dummy CREATE-IMAGE is returned
         :return:
@@ -479,7 +480,7 @@ class NovaInterfaceToServer(Resource):
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
-            data = request.json.get("interfaceAttachment")
+            data = json.loads(request.data).get("interfaceAttachment")
             resp = dict()
             port = data.get("port_id", None)
             net = data.get("net_id", None)

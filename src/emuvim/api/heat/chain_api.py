@@ -90,9 +90,10 @@ class ChainVnf(Resource):
         '''
         A POST request to "/v1/chain/<src_vnf>/<dst_vnf>/" will create a chain between the two VNFs.
         The interfaces will be guessed.
-        :param src_vnf: source VNF name
-        :param dst_vnf: destination VNF name
-        :return: flask.Response 200 if set up correctly else 500
+
+        :param src_vnf:
+        :param dst_vnf:
+        :return:
         '''
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
@@ -122,6 +123,7 @@ class ChainVnf(Resource):
         '''
         A DELETE request at "/v1/chain/<src_vnf>/<dst_vnf>/"
         Will delete a previously set up chain between two interfaces
+
         :param src_vnf:
         :param dst_vnf:
         :return: flask.Response 200 if deleted correctly else 500
@@ -162,12 +164,14 @@ class ChainVnfInterfaces(Resource):
 
     def put(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
         '''
-        legacy version that does not allow custom paths
-        :param src_vnf: name of the source VNF
-        :param src_intfs: name of the source VNF interface to chain on
-        :param dst_vnf: name of the destination VNF
-        :param dst_intfs: name of the destination VNF interface to chain on
-        :return: flask.Response 200 if set up correctly else 500
+         A put request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+         will create a chain between two interfaces at the specified vnfs
+
+        :param src_vnf:
+        :param src_intfs:
+        :param dst_vnf:
+        :param dst_intfs:
+        :return:
         '''
         return self.post(src_vnf, src_intfs, dst_vnf, dst_intfs)
 
@@ -209,6 +213,7 @@ class ChainVnfInterfaces(Resource):
         '''
         A DELETE request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
         will delete a previously created chain.
+
         :param src_vnf:
         :param src_intfs:
         :param dst_vnf:
@@ -512,11 +517,9 @@ class BalanceHost(Resource):
         We need both to avoid naming conflicts as interface names are not unique
         Post data is in this format:
         {"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man",
-        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"},  "path":
-        {"dc4_man_web0": { "port-man-6" : ["dc1.s1", "s1", "dc4.s1"]}}}
-        path specifies the destination vnf and interface and contains a list of switches
-        that the path traverses. The path may not contain single hop loops like:
-        [s1, s2, s1].
+        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}, "type": "ALL"}
+        and specifies the balanced nodes
+
         :param vnf_src_name:
         :param vnf_src_interface:
         :return: flask Response
@@ -541,6 +544,7 @@ class BalanceHost(Resource):
     def delete(self, vnf_src_name, vnf_src_interface):
         '''
         Will delete a load balancer that sits behind a specified interface at a vnf
+
         :param vnf_src_name:  the targeted vnf
         :param vnf_src_interface:  the interface behind which the load balancer is sitting
         :return: flask Response

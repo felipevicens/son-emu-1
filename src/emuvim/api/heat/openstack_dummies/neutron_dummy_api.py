@@ -134,6 +134,7 @@ class NeutronListNetworks(Resource):
         """
         Lists all networks, used in son-emu. If a 'name' or one or more 'id's are specified, it will only list the
         network with the name, or the networks specified via id.
+
         :return: Returns a json response, starting with 'networks' as root node.
         """
         logging.debug("API CALL: Neutron - List networks")
@@ -177,6 +178,7 @@ class NeutronShowNetwork(Resource):
     def get(self, network_id):
         """
         Returns the network, specified via 'network_id'.
+
         :param network_id: The unique ID string of the network.
         :return: Returns a json response, starting with 'network' as root node and one network description.
         """
@@ -185,6 +187,7 @@ class NeutronShowNetwork(Resource):
     def get_network(self, network_name_or_id, as_list):
         """
         Returns one network description of the network, specified via 'network_name_or_id'.
+
         :param network_name_or_id: The indicator string, which specifies the requested network.
         :param as_list: Determines if the network description should start with the root node 'network' or 'networks'.
         :return: Returns a json response, with one network description.
@@ -217,13 +220,15 @@ class NeutronCreateNetwork(Resource):
     def post(self):
         """
         Creates a network with the name, specified within the request under ['network']['name'].
+
         :return: 400, if the network already exists.
-        500, if any exception occurred while creation.
-        201, if everything worked out.
+            500, if any exception occurred while creation.
+            201, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Create network")
         try:
-            network_dict = request.json
+            network_dict = json.loads(request.data)
+            print(network_dict)
             name = network_dict['network']['name']
             net = self.api.compute.find_network_by_name_or_id(name)
             if net is not None:
@@ -243,16 +248,17 @@ class NeutronUpdateNetwork(Resource):
     def put(self, network_id):  # TODO currently only the name will be changed
         """
         Updates the existing network with the given parameters.
+
         :param network_id: The indicator string, which specifies the requested network.
         :return: 404, if the network could not be found.
-        500, if any exception occurred while updating the network.
-        200, if everything worked out.
+            500, if any exception occurred while updating the network.
+            200, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Update network")
         try:
             if network_id in self.api.compute.nets:
                 net = self.api.compute.nets[network_id]
-                network_dict = request.json
+                network_dict = json.loads(request.data)
                 old_net = copy.copy(net)
 
                 if "status" in network_dict["network"]:
@@ -284,10 +290,11 @@ class NeutronDeleteNetwork(Resource):
     def delete(self, network_id):
         """
         Deletes the specified network and all its subnets.
+
         :param network_id: The indicator string, which specifies the requested network.
         :return: 404, if the network or the subnet could not be removed.
-        500, if any exception occurred while deletion.
-        204, if everything worked out.
+            500, if any exception occurred while deletion.
+            204, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Delete network")
         try:
@@ -317,6 +324,7 @@ class NeutronListSubnets(Resource):
         """
         Lists all subnets, used in son-emu. If a 'name' or one or more 'id's are specified, it will only list the
         subnet with the name, or the subnets specified via id.
+
         :return: Returns a json response, starting with 'subnets' as root node.
         """
         logging.debug("API CALL: Neutron - List subnets")
@@ -359,6 +367,7 @@ class NeutronShowSubnet(Resource):
     def get(self, subnet_id):
         """
         Returns the subnet, specified via 'subnet_id'.
+
         :param subnet_id: The unique ID string of the subnet.
         :return: Returns a json response, starting with 'subnet' as root node and one subnet description.
         """
@@ -367,6 +376,7 @@ class NeutronShowSubnet(Resource):
     def get_subnet(self, subnet_name_or_id, as_list):
         """
         Returns one subnet description of the subnet, specified via 'subnet_name_or_id'.
+
         :param subnet_name_or_id: The indicator string, which specifies the requested subnet.
         :param as_list: Determines if the subnet description should start with the root node 'subnet' or 'subnets'.
         :return: Returns a json response, with one subnet description.
@@ -397,15 +407,16 @@ class NeutronCreateSubnet(Resource):
     def post(self):
         """
         Creates a subnet with the name, specified within the request under ['subnet']['name'].
+
         :return: 400, if the 'CIDR' format is wrong or it does not exist.
-        404, if the network was not found.
-        409, if the corresponding network already has one subnet.
-        500, if any exception occurred while creation and
-        201, if everything worked out.
+            404, if the network was not found.
+            409, if the corresponding network already has one subnet.
+            500, if any exception occurred while creation and
+            201, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Create subnet")
         try:
-            subnet_dict = request.json
+            subnet_dict = json.loads(request.data)
             net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
 
             if net is None:
@@ -449,16 +460,17 @@ class NeutronUpdateSubnet(Resource):
     def put(self, subnet_id):
         """
         Updates the existing subnet with the given parameters.
+
         :param subnet_id: The indicator string, which specifies the requested subnet.
         :return: 404, if the network could not be found.
-        500, if any exception occurred while updating the network.
-        200, if everything worked out.
+            500, if any exception occurred while updating the network.
+            200, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Update subnet")
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
-                    subnet_dict = request.json
+                    subnet_dict = json.loads(request.data)
 
                     if "name" in subnet_dict["subnet"]:
                         net.subnet_name = subnet_dict["subnet"]["name"]
@@ -497,10 +509,11 @@ class NeutronDeleteSubnet(Resource):
     def delete(self, subnet_id):
         """
         Deletes the specified subnet.
+
         :param subnet_id: The indicator string, which specifies the requested subnet.
         :return: 404, if the subnet could not be removed.
-        500, if any exception occurred while deletion.
-        204, if everything worked out.
+            500, if any exception occurred while deletion.
+            204, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Delete subnet")
         try:
@@ -539,6 +552,7 @@ class NeutronListPorts(Resource):
         """
         Lists all ports, used in son-emu. If a 'name' or one or more 'id's are specified, it will only list the
         port with the name, or the ports specified via id.
+
         :return: Returns a json response, starting with 'ports' as root node.
         """
         logging.debug("API CALL: Neutron - List ports")
@@ -580,6 +594,7 @@ class NeutronShowPort(Resource):
     def get(self, port_id):
         """
         Returns the port, specified via 'port_id'.
+
         :param port_id: The unique ID string of the network.
         :return: Returns a json response, starting with 'port' as root node and one network description.
         """
@@ -588,6 +603,7 @@ class NeutronShowPort(Resource):
     def get_port(self, port_name_or_id, as_list):
         """
         Returns one network description of the port, specified via 'port_name_or_id'.
+
         :param port_name_or_id: The indicator string, which specifies the requested port.
         :param as_list: Determines if the port description should start with the root node 'port' or 'ports'.
         :return: Returns a json response, with one port description.
@@ -616,13 +632,14 @@ class NeutronCreatePort(Resource):
     def post(self):
         """
         Creates a port with the name, specified within the request under ['port']['name'].
+
         :return: 404, if the network could not be found.
-        500, if any exception occurred while creation and
-        201, if everything worked out.
+            500, if any exception occurred while creation and
+            201, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Create port")
         try:
-            port_dict = request.json
+            port_dict = json.loads(request.data)
             net_id = port_dict['port']['network_id']
 
             if net_id not in self.api.compute.nets:
@@ -680,14 +697,15 @@ class NeutronUpdatePort(Resource):
     def put(self, port_id):
         """
         Updates the existing port with the given parameters.
+
         :param network_id: The indicator string, which specifies the requested port.
         :return: 404, if the network could not be found.
-        500, if any exception occurred while updating the network.
-        200, if everything worked out.
+            500, if any exception occurred while updating the network.
+            200, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Update port")
         try:
-            port_dict = request.json
+            port_dict = json.loads(request.data)
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
                 return Response("Port with id %s does not exists." % port_id, status=404)
@@ -738,10 +756,11 @@ class NeutronDeletePort(Resource):
     def delete(self, port_id):
         """
         Deletes the specified network and all its subnets.
+
         :param port_id: The indicator string, which specifies the requested network.
         :return: 404, if the network or the subnet could not be removed.
-        500, if any exception occurred while deletion.
-        204, if everything worked out.
+            500, if any exception occurred while deletion.
+            204, if everything worked out.
         """
         logging.debug("API CALL: Neutron - Delete port")
         try:
@@ -781,7 +800,7 @@ class NeutronAddFloatingIp(Resource):
         try:
             #TODO: this is first implementation that will change with mgmt networks!
             # Fiddle with floating_network !
-            req = request.json
+            req = json.loads(request.data)
 
             network_id = req["floatingip"]["floating_network_id"]
             net = self.api.compute.find_network_by_name_or_id(network_id)
