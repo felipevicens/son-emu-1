@@ -1,5 +1,6 @@
 import json
 import logging
+import copy
 
 from flask import Flask
 from flask import Response, request
@@ -593,7 +594,10 @@ class QueryTopology(Resource):
             graph = self.api.manage.net.DCNetwork_graph
             topology = dict()
             for n in graph:
-                topology[n] = graph[n]
+                if n != "root":
+                    topology[n] = copy.copy(graph[n])
+                    if "root" in topology[n]:
+                        del topology[n]["root"]
 
             return Response(json.dumps(topology),
                             status=200, mimetype="application/json")
