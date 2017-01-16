@@ -15,6 +15,14 @@ venv
 # C extensions
 *.so
 
+# sphinx documentation aux files
+doc/_build
+doc/_static
+doc/_template
+
+# vim swp files
+*.swp
+
 # Distribution / packaging
 .Python
 env/
