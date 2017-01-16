@@ -7,6 +7,10 @@ from flask_restful import Api, Resource
 
 
 class ChainApi(Resource):
+    """
+    The chain API is a component that is not used in OpenStack.
+    It is a custom built REST API that can be used to create network chains and loadbalancers.
+    """
     def __init__(self, inc_ip, inc_port, manage):
         # setup Flask
         self.app = Flask(__name__)
