@@ -62,7 +62,10 @@ class OpenstackCompute(object):
         Checks all dependencies of all servers, ports and routers and their most important parameters.
 
         :param stack: A reference of the stack that should be checked.
-        :return: True: if the stack is completely fine. - False: else
+        :type stack: ``heat.resources.stack``
+        :return: * *True*: If the stack is completely fine.
+         * *False*: Else
+        :rtype: ``bool``
         """
         everything_ok = True
         for server in stack.servers.values():
@@ -102,10 +105,35 @@ class OpenstackCompute(object):
         return everything_ok
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
+        """
+        Adds a flavor to the stack.
+
+        :param name: Specifies the name of the flavor.
+        :type name: ``str``
+        :param cpu:
+        :type cpu: ``str``
+        :param memory:
+        :type memory: ``str``
+        :param memory_unit:
+        :type memory_unit: ``str``
+        :param storage:
+        :type storage: ``str``
+        :param storage_unit:
+        :type storage_unit: ``str``
+        """
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
 
     def deploy_stack(self, stackid):
+        """
+        Deploys the stack and starts the emulation.
+
+        :param stackid: An UUID str of the stack
+        :type stackid: ``str``
+        :return: * *False*: If the Datacenter is None
+        * *True*: Else
+        :rtype: ``bool``
+        """
         if self.dc is None:
             return False
 
@@ -115,8 +143,18 @@ class OpenstackCompute(object):
         # Create the networks first
         for server in stack.servers.values():
             self._start_compute(server, stack)
+        return True
 
     def delete_stack(self, stack_id):
+        """
+        Delete a stack and all its components.
+
+        :param stack_id: An UUID str of the stack
+        :type stack_id: ``str``
+        :return: * *False*: If the Datacenter is None
+        * *True*: Else
+        :rtype: ``bool``
+        """
         if self.dc is None:
             return False
 
@@ -130,6 +168,7 @@ class OpenstackCompute(object):
             self.delete_port(port.id)
 
         del self.stacks[stack_id]
+        return True
 
     def update_stack(self, old_stack_id, new_stack):
         """
@@ -137,7 +176,9 @@ class OpenstackCompute(object):
         differ between the two stacks.
 
         :param old_stack_id: The ID of the old stack.
+        :type old_stack_id: ``str``
         :param new_stack: A reference of the new stack.
+        :type new_stack:
         :return: True: if the old stack could be updated to the new stack without any error. - False: else
         """
         if old_stack_id not in self.stacks:
