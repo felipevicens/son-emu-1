@@ -594,10 +594,13 @@ class QueryTopology(Resource):
             graph = self.api.manage.net.DCNetwork_graph
             topology = dict()
             for n in graph:
-                if n != "root":
+                # remove root node as well as the floating switch fs1
+                if n != "root" and n != "fs1":
                     topology[n] = copy.copy(graph[n])
                     if "root" in topology[n]:
                         del topology[n]["root"]
+                    if "fs1" in topology[n]:
+                        del topology[n]["fs1"]
 
             return Response(json.dumps(topology),
                             status=200, mimetype="application/json")
