@@ -586,17 +586,41 @@ class QueryTopology(Resource):
     def get(self):
         """
         Answers GET requests for the current network topology.
+        This will only return switches and datacenters and ignore currently deployed VNFs.
 
-        :return: 200 if successful with the network graph as json, else 500
+        :return: 200 if successful with the network graph as json dict, else 500
         """
         try:
             logging.debug("Querying topology")
+            from emuvim.dcemulator.node import EmulatorCompute, Datacenter
+            from mininet.node import OVSSwitch
             graph = self.api.manage.net.DCNetwork_graph
+            net = self.api.manage.net
             topology = dict()
+            topology["translation"] = dict()
             for n in graph:
                 # remove root node as well as the floating switch fs1
                 if n != "root" and n != "fs1":
+                    # we only want to return switches!
+                    if not isinstance(net[n],OVSSwitch):
+                        continue
                     topology[n] = copy.copy(graph[n])
+
+                    # remove all node associations to EmulatorCompute nodes
+                    remNodes = list()
+                    for node in topology[n]:
+                        if isinstance(net[node], EmulatorCompute):
+                            remNodes.append(node)
+
+                    for node in remNodes:
+                        del topology[n][node]
+
+                    # send a translation from dc name in the network to label
+                    for label, dc in self.api.manage.net.dcs.iteritems():
+                        if str(dc.switch) == str(n):
+                            topology["translation"][str(n)] = str(label)
+
+                    # also remove links to root and fs1
                     if "root" in topology[n]:
                         del topology[n]["root"]
                     if "fs1" in topology[n]:
