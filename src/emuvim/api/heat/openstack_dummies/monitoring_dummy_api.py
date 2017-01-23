@@ -42,30 +42,24 @@ class MonitorVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         # at least let it look like an open stack function
         try:
-            resp = """[
-                {
-                    "versions": [
-                        {
-                            "id": "v1",
-                            "links": [
-                                {
-                                    "href": "http://%s:%d/v1/",
-                                    "rel": "self"
-                                }
-                            ],
-                            "status": "CURRENT",
-                            "version": "1",
-                            "min_version": "1",
-                            "updated": "2013-07-23T11:33:21Z"
-                        }
-                    ]
-                }
-            """ % (self.api.ip, self.api.port)
+            resp = dict()
+            resp['versions'] = dict()
+            resp['versions'] = [{
+                "id": "v1",
+                "links": [{
+                    "href": "http://%s:%d/v1/" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                    }],
+                "status": "CURRENT",
+                "version": "1",
+                "min_version": "1",
+                "updated": "2013-07-23T11:33:21Z"
+            }]
 
-            return Response(resp, status=200, mimetype="application/json")
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
             logging.exception(u"%s: Could not show list of versions." % __name__)
@@ -148,15 +142,18 @@ class MonitorVnfDcStack(Resource):
 
     def get(self, dc, stack, vnf_name):
 
+        if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
+            vnf_name = 'mn.' + vnf_name
+
         # search for real name
         vnf_name = self._findName(dc,stack,vnf_name)
+
 
         if type(vnf_name) is not str:
             # something went wrong, vnf_name is a Response object
             return vnf_name
 
-        if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
-            vnf_name = 'mn.' + vnf_name
+
 
         try:
 
@@ -178,7 +175,7 @@ class MonitorVnfDcStack(Resource):
     def _findName(self, dc, stack, vnf):
         # search for datacenters
         if dc not in self.api.manage.net.dcs:
-            return Response(u"DC does not exist", status=500, mimetype="application/json")
+            return Response(u"DC %s does not exist" % (dc), status=500, mimetype="application/json")
         dc_real = self.api.manage.net.dcs[dc]
         # search for related OpenStackAPIs
         api_real = None
@@ -194,16 +191,14 @@ class MonitorVnfDcStack(Resource):
             if stackObj.stack_name == stack:
                 stack_real = stackObj
         if stack_real is None:
-            return Response(u"Stack does not exist", status=500, mimetype="application/json")
+            return Response(u"Stack %s does not exist" % (stack), status=500, mimetype="application/json")
         # search for servers
         server_real = None
         for server in stack_real.servers.values():
-            if server.template_name == vnf:
+            if 'mn.' + server.template_name.split(':', 1)[0] == vnf:
                 server_real = server
                 break
         if server_real is None:
-            return Response(u"VNF does not exist", status=500, mimetype="application/json")
-
-        container_real = server_real.name
-
+            return Response(u"VNF %s does not exist" % (vnf), status=500, mimetype="application/json")
+        container_real = 'mn.' + server_real.name
         return container_real
