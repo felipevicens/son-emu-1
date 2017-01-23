@@ -131,8 +131,9 @@ class OpenstackCompute(object):
         :param stackid: An UUID str of the stack
         :type stackid: ``str``
         :return: * *False*: If the Datacenter is None
-        * *True*: Else
+            * *True*: Else
         :rtype: ``bool``
+
         """
         if self.dc is None:
             return False
@@ -152,8 +153,9 @@ class OpenstackCompute(object):
         :param stack_id: An UUID str of the stack
         :type stack_id: ``str``
         :return: * *False*: If the Datacenter is None
-        * *True*: Else
+            * *True*: Else
         :rtype: ``bool``
+
         """
         if self.dc is None:
             return False
