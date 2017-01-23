@@ -14,6 +14,7 @@ class ChainApi(Resource):
     The chain API is a component that is not used in OpenStack.
     It is a custom built REST API that can be used to create network chains and loadbalancers.
     """
+
     def __init__(self, inc_ip, inc_port, manage):
         # setup Flask
         self.app = Flask(__name__)
@@ -578,6 +579,7 @@ class BalanceHost(Resource):
             return Response(u"%s: Error deleting the loadbalancer at %s%s." %
                             (__name__, vnf_src_name, vnf_src_interface), status=500, mimetype="application/json")
 
+
 class QueryTopology(Resource):
     """
     Handles requests at "/v1/topo/"
@@ -691,7 +693,7 @@ class QueryTopology(Resource):
                 # remove root node as well as the floating switch fs1
                 if n != "root" and n != "fs1":
                     # we only want to return switches!
-                    if not isinstance(net[n],OVSSwitch):
+                    if not isinstance(net[n], OVSSwitch):
                         continue
                     node = dict()
 
@@ -723,11 +725,10 @@ class QueryTopology(Resource):
 
                     topology["nodes"].append(node)
 
-
             return Response(json.dumps(topology),
                             status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error querying topology.\n %s" %
                               (__name__, e))
             return Response(u"%s: Error querying topology.\n %s" %
-                              (__name__, e), status=500, mimetype="application/json")
+                            (__name__, e), status=500, mimetype="application/json")
