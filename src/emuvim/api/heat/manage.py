@@ -306,9 +306,9 @@ class OpenstackManage(object):
         :type lb_data: ``dict``
 
         :Example:
-        lbdata = {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
-        "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}, "path": {"dc2_man_web0": {"port-man-2": [ "dc1.s1",\
-        "s1", "dc2.s1"]}}}
+         lbdata = {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
+         "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}, "path": {"dc2_man_web0": {"port-man-2": [ "dc1.s1",\
+         "s1", "dc2.s1"]}}}
         """
         net = self.net
         src_sw_inport_nr = 0

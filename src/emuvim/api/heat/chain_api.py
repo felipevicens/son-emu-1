@@ -193,6 +193,7 @@ class ChainVnfInterfaces(Resource):
          path specifies the destination vnf and interface and contains a list of switches
          that the path traverses. The path may not contain single hop loops like:
          [s1, s2, s1].
+
         :param src_vnf: name of the source VNF
         :param src_intfs: name of the source VNF interface to chain on
         :param dst_vnf: name of the destination VNF

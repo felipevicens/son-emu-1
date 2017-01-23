@@ -79,8 +79,8 @@ def docker_mem(container_id):
         memory usage.
     """
     out_dict = dict()
-    out_dict['MEM_used'] = DockerUtil.docker_mem_used(container_id)
-    out_dict['MEM_limit'] = DockerUtil.docker_max_mem(container_id)
+    out_dict['MEM_used'] = docker_mem_used(container_id)
+    out_dict['MEM_limit'] = docker_max_mem(container_id)
     out_dict['MEM_%'] = float(out_dict['MEM_used']) / float(out_dict['MEM_limit'])
     return out_dict
 
@@ -159,13 +159,13 @@ def monitoring_over_time(container_id):
     :return: A dictionary with disk read and write per second, network traffic per second (in and out),
         the cpu workload and the number of cpu cores available.
     """
-    first_cpu_usage = DockerUtil.docker_abs_cpu(container_id)
-    first = DockerUtil.docker_abs_net_io(container_id)
-    first_disk_io = DockerUtil.docker_block_rw(container_id)
+    first_cpu_usage = docker_abs_cpu(container_id)
+    first = docker_abs_net_io(container_id)
+    first_disk_io = docker_block_rw(container_id)
     time.sleep(1)
-    second_cpu_usage = DockerUtil.docker_abs_cpu(container_id)
-    second = DockerUtil.docker_abs_net_io(container_id)
-    second_disk_io = DockerUtil.docker_block_rw(container_id)
+    second_cpu_usage = docker_abs_cpu(container_id)
+    second = docker_abs_net_io(container_id)
+    second_disk_io = docker_block_rw(container_id)
 
     # Disk access
     time_div = (int(second_disk_io['BLOCK_systime']) - int(first_disk_io['BLOCK_systime']))
