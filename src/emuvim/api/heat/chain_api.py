@@ -2,6 +2,8 @@ import json
 import logging
 import copy
 
+from mininet.node import OVSSwitch
+
 from flask import Flask
 from flask import Response, request
 from flask_restful import Api, Resource
@@ -32,7 +34,7 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHostDcStack, "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(QueryTopology, "/v1/topo/",
+        self.api.add_resource(QueryTopology, "/v1/topo",
                               resource_class_kwargs={'api': self})
 
     def _start_flask(self):
@@ -588,43 +590,138 @@ class QueryTopology(Resource):
         Answers GET requests for the current network topology.
         This will only return switches and datacenters and ignore currently deployed VNFs.
 
+        Example:
+            A possible example reponse:
+            {
+              "nodes": [
+                {
+                  "type": "Datacenter",
+                  "name": "dc1.s1",
+                  "links": [
+                    {
+                      "0": {
+                        "loss": "0",
+                        "src_port_name": "dc1.s1-eth1",
+                        "src_port_nr": 1,
+                        "name": "s1",
+                        "src_port_id": 1,
+                        "delay": "12",
+                        "bw": "0.5",
+                        "dst_port_name": "s1-eth1",
+                        "jitter": "10",
+                        "dst_port_nr": 1,
+                        "dst_port_id": 1
+                      }
+                    }
+                  ],
+                  "label": "dc1"
+                },
+                {
+                  "type": "Datacenter",
+                  "name": "dc2.s1",
+                  "links": [
+                    {
+                      "0": {
+                        "loss": "0",
+                        "src_port_name": "dc2.s1-eth1",
+                        "src_port_nr": 1,
+                        "name": "s1",
+                        "src_port_id": 1,
+                        "delay": "20",
+                        "bw": "0.5",
+                        "dst_port_name": "s1-eth2",
+                        "jitter": "15",
+                        "dst_port_nr": 2,
+                        "dst_port_id": 2
+                      }
+                    }
+                  ],
+                  "label": "dc2"
+                },
+                {
+                  "type": "Switch",
+                  "name": "s1",
+                  "links": [
+                    {
+                      "0": {
+                        "loss": "0",
+                        "src_port_name": "s1-eth1",
+                        "src_port_nr": 1,
+                        "name": "dc1.s1",
+                        "src_port_id": 1,
+                        "delay": "12",
+                        "bw": "0.5",
+                        "dst_port_name ": "dc1.s1-eth1",
+                        "jitter": "10",
+                        "dst_port_nr": 1,
+                        "dst_port_id": 1
+                      }
+                    },
+                    {
+                      "0": {
+                        "loss": "0",
+                        "src_port_name": "s1-eth2",
+                        "src_port_nr": 2,
+                        "name": "dc2.s1",
+                        "src_port_id": 2,
+                        "delay": "20",
+                        " bw": "0.5",
+                        "dst_port_name": "dc2.s1-eth1",
+                        "jitter": "15",
+                        "dst_port_nr": 1,
+                        "dst_port_id": 1
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+
         :return: 200 if successful with the network graph as json dict, else 500
         """
         try:
             logging.debug("Querying topology")
-            from emuvim.dcemulator.node import EmulatorCompute, Datacenter
-            from mininet.node import OVSSwitch
             graph = self.api.manage.net.DCNetwork_graph
             net = self.api.manage.net
-            topology = dict()
-            topology["translation"] = dict()
+            # root node is nodes
+            topology = {"nodes": list()}
+
             for n in graph:
                 # remove root node as well as the floating switch fs1
                 if n != "root" and n != "fs1":
                     # we only want to return switches!
                     if not isinstance(net[n],OVSSwitch):
                         continue
-                    topology[n] = copy.copy(graph[n])
+                    node = dict()
 
-                    # remove all node associations to EmulatorCompute nodes
-                    remNodes = list()
-                    for node in topology[n]:
-                        if isinstance(net[node], EmulatorCompute):
-                            remNodes.append(node)
-
-                    for node in remNodes:
-                        del topology[n][node]
-
-                    # send a translation from dc name in the network to label
-                    for label, dc in self.api.manage.net.dcs.iteritems():
+                    # get real datacenter label
+                    for dc in self.api.manage.net.dcs.values():
                         if str(dc.switch) == str(n):
-                            topology["translation"][str(n)] = str(label)
+                            node["name"] = str(n)
+                            node["type"] = "Datacenter"
+                            node["label"] = str(dc.label)
+                            break
 
-                    # also remove links to root and fs1
-                    if "root" in topology[n]:
-                        del topology[n]["root"]
-                    if "fs1" in topology[n]:
-                        del topology[n]["fs1"]
+                    # node is not a datacenter. It has to be a switch
+                    if node.get("type", "") != "Datacenter":
+                        node["name"] = str(n)
+                        node["type"] = "Switch"
+
+                    node["links"] = list()
+                    # add links to the topology
+                    for graph_node, data in graph[n].items():
+                        # only add links to the topology that connect switches
+                        if isinstance(net[graph_node], OVSSwitch):
+                            # we allow multiple edges between switches, so add them all
+                            # with their unique keys
+                            link = copy.copy(data)
+                            for edge in link:
+                                # name of the destination
+                                link[edge]["name"] = graph_node
+                                node["links"].append(link)
+
+                    topology["nodes"].append(node)
+
 
             return Response(json.dumps(topology),
                             status=200, mimetype="application/json")
