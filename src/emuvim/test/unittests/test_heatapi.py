@@ -104,6 +104,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listmonitoringvnfabsnonexistingresponse.status_code, 500)
         print(" ")
 
+        """
         print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1"
@@ -120,6 +121,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listmonitoringvnfdcstackresponse.status_code, 200)
         self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
         print(" ")
+        """
 
         print('->>>>>>> testMonitorVnfDcStackWithNonexistingName ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -870,7 +872,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse = requests.get(url, headers=headers)
         self.assertEqual(listnetworksesponse.status_code, 200)
-        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 13)
+        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 14)
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
         print(" ")

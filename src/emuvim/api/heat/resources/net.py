@@ -108,7 +108,10 @@ class Net:
     def create_network_dict(self):
         network_dict = dict()
         network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-        network_dict["subnets"] = [self.subnet_id]
+        if self.subnet_id == None:
+            network_dict["subnets"] = []
+        else:
+            network_dict["subnets"] = [self.subnet_id]
         network_dict["name"] = self.name
         network_dict["admin_state_up"] = True  # TODO is it always true?
         network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here

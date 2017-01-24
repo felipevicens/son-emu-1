@@ -13,6 +13,7 @@ import networkx as nx
 import chain_api
 from emuvim.api.heat.resources import Net, Port
 from mininet.node import OVSSwitch, RemoteController, Node
+from openstack_dummies import MonitorDummyApi
 
 
 class OpenstackManage(object):
@@ -29,6 +30,12 @@ class OpenstackManage(object):
         return OpenstackManage.__instance
 
     def __init__(self, ip="0.0.0.0", port=4000):
+        lock = threading.Lock()
+        with lock:
+            if hasattr(self, "init"):
+                return
+            self.init = True
+
         self.endpoints = dict()
         self.cookies = set()
         self.cookies.add(0)
@@ -49,6 +56,12 @@ class OpenstackManage(object):
             self.thread.daemon = True
             self.thread.name = self.chain.__class__
             self.thread.start()
+
+        self.monitoring = MonitorDummyApi(self.ip, 3000)
+        self.thread = threading.Thread(target=self.monitoring._start_flask, args=())
+        self.thread.daemon = True
+        self.thread.name = self.monitoring.__class__
+        self.thread.start()
 
         # floating ip network setup
         self.floating_switch = None
