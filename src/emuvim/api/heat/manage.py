@@ -195,7 +195,7 @@ class OpenstackManage(object):
                 weight=kwargs.get('weight'),
                 match=kwargs.get('match'),
                 bidirectional=kwargs.get('bidirectional'),
-                cookie=kwargs.get('cookie', cookie),
+                cookie=cookie,
                 path=kwargs.get('path'))
 
             # add route to dst ip to this interface
