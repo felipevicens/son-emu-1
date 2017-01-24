@@ -1,4 +1,4 @@
-[![Build Status](http://jenkins.sonata-nfv.eu/buildStatus/icon?job=son-emu)](http://jenkins.sonata-nfv.eu/job/son-emu)
+[![Build Status](https://travis-ci.org/CN-UPB/son-emu.svg?branch=master)](https://travis-ci.org/CN-UPB/son-emu)
 
 # son-emu
 This is the repository of [SONATA's](http://sonata-nfv.eu) emulation platform.
@@ -100,7 +100,7 @@ Follow the MOTD in the VM to run the example topology and the dummy-gatekeeper. 
 #### 1. Containernet
 
 * `cd`
-* `git clone https://github.com/mpeuster/containernet.git`
+* `git clone https://github.com/containernet/containernet.git`
 * `cd ~/containernet/ansible`
 * `sudo ansible-playbook install.yml`
 * Wait (and have a coffee) ...

@@ -1,8 +1,15 @@
+import logging
+import threading
+
+lock = threading.Lock()
+intf_names = {}
+
 
 class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
-        self.name = None
-        self.set_name(name)
+        self.name = name
+        self.intf_name = None
+        self.__create_intf_name()
         self.id = None
         self.template_name = name
         self.ip_address = ip_address
@@ -11,23 +18,91 @@ class Port:
         self.net_name = None
 
     def set_name(self, name):
+        if self.name == name:
+            return
+
+        # Delete old interface name
+        global lock
+        lock.acquire()
+        if intf_names[self.intf_name] == self.name:
+            del intf_names[self.intf_name]
+        lock.release()
+
         self.name = name
-        split_name = name.split(':')
+        # Create new interface name
+        self.__create_intf_name()
+
+    def __create_intf_name(self):
+        """
+        Creates the interface name, while using the first 4 letters of the port name, the specification, if it is an
+        'in' / 'out' port or something else, and a counter value if the name is already used. The counter starts
+        for each name at 0 and can go up to 999. After creating the name each port will post its interface name
+        into the global dictionary and adding his full name. Thus each port can determine if his desired interface
+        name is already used and choose the next one.
+
+        :return:
+        """
+        split_name = self.name.split(':')
         if len(split_name) >= 3:
             if split_name[2] == 'input' or split_name[2] == 'in':
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  'in'
             elif split_name[2] == 'output' or split_name[2] == 'out':
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  'out'
             else:
                 self.intf_name = split_name[0][:4] + '-' + \
-                                 split_name[1][:4] + '-' + \
                                  split_name[2][:4]
         else:
-            self.intf_name = name
+            self.intf_name = self.name[:9]
+
+        global lock
+        lock.acquire()
+        counter = 0
+        global intf_names
+        intf_len = len(self.intf_name)
+        self.intf_name = self.intf_name + '-' + str(counter)[:4]
+        while self.intf_name in intf_names and counter < 999:
+            counter += 1
+            self.intf_name = self.intf_name[:intf_len] + '-' + str(counter)[:4]
+
+        if counter >= 1000:
+            logging.ERROR("Port %s could not create unique interface name (%s)", self.name, self.intf_name)
+            lock.release()
+            return
+
+        intf_names[self.intf_name] = self.name
+        lock.release()
+
+    def update_intf_name(self, new_intf_name):
+        """
+        The port interface name will be set to the give name, if it is not used yet or if the dictionary entry for
+        the new interface name contains the name of the port (this will occur if a stack will be updated and the
+        old stack also contains the same connection).
+
+        :param new_intf_name: The new interface name (string).
+        :return: True, if the interface name is now the new interface name.
+            False, if the new interface name is already used.
+        """
+        if self.intf_name == new_intf_name:
+            return True
+
+        global lock
+        lock.acquire()
+        global intf_names
+        ok = False
+        if intf_names.get(new_intf_name) == None:
+            ok = True
+        elif intf_names[new_intf_name] == self.name:
+            ok = True
+
+        if ok:
+            intf_names[new_intf_name] = self.name
+            if intf_names[self.intf_name] == self.name:
+                del intf_names[self.intf_name]
+            self.intf_name = new_intf_name
+        lock.release()
+        return ok
 
     def get_short_id(self):
         return str(self.id)[:6]
@@ -69,3 +144,11 @@ class Port:
                      self.mac_address,
                      self.floating_ip,
                      self.net_name))
+
+    def __del__(self):
+        global lock
+        lock.acquire()
+        global intf_names
+        if self.intf_name in intf_names and intf_names[self.intf_name] == self.name:
+            del intf_names[self.intf_name]
+        lock.release()

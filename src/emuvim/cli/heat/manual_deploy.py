@@ -2,6 +2,7 @@
 import requests
 import logging
 import json
+import time
 import argparse
 neutron_baseport = 9697
 nova_baseport = 8775
@@ -128,9 +129,11 @@ def add_loadbalancer(server, intface, lb_data):
     resp = run_request("/lb/%s/%s" % (str(server), str(intface)), data=data, chain=True, req="POST")
     return resp
 
-def set_chain(src_vnf, src_intf, dst_vnf, dst_intf):
-    data = '{}'
-    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="PUT")
+def set_chain(src_vnf, src_intf, dst_vnf, dst_intf, data=None):
+    if data is None:
+        data = {}
+    data = json.dumps(data)
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="POST")
 
 def sample_topo():
     for dc in xrange(4):
@@ -141,15 +144,24 @@ def sample_topo():
             server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
             add_floatingip_to_server(server["server"]["id"], datacenter=dc)
 
-    lb_data = {"dst_vnf_interfaces": {"dc1_man_serv1": "port-cp2-man","dc2_man_serv0": "port-cp0-man",
-                                      "dc2_man_serv1": "port-cp2-man"}}
+    lb_data = {"dst_vnf_interfaces": {"dc1_man_serv1": "port-man-2","dc2_man_serv0": "port-man-3",
+                                      "dc2_man_serv1": "port-man-4"}}
     add_loadbalancer("dc1_man_serv0", "port-cp0-man", lb_data)
 
 
+def chain_topo_test():
+    for dc in xrange(4):
+        net = create_network_and_subnet("test%s" % dc, "192.168.%d.0/24" % (dc+2), datacenter=dc)
+
+        for x in xrange(1):
+            port = create_port(net, datacenter=dc)
+            server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
+
+    data = {"path": ["dc1.s1", "s1", "dc3.s1", "s2", "s3", "dc4.s1"]}
+    #data = None
+    set_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3",data)
+
 def lb_webservice_topo():
-    # create a firewall in each DC
-
-
     for dc in xrange(4):
         net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (2), datacenter=dc)
 
@@ -157,8 +169,7 @@ def lb_webservice_topo():
             if dc == 0:
                 port = create_port(net, datacenter=dc)
                 server = create_server("fip%s" %x, "m1.tiny", "xschlef/floatingip:latest", port, datacenter=dc)
-                # this is actually a race condition. If the floating interface is too slow then the FW will not set up
-                # correctly!
+                time.sleep(1)
                 add_floatingip_to_server(server["server"]["id"], datacenter=dc)
 
             else:
@@ -168,18 +179,13 @@ def lb_webservice_topo():
                     server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
                     # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
 
-    lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-cp1-man",
-                                              "dc3_man_web0": "port-cp1-man","dc4_man_web0": "port-cp1-man"},
-               "type": "SELECT"}
+    lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-man-2",
+                                             "dc3_man_web0": "port-man-4","dc4_man_web0": "port-man-6"}}
 
-                #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
-
-    add_loadbalancer("dc1_man_fip0","port-cp0-man", lb_data)
-
-
-    pass
+    add_loadbalancer("dc1_man_fip0","port-man-0", lb_data)
 
 if __name__ == "__main__":
     #sample_topo()
     lb_webservice_topo()
+    #chain_topo_test()
 

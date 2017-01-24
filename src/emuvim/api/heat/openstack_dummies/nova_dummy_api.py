@@ -161,18 +161,20 @@ class NovaListServersApi(Resource):
     def post(self, id):
         '''
         Creates a server instance
+
         :param id: tenant id
         :return:
         '''
         try:
-            req = request.json
-            server_dict = request.json['server']
+            server_dict = json.loads(request.data)['server']
             networks = server_dict.get('networks', None)
-            if self.api.compute.find_server_by_name_or_id(server_dict['name']) is not None:
-                return Response("Server with name %s already exists." % server_dict['name'], status=409)
+            name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
+
+            if self.api.compute.find_server_by_name_or_id(name) is not None:
+                return Response("Server with name %s already exists." % name, status=409)
             # TODO: not finished!
             resp = dict()
-            name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"][0:12]
+
             server = self.api.compute.create_server(name)
             server.full_name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"]
 
@@ -398,6 +400,7 @@ class NovaListImageById(Resource):
     def get(self, id, imageid):
         '''
         Gets an image by id from the emulator with openstack nova compliant return values.
+
         :param id: tenantid, we ignore this most of the time
         :param imageid: id of the image. If it is 1 the dummy CREATE-IMAGE is returned
         :return:
@@ -477,7 +480,7 @@ class NovaInterfaceToServer(Resource):
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
-            data = request.json.get("interfaceAttachment")
+            data = json.loads(request.data).get("interfaceAttachment")
             resp = dict()
             port = data.get("port_id", None)
             net = data.get("net_id", None)
@@ -515,15 +518,6 @@ class NovaInterfaceToServer(Resource):
                 self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
                 dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
-
-                # if we want to have exclusive host-to-n connections we have to enable this
-                # link_dict = dc.net.DCNetwork_graph[server.name][self.api.manage.floating_switch]
-                # for link in link_dict:
-                #     if link_dict[link]['src_port_name'] == port.intf_name:
-                #         inport = int(link_dict[link]['dst_port_nr'])
-
-                # connect each VNF to the host only. No pinging between VNFs possible
-                # self.api.manage.floating_switch("add-flow", "in_port=%s,actions=OUTPUT:1" % inport)
             else:
                 dc.net.addLink(server.emulator_compute, dc.switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)

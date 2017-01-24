@@ -7,6 +7,9 @@ import uuid
 import logging
 
 class HeatParser:
+    """
+    The HeatParser will parse a heat dictionary and create a stack and its components, to instantiate it within son-emu.
+    """
     def __init__(self, compute):
         self.description = None
         self.parameter_groups = None
@@ -19,11 +22,16 @@ class HeatParser:
     def parse_input(self, input_dict, stack, dc_label):
         """
         It will parse the input dictionary into the corresponding classes, which are then stored within the stack.
+
         :param input_dict: Dictionary with the template version and resources.
+        :type input_dict: ``dict``
         :param stack: Reference of the stack that should finally contain all created classes.
+        :type stack: :class:`heat.resources.stack`
         :param dc_label: String that contains the label of the used data center.
-        :return: True - if the template version is supported and all resources could be created.
-                 False - else
+        :type dc_label: ``str``
+        :return: * *True*: If the template version is supported and all resources could be created.
+                 * *False*: Else
+        :rtype: ``bool``
         """
         if not self.check_template_version(str(input_dict['heat_template_version'])):
             print('Unsupported template version: ' + input_dict['heat_template_version'], file=sys.stderr)
@@ -61,17 +69,21 @@ class HeatParser:
         the corresponding class, with its required parameters, for further calculations (like deploying the stack).
         If it is not possible to create the class, because of unresolved dependencies, it will buffer the resource
         within the 'self.bufferResource' list.
+
         :param resource: Dict which contains all important informations about the type and parameters.
+        :type resource: ``dict``
         :param stack: Reference of the stack that should finally contain the created class.
+        :type stack: :class:`heat.resources.stack`
         :param dc_label: String that contains the label of the used data center
+        :type dc_label: ``str``
         :return: void
+        :rtype: ``None``
         """
         if "OS::Neutron::Net" in resource['type']:
             try:
-                net = self.compute.find_network_by_name_or_id(resource['properties']['name'])
-                if net is None:
-                    net = self.compute.create_network(resource['properties']['name'])
-                stack.nets[resource['properties']['name']] = net
+                net_name = resource['properties']['name']
+                if net_name not in stack.nets:
+                    stack.nets[net_name] = self.compute.create_network(net_name, True)
 
             except Exception as e:
                 logging.warning('Could not create Net: ' + e.message)
@@ -80,10 +92,11 @@ class HeatParser:
         if 'OS::Neutron::Subnet' in resource['type'] and "Net" not in resource['type']:
             try:
                 net_name = resource['properties']['network']['get_resource']
-                net = self.compute.find_network_by_name_or_id(net_name)
-                if net is None:
-                    net = self.compute.create_network(net_name)
+                if net_name not in stack.nets:
+                    net = self.compute.create_network(net_name, True)
                     stack.nets[net_name] = net
+                else:
+                    net = stack.nets[net_name]
 
                 net.subnet_name = resource['properties']['name']
                 if 'gateway_ip' in resource['properties']:
@@ -98,10 +111,12 @@ class HeatParser:
         if 'OS::Neutron::Port' in resource['type']:
             try:
                 port_name = resource['properties']['name']
-                port = self.compute.find_port_by_name_or_id(port_name)
-                if port is None:
-                    port = self.compute.create_port(port_name)
-                stack.ports[port_name] = port
+                if port_name not in stack.ports:
+                    port = self.compute.create_port(port_name, True)
+                    stack.ports[port_name] = port
+                else:
+                    port = stack.ports[port_name]
+
                 if resource['properties']['network']['get_resource'] in stack.nets:
                     net = stack.nets[resource['properties']['network']['get_resource']]
                     if net.subnet_id is not None:
@@ -126,35 +141,25 @@ class HeatParser:
                                  self.shorten_server_name(str(resource['properties']['name']), stack)
                 nw_list = resource['properties']['networks']
 
-                server = self.compute.find_server_by_name_or_id(shortened_name)
-                if server is None:
-                    server = self.compute.create_server(shortened_name)
-
-                stack.servers[shortened_name] = server
+                if shortened_name not in stack.servers:
+                    server = self.compute.create_server(shortened_name, True)
+                    stack.servers[shortened_name] = server
+                else:
+                    server = stack.servers[shortened_name]
 
                 server.full_name = compute_name
                 server.template_name = str(resource['properties']['name'])
                 server.command = resource['properties'].get('command', '/bin/sh')
                 server.image = resource['properties']['image']
-
-                flavor = resource['properties']['flavor']
-                if isinstance(flavor, dict):
-                    self.compute.add_flavor(flavor['flavorName'],
-                                            flavor['vcpu'],
-                                            flavor['ram'], 'MB',
-                                            flavor['storage'], 'GB')
-                    server.flavor = flavor['flavorName']
-                else:
-                    server.flavor = flavor
+                server.flavor = resource['properties']['flavor']
 
                 for port in nw_list:
                     port_name = port['port']['get_resource']
                     # just create a port
                     # we don't know which network it belongs to yet, but the resource will appear later in a valid
                     # template
-                    port = self.compute.find_port_by_name_or_id(port_name)
-                    if port is None:
-                        self.compute.create_port(port_name)
+                    if port_name not in stack.ports:
+                        stack.ports[port_name] = self.compute.create_port(port_name, True)
                     server.port_names.append(port_name)
                 return
             except Exception as e:
@@ -212,9 +217,13 @@ class HeatParser:
         """
         Shortens the server name to a maximum of 12 characters plus the iterator string, if the original name was
         used before.
+
         :param server_name: The original server name.
+        :type server_name: ``str``
         :param stack: A reference to the used stack.
+        :type stack: :class:`heat.resources.stack`
         :return: A string with max. 12 characters plus iterator string.
+        :rtype: ``str``
         """
         server_name = self.shorten_name(server_name, 12)
         iterator = 0
@@ -226,9 +235,13 @@ class HeatParser:
     def shorten_name(self, name, max_size):
         """
         Shortens the name to max_size characters and replaces all '-' with '_'.
+
         :param name: The original string.
+        :type name: ``str``
         :param max_size: The number of allowed characters.
+        :type max_size: ``int``
         :return: String with at most max_size characters and without '-'.
+        :rtype: ``str``
         """
         shortened_name = name.split(':', 1)[0]
         shortened_name = shortened_name.replace("-", "_")
@@ -237,9 +250,13 @@ class HeatParser:
 
     def check_template_version(self, version_string):
         """
-        Checks if a version string is equal or later than 30.04.2015
+        Checks if a version string is equal or later than 30-04-2015
+
         :param version_string: String with the version.
-        :return: True: if the version is equal or later 30.04.2015. - False: else
+        :type version_string: ``str``
+        :return: * *True*: if the version is equal or later 30-04-2015.
+         * *False*: else
+        :rtype: ``bool``
         """
         r = re.compile('\d{4}-\d{2}-\d{2}')
         if not r.match(version_string):
