@@ -89,6 +89,7 @@ class ApiBaseHeat(unittest.TestCase):
         # connect data centers to the endpoint
         for i in range(0, ndatacenter):
             self.api[i].connect_datacenter(self.dc[i])
+            self.api[i].connect_dc_network(self.net)
         # add some hosts
         for i in range(0, nhosts):
             self.h.append(self.net.addHost('h%d' % i))

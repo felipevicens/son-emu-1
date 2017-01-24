@@ -228,7 +228,6 @@ class NeutronCreateNetwork(Resource):
         logging.debug("API CALL: Neutron - Create network")
         try:
             network_dict = json.loads(request.data)
-            print(network_dict)
             name = network_dict['network']['name']
             net = self.api.compute.find_network_by_name_or_id(name)
             if net is not None:
