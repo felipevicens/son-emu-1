@@ -212,5 +212,5 @@ class MonitorVnfDcStack(Resource):
                 break
         if server_real is None:
             return Response(u"VNF %s does not exist\n" % (vnf), status=500, mimetype="application/json")
-        container_real = server_real.name
+        container_real = 'mn.' + server_real.name
         return container_real
