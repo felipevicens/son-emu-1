@@ -232,10 +232,10 @@ class ChainVnfInterfaces(Resource):
             path = None
 
         # check if both VNFs exist
-        if self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
                             mimetype="application/json")
-        if self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
                             mimetype="application/json")
         try:
@@ -270,10 +270,10 @@ class ChainVnfInterfaces(Resource):
         """
         # check if both VNFs exist
         # check if both VNFs exist
-        if self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
                             mimetype="application/json")
-        if self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
                             mimetype="application/json")
         try:
@@ -332,10 +332,10 @@ class ChainVnfDcStackInterfaces(Resource):
         container_src, container_dst, interface_src, interface_dst = real_names
 
         # check if both VNFs exist
-        if self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
                             mimetype="application/json")
-        if self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
                             mimetype="application/json")
 
@@ -385,10 +385,10 @@ class ChainVnfDcStackInterfaces(Resource):
             return real_names
 
         # check if both VNFs exist
-        if self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
                             mimetype="application/json")
-        if self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
                             mimetype="application/json")
 
@@ -440,10 +440,10 @@ class ChainVnfDcStackInterfaces(Resource):
         container_src, container_dst, interface_src, interface_dst = real_names
         
         # check if both VNFs exist
-        if self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
                             mimetype="application/json")
-        if self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
                             mimetype="application/json")
 
@@ -697,7 +697,7 @@ class BalanceHost(Resource):
 
         """
         # check if VNF exist
-        if self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+        if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
             return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface), status=501,
                             mimetype="application/json")
         try:
@@ -731,7 +731,7 @@ class BalanceHost(Resource):
 
         """
         # check if VNF exist
-        if self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+        if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
             return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface), status=501,
                             mimetype="application/json")
         try:
