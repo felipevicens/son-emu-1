@@ -351,8 +351,8 @@ class OpenstackManage(object):
 
         logging.debug("Call to add_loadbalancer at %s intfs:%s" % (src_vnf_name, src_vnf_interface))
 
-        if src_vnf_name not in net:
-            raise Exception(u"Source VNF does not exists.")
+        if not self.check_vnf_intf_pair(src_vnf_name, src_vnf_interface):
+            raise Exception(u"Source VNF %s or intfs %s does not exist" % (src_vnf_name, src_vnf_interface))
 
         # find the switch belonging to the source interface, as well as the inport nr
         for connected_sw in net.DCNetwork_graph.neighbors(src_vnf_name):
@@ -388,15 +388,12 @@ class OpenstackManage(object):
                 src_ip = intf.ip
                 src_intf = intf
 
-        if src_intf is None:
-            raise Exception(u"Source VNF or interface can not be found.")
-
         # set up paths for each destination vnf individually
         index = 0
         cookie = self.get_cookie()
         main_cmd = "add-flow -OOpenFlow13"
         self.lb_flow_cookies[(src_vnf_name, src_vnf_interface)].append(cookie)
-        for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.iteritems():
+        for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.items():
             path, src_sw, dst_sw = self._get_path(src_vnf_name, dst_vnf_name,
                                                   src_vnf_interface, dst_vnf_interface)
 
@@ -407,9 +404,9 @@ class OpenstackManage(object):
                     path = custom_paths[dst_vnf_name][dst_vnf_interface]
                     logging.debug("Taking custom path from %s to %s: %s" % (src_vnf_name, dst_vnf_name, path))
 
-            if dst_vnf_name not in net:
+            if not self.check_vnf_intf_pair(dst_vnf_name, dst_vnf_interface):
                 self.delete_loadbalancer(src_vnf_name, src_vnf_interface)
-                raise Exception(u"The destination VNF %s does not exist" % dst_vnf_name)
+                raise Exception(u"VNF %s or intfs %s does not exist" % (dst_vnf_name, dst_vnf_interface))
             if isinstance(path, dict):
                 self.delete_loadbalancer(src_vnf_name, src_vnf_interface)
                 raise Exception(u"Can not find a valid path. Are you specifying the right interfaces?.")
