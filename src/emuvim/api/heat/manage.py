@@ -161,6 +161,24 @@ class OpenstackManage(object):
             grp = self.flow_groups[(src_vnf_name, src_vnf_interface)]
         return grp
 
+
+    def check_vnf_intf_pair(self, vnf_name, vnf_intf_name):
+        """
+        Checks if a VNF exists and has the given interface
+
+        :param vnf_name: Name of the VNF to be checked
+        :type vnf_name: ``str``
+        :param vnf_intf_name: Name of the interface that belongst to the VNF
+        :type vnf_intf_name: ``str``
+        :return: ``True`` if it is valid pair, else ``False``
+        :rtype: ``bool``
+        """
+
+        if vnf_name in self.net:
+            vnf = self.net.getNodeByName(vnf_name)
+            return vnf_intf_name in vnf.nameToIntf
+
+
     def network_action_start(self, vnf_src_name, vnf_dst_name, **kwargs):
         """
         Starts a network chain for a source destination pair
