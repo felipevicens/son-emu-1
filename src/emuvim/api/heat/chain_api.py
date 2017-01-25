@@ -106,11 +106,12 @@ class ChainVnf(Resource):
         :param dst_vnf: Name of the destination VNF
         :type dst_vnf: ``str``
         :return: flask.Response 200 if set up correctly else 500 also returns the cookie as json {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
         """
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+            return Response(u"At least one VNF does not exist", status=501, mimetype="application/json")
 
         try:
             # check if which interface to chain on
@@ -142,12 +143,12 @@ class ChainVnf(Resource):
         :param dst_vnf: Name of the destination VNF
         :type dst_vnf: ``str``
         :return: flask.Response 200 if set up correctly else 500 also returns the cookie as json {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
         """
         # check if both VNFs exist
         if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
-
+            return Response(u"At least one VNF does not exist", status=501, mimetype="application/json")
         try:
             # check if which interface to chain on
             dst_intfs = None
@@ -196,6 +197,7 @@ class ChainVnfInterfaces(Resource):
         :param dst_intfs: Name of the destination VNF interface to chain on
         :type dst_intfs: ``str``
         :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
         """
         return self.post(src_vnf, src_intfs, dst_vnf, dst_intfs)
@@ -220,6 +222,7 @@ class ChainVnfInterfaces(Resource):
         :param dst_intfs: Name of the destination VNF interface to chain on
         :type dst_intfs: ``str``
         :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
@@ -229,8 +232,12 @@ class ChainVnfInterfaces(Resource):
             path = None
 
         # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
         try:
             cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                           vnf_dst_interface=dst_intfs, bidirectional=True,
@@ -257,12 +264,18 @@ class ChainVnfInterfaces(Resource):
         :type dst_intfs: ``str``
         :return: flask.Response 200 if set up correctly else 500\
          also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
         # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
         try:
             cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                          vnf_dst_interface=dst_intfs, bidirectional=True)
@@ -306,6 +319,7 @@ class ChainVnfDcStackInterfaces(Resource):
         :type dst_intfs: ``str``
         :return: flask.Response 200 if set up correctly else 500\
          also returns the cookie as dict {'cookie': value}
+         501 if VNF or intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
@@ -317,6 +331,14 @@ class ChainVnfDcStackInterfaces(Resource):
 
         container_src, container_dst, interface_src, interface_dst = real_names
 
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
+
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
                                                           vnf_dst_interface=interface_dst, bidirectional=True)
@@ -326,6 +348,61 @@ class ChainVnfDcStackInterfaces(Resource):
         except Exception as e:
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
+
+    def post(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+        """
+         A post request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+         will create a chain between two interfaces at the specified vnfs.
+         The POST data contains the path like this.
+         { "path": ["dc1.s1", "s1", "dc4.s1"]}
+         path specifies the destination vnf and interface and contains a list of switches
+         that the path traverses. The path may not contain single hop loops like:
+         [s1, s2, s1].
+         This is a limitation of Ryu, as Ryu does not allow the `INPUT_PORT` action!
+
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if vnf / intfs do not exist
+        :rtype: :class:`flask.Response`
+
+        """
+        try:
+            path = request.json['path']
+        except:
+            path = None
+
+        # search for real names
+        real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
+        if type(real_names) is not tuple:
+            # something went wrong
+            return real_names
+
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
+
+        try:
+            cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
+                                                          vnf_dst_interface=dst_intfs, bidirectional=True,
+                                                          path=path)
+            resp = {'cookie': cookie}
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+        except Exception as e:
+            logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
+            return Response(u"Error setting up the chain", status=500, mimetype="application/json")
+
 
     def delete(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
         """
@@ -350,6 +427,7 @@ class ChainVnfDcStackInterfaces(Resource):
         :type dst_intfs: ``str``
         :return: flask.Response 200 if set up correctly else 500\
          also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
@@ -360,6 +438,14 @@ class ChainVnfDcStackInterfaces(Resource):
             return real_names
 
         container_src, container_dst, interface_src, interface_dst = real_names
+        
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
 
         try:
             cookie = self.api.manage.network_action_stop(container_src, container_dst, vnf_src_interface=interface_src,
@@ -606,9 +692,14 @@ class BalanceHost(Resource):
         :param vnf_src_interface: Name of the source VNF interface to chain on
         :type vnf_src_interface: ``str``
         :return: flask.Response 200 if set up correctly else 500
+         501 if VNF or intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
+        # check if VNF exist
+        if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+            return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface), status=501,
+                            mimetype="application/json")
         try:
             req = request.json
             if req is None or len(req) == 0:
@@ -635,9 +726,14 @@ class BalanceHost(Resource):
         :param vnf_src_interface: Name of the source VNF interface to chain on
         :type vnf_src_interface: ``str``
         :return: flask.Response 200 if set up correctly else 500
+         501 if VNF or intfs does not exist
         :rtype: :class:`flask.Response`
 
         """
+        # check if VNF exist
+        if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+            return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface), status=501,
+                            mimetype="application/json")
         try:
             logging.debug("Deleting loadbalancer at %s: interface: %s" % (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net

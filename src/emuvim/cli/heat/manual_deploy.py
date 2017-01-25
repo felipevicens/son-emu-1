@@ -16,6 +16,8 @@ def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False,
     if not nova and not neutron and not chain:
         return False
 
+    resp = None
+    url = None
     if nova:
         url = "%s:%d%s%s" % (ip_or_hostname, (nova_baseport + dc), nova_baseurl, resource)
     if neutron:
@@ -35,6 +37,9 @@ def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False,
     if req.upper() == "PUT":
         logging.debug("PUT %s DATA: %s" % (url, data))
         resp = requests.put(url, data=data, headers=headers)
+    if req.upper() == "DELETE":
+        logging.debug("DELETE %s DATA: %s" % (url, data))
+        resp = requests.delete(url, data=data, headers=headers)
 
     if resp is not None:
         logging.debug("RESPONSE: %s" % resp.content)
@@ -134,6 +139,8 @@ def set_chain(src_vnf, src_intf, dst_vnf, dst_intf, data=None):
         data = {}
     data = json.dumps(data)
     resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="POST")
+def delete_chain(src_vnf, src_intf, dst_vnf, dst_intf, data=None):
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="DELETE")
 
 def sample_topo():
     for dc in xrange(4):
@@ -157,7 +164,7 @@ def chain_topo_test():
             port = create_port(net, datacenter=dc)
             server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
 
-    data = {"path": ["dc1.s1", "s1", "dc3.s1", "s2", "s3", "dc4.s1"]}
+    data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
     #data = None
     set_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3",data)
 
@@ -186,6 +193,13 @@ def lb_webservice_topo():
 
 if __name__ == "__main__":
     #sample_topo()
-    lb_webservice_topo()
-    #chain_topo_test()
+    #lb_webservice_topo()
+    chain_topo_test()
+    set_chain("dc1_man_serv0", "port-man-0", "dc4_man_serv0", "port-man-3")
+    delete_chain("dc1_man_serv0", "port-man-0", "dc4_man_serv0", "port-man-3")
+    set_chain("dc1_man_serv0", "port-man-0", "dc4_man_serv0", "port-man-3")
+    set_chain("dc2_man_serv0", "port-man-1", "dc3_man_serv0", "port-man-2")
+    delete_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3")
+    set_chain("dc1_man_serv0", "port-man-0", "dc4_man_serv0", "port-man-3")
+
 
