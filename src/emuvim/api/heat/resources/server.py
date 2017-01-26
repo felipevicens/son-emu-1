@@ -13,6 +13,15 @@ class Server(object):
         self.emulator_compute = None
 
     def compare_attributes(self, other):
+        """
+        Compares only class attributes like name and flavor but not the list of ports with the other server.
+
+        :param other: The second server to compare with.
+        :type other: :class:`heat.resources.server`
+        :return: * *True*: If all attributes are alike.
+            * *False*: Else
+        :rtype: ``bool``
+        """
         if self.name == other.name and self.full_name == other.full_name and \
                                        self.flavor == other.flavor and \
                                        self.image == other.image and \
@@ -31,6 +40,14 @@ class Server(object):
         return False
 
     def create_server_dict(self, compute = None):
+        """
+        Creates the server description dictionary.
+
+        :param compute: The compute resource for further informations.
+        :type compute: :class:`heat.compute`
+        :return: Server description dictionary.
+        :rtype: ``dict``
+        """
         server_dict = dict()
         server_dict['name'] = self.name
         server_dict['full_name'] = self.full_name

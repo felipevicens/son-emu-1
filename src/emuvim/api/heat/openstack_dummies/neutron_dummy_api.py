@@ -66,6 +66,12 @@ class Shutdown(Resource):
 
 class NeutronListAPIVersions(Resource):
     def get(self):
+        """
+        Lists API versions.
+
+        :return: Returns a json with API versions.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: Neutron - List API Versions")
         resp = dict()
         resp['versions'] = dict()
@@ -87,6 +93,12 @@ class NeutronListAPIVersions(Resource):
 
 class NeutronShowAPIv2Details(Resource):
     def get(self):
+        """
+        Returns API details.
+
+        :return: Returns a json with API details.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: Neutron - Show API v2 details")
         resp = dict()
 
@@ -136,6 +148,7 @@ class NeutronListNetworks(Resource):
         network with the name, or the networks specified via id.
 
         :return: Returns a json response, starting with 'networks' as root node.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - List networks")
         try:
@@ -181,6 +194,7 @@ class NeutronShowNetwork(Resource):
 
         :param network_id: The unique ID string of the network.
         :return: Returns a json response, starting with 'network' as root node and one network description.
+        :rtype: :class:`flask.response`
         """
         return self.get_network(network_id, False)
 
@@ -191,12 +205,13 @@ class NeutronShowNetwork(Resource):
         :param network_name_or_id: The indicator string, which specifies the requested network.
         :param as_list: Determines if the network description should start with the root node 'network' or 'networks'.
         :return: Returns a json response, with one network description.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Show network")
         try:
             net = self.api.compute.find_network_by_name_or_id(network_name_or_id)
             if net is None:
-                return 'Network not found.', 404
+                return Response(u'Network not found.\n', status=404, mimetype='application/json')
 
             tmp_network_dict = net.create_network_dict()
             tmp_dict = dict()
@@ -210,7 +225,7 @@ class NeutronShowNetwork(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: Show network exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronCreateNetwork(Resource):
@@ -221,9 +236,10 @@ class NeutronCreateNetwork(Resource):
         """
         Creates a network with the name, specified within the request under ['network']['name'].
 
-        :return: 400, if the network already exists.
-            500, if any exception occurred while creation.
-            201, if everything worked out.
+        :return: * 400, if the network already exists.
+            * 500, if any exception occurred while creation.
+            * 201, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Create network")
         try:
