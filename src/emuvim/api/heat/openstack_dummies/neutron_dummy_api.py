@@ -181,7 +181,7 @@ class NeutronListNetworks(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: List networks exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronShowNetwork(Resource):
@@ -193,6 +193,7 @@ class NeutronShowNetwork(Resource):
         Returns the network, specified via 'network_id'.
 
         :param network_id: The unique ID string of the network.
+        :type network_id: ``str``
         :return: Returns a json response, starting with 'network' as root node and one network description.
         :rtype: :class:`flask.response`
         """
@@ -203,7 +204,9 @@ class NeutronShowNetwork(Resource):
         Returns one network description of the network, specified via 'network_name_or_id'.
 
         :param network_name_or_id: The indicator string, which specifies the requested network.
+        :type network_name_or_id: ``str``
         :param as_list: Determines if the network description should start with the root node 'network' or 'networks'.
+        :type as_list: ``bool``
         :return: Returns a json response, with one network description.
         :rtype: :class:`flask.response`
         """
@@ -247,13 +250,13 @@ class NeutronCreateNetwork(Resource):
             name = network_dict['network']['name']
             net = self.api.compute.find_network_by_name_or_id(name)
             if net is not None:
-                return 'Network already exists.', 400
+                return Response('Network already exists.\n', status=400, mimetype='application/json')
 
             net = self.api.compute.create_network(name)
             return Response(json.dumps({"network": net.create_network_dict()}), status=201, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronUpdateNetwork(Resource):
@@ -265,9 +268,11 @@ class NeutronUpdateNetwork(Resource):
         Updates the existing network with the given parameters.
 
         :param network_id: The indicator string, which specifies the requested network.
-        :return: 404, if the network could not be found.
-            500, if any exception occurred while updating the network.
-            200, if everything worked out.
+        :type network_id: ``str``
+        :return: * 404, if the network could not be found.
+            * 500, if any exception occurred while updating the network.
+            * 200, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Update network")
         try:
@@ -291,11 +296,11 @@ class NeutronUpdateNetwork(Resource):
 
                 return Response(json.dumps(network_dict), status=200, mimetype='application/json')
 
-            return 'Network not found.', 404
+            return Response('Network not found.\n', status=404, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Show networks exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronDeleteNetwork(Resource):
@@ -307,28 +312,31 @@ class NeutronDeleteNetwork(Resource):
         Deletes the specified network and all its subnets.
 
         :param network_id: The indicator string, which specifies the requested network.
-        :return: 404, if the network or the subnet could not be removed.
-            500, if any exception occurred while deletion.
-            204, if everything worked out.
+        :type network_id: ``str``
+        :return: * 404, if the network or the subnet could not be removed.
+            * 500, if any exception occurred while deletion.
+            * 204, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Delete network")
         try:
             if network_id not in self.api.compute.nets:
-                return 'Could not find network. (' + network_id + ')', 404
+                return Response('Could not find network. (' + network_id + ')\n',
+                                status=404, mimetype='application/json')
 
             net = self.api.compute.nets[network_id]
             delete_subnet = NeutronDeleteSubnet(self.api)
             response_string, response_id = delete_subnet.delete(net.subnet_id)
 
             if response_id != 204 and response_id != 404:
-                return response_string, response_id
+                return Response(response_string, status=response_id, mimetype='application/json')
 
             self.api.compute.delete_network(network_id)
 
-            return 'Network ' + str(network_id) + ' deleted.', 204
+            return Response('Network ' + str(network_id) + ' deleted.\n', status=204, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Delete network exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronListSubnets(Resource):
@@ -341,6 +349,7 @@ class NeutronListSubnets(Resource):
         subnet with the name, or the subnets specified via id.
 
         :return: Returns a json response, starting with 'subnets' as root node.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - List subnets")
         try:
@@ -372,7 +381,7 @@ class NeutronListSubnets(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: List subnets exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronShowSubnet(Resource):
@@ -384,7 +393,9 @@ class NeutronShowSubnet(Resource):
         Returns the subnet, specified via 'subnet_id'.
 
         :param subnet_id: The unique ID string of the subnet.
+        :type subnet_id: ``str``
         :return: Returns a json response, starting with 'subnet' as root node and one subnet description.
+        :rtype: :class:`flask.response`
         """
         return self.get_subnet(subnet_id, False)
 
@@ -393,8 +404,11 @@ class NeutronShowSubnet(Resource):
         Returns one subnet description of the subnet, specified via 'subnet_name_or_id'.
 
         :param subnet_name_or_id: The indicator string, which specifies the requested subnet.
+        :type subnet_name_or_id: ``str``
         :param as_list: Determines if the subnet description should start with the root node 'subnet' or 'subnets'.
+        :type as_list: ``bool``
         :return: Returns a json response, with one subnet description.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Show subnet")
         try:
@@ -408,11 +422,11 @@ class NeutronShowSubnet(Resource):
                         tmp_dict["subnet"] = tmp_subnet_dict
                     return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
-            return 'Subnet not found. (' + subnet_name_or_id + ')', 404
+            return Response('Subnet not found. (' + subnet_name_or_id + ')\n', status=404, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Show subnet exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronCreateSubnet(Resource):
@@ -423,11 +437,12 @@ class NeutronCreateSubnet(Resource):
         """
         Creates a subnet with the name, specified within the request under ['subnet']['name'].
 
-        :return: 400, if the 'CIDR' format is wrong or it does not exist.
-            404, if the network was not found.
-            409, if the corresponding network already has one subnet.
-            500, if any exception occurred while creation and
-            201, if everything worked out.
+        :return: * 400, if the 'CIDR' format is wrong or it does not exist.
+            * 404, if the network was not found.
+            * 409, if the corresponding network already has one subnet.
+            * 500, if any exception occurred while creation and
+            * 201, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Create subnet")
         try:
@@ -435,17 +450,17 @@ class NeutronCreateSubnet(Resource):
             net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
 
             if net is None:
-                return 'Could not find network.', 404
+                return Response('Could not find network.\n', status=404, mimetype='application/json')
 
             net.subnet_name = subnet_dict["subnet"].get('name', str(net.name) + '-sub')
             if net.subnet_id is not None:
-                return 'Only one subnet per network is supported', 409
+                return Response('Only one subnet per network is supported\n', status=409, mimetype='application/json')
 
             if "cidr" in subnet_dict["subnet"]:
                 if not net.set_cidr(subnet_dict["subnet"]["cidr"]):
-                    return 'Wrong CIDR format.', 400
+                    return Response('Wrong CIDR format.\n', status=400, mimetype='application/json')
             else:
-                return 'No CIDR found.', 400
+                return Response('No CIDR found.\n', status=400, mimetype='application/json')
             if "tenant_id" in subnet_dict["subnet"]:
                 pass
             if "allocation_pools" in subnet_dict["subnet"]:
@@ -465,7 +480,7 @@ class NeutronCreateSubnet(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: Create network excepiton.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronUpdateSubnet(Resource):
@@ -477,9 +492,11 @@ class NeutronUpdateSubnet(Resource):
         Updates the existing subnet with the given parameters.
 
         :param subnet_id: The indicator string, which specifies the requested subnet.
-        :return: 404, if the network could not be found.
-            500, if any exception occurred while updating the network.
-            200, if everything worked out.
+        :type subnet_id: ``str``
+        :return: * 404, if the network could not be found.
+            * 500, if any exception occurred while updating the network.
+            * 200, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Update subnet")
         try:
@@ -510,11 +527,11 @@ class NeutronUpdateSubnet(Resource):
                     tmp_dict = {'subnet': net.create_subnet_dict()}
                     return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
 
-            return 'Network not found.', 404
+            return Response('Network not found.\n', status=404, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Show networks exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronDeleteSubnet(Resource):
@@ -526,9 +543,11 @@ class NeutronDeleteSubnet(Resource):
         Deletes the specified subnet.
 
         :param subnet_id: The indicator string, which specifies the requested subnet.
-        :return: 404, if the subnet could not be removed.
-            500, if any exception occurred while deletion.
-            204, if everything worked out.
+        :type subnet_id: ``str``
+        :return: * 404, if the subnet could not be removed.
+            * 500, if any exception occurred while deletion.
+            * 204, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Delete subnet")
         try:
@@ -551,12 +570,13 @@ class NeutronDeleteSubnet(Resource):
                             net.start_end_dict = None
                             net.reset_issued_ip_addresses()
 
-                        return 'Subnet ' + str(subnet_id) + ' deleted.', 204
+                        return Response('Subnet ' + str(subnet_id) + ' deleted.\n',
+                                        status=204, mimetype='application/json')
 
-            return 'Could not find subnet.', 404
+            return Response('Could not find subnet.', status=404, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Delete subnet exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronListPorts(Resource):
@@ -569,6 +589,7 @@ class NeutronListPorts(Resource):
         port with the name, or the ports specified via id.
 
         :return: Returns a json response, starting with 'ports' as root node.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - List ports")
         try:
@@ -599,7 +620,7 @@ class NeutronListPorts(Resource):
 
         except Exception as ex:
             logging.exception("Neutron: List ports exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronShowPort(Resource):
@@ -611,7 +632,9 @@ class NeutronShowPort(Resource):
         Returns the port, specified via 'port_id'.
 
         :param port_id: The unique ID string of the network.
+        :type port_id: ``str``
         :return: Returns a json response, starting with 'port' as root node and one network description.
+        :rtype: :class:`flask.response`
         """
         return self.get_port(port_id, False)
 
@@ -620,14 +643,17 @@ class NeutronShowPort(Resource):
         Returns one network description of the port, specified via 'port_name_or_id'.
 
         :param port_name_or_id: The indicator string, which specifies the requested port.
+        :type port_name_or_id: ``str``
         :param as_list: Determines if the port description should start with the root node 'port' or 'ports'.
+        :type as_list: ``bool``
         :return: Returns a json response, with one port description.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Show port")
         try:
             port = self.api.compute.find_port_by_name_or_id(port_name_or_id)
             if port is None:
-                return 'Port not found. (' + port_name_or_id + ')', 404
+                return Response('Port not found. (' + port_name_or_id + ')\n', status=404, mimetype='application/json')
             tmp_port_dict = port.create_port_dict(self.api.compute)
             tmp_dict = dict()
             if as_list:
@@ -637,7 +663,7 @@ class NeutronShowPort(Resource):
             return Response(json.dumps(tmp_dict), status=200, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronCreatePort(Resource):
@@ -648,9 +674,10 @@ class NeutronCreatePort(Resource):
         """
         Creates a port with the name, specified within the request under ['port']['name'].
 
-        :return: 404, if the network could not be found.
-            500, if any exception occurred while creation and
-            201, if everything worked out.
+        :return: * 404, if the network could not be found.
+            * 500, if any exception occurred while creation and
+            * 201, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Create port")
         try:
@@ -658,7 +685,7 @@ class NeutronCreatePort(Resource):
             net_id = port_dict['port']['network_id']
 
             if net_id not in self.api.compute.nets:
-                return 'Could not find network.', 404
+                return Response('Could not find network.\n', status=404, mimetype='application/json')
 
             net = self.api.compute.nets[net_id]
             if 'name' in port_dict['port']:
@@ -668,7 +695,7 @@ class NeutronCreatePort(Resource):
                 name = "port:cp%s:man:%s" % (num_ports, str(uuid.uuid4()))
 
             if self.api.compute.find_port_by_name_or_id(name):
-                return Response("Port with name %s already exists." % name, status=500)
+                return Response("Port with name %s already exists.\n" % name, status=500, mimetype='application/json')
 
             port = self.api.compute.create_port(name)
 
@@ -702,7 +729,7 @@ class NeutronCreatePort(Resource):
                             mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Show port exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronUpdatePort(Resource):
@@ -714,16 +741,18 @@ class NeutronUpdatePort(Resource):
         Updates the existing port with the given parameters.
 
         :param network_id: The indicator string, which specifies the requested port.
-        :return: 404, if the network could not be found.
-            500, if any exception occurred while updating the network.
-            200, if everything worked out.
+        :type network_id: ``str``
+        :return: * 404, if the network could not be found.
+            * 500, if any exception occurred while updating the network.
+            * 200, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Update port")
         try:
             port_dict = json.loads(request.data)
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
-                return Response("Port with id %s does not exists." % port_id, status=404)
+                return Response("Port with id %s does not exists.\n" % port_id, status=404, mimetype='application/json')
             old_port = copy.copy(port)
 
             stack = None
@@ -761,7 +790,7 @@ class NeutronUpdatePort(Resource):
                             mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Update port exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronDeletePort(Resource):
@@ -773,15 +802,17 @@ class NeutronDeletePort(Resource):
         Deletes the specified network and all its subnets.
 
         :param port_id: The indicator string, which specifies the requested network.
-        :return: 404, if the network or the subnet could not be removed.
-            500, if any exception occurred while deletion.
-            204, if everything worked out.
+        :type port_id: ``str``
+        :return: * 404, if the network or the subnet could not be removed.
+            * 500, if any exception occurred while deletion.
+            * 204, if everything worked out.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: Neutron - Delete port")
         try:
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
-                return Response("Port with id %s does not exists." % port_id, status=404)
+                return Response("Port with id %s does not exists.\n" % port_id, status=404)
             stack = None
             for s in self.api.compute.stacks.values():
                 for p in s.ports.values():
@@ -799,11 +830,11 @@ class NeutronDeletePort(Resource):
             # delete the port
             self.api.compute.delete_port(port.id)
 
-            return 'Port ' + port_id + ' deleted.', 204
+            return Response('Port ' + port_id + ' deleted.\n', status=204, mimetype='application/json')
 
         except Exception as ex:
             logging.exception("Neutron: Delete port exception.")
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
 
 
 class NeutronAddFloatingIp(Resource):
@@ -811,6 +842,12 @@ class NeutronAddFloatingIp(Resource):
         self.api = api
 
     def post(self):
+        """
+        Adds a floating ... TODO
+
+        :return: Returns a floating network description.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: Neutron - Create FloatingIP")
         try:
             #TODO: this is first implementation that will change with mgmt networks!
@@ -820,16 +857,18 @@ class NeutronAddFloatingIp(Resource):
             network_id = req["floatingip"]["floating_network_id"]
             net = self.api.compute.find_network_by_name_or_id(network_id)
             if net != self.api.manage.floating_network:
-                return Response("You have to specify the existing floating network", status=400)
+                return Response("You have to specify the existing floating network\n",
+                                status=400, mimetype='application/json')
 
             port_id = req["floatingip"].get("port_id", None)
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is not None:
                 if port.net_name != self.api.manage.floating_network.name:
-                    return Response("You have to specify a port in the floating network", status=400)
+                    return Response("You have to specify a port in the floating network\n",
+                                    status=400, mimetype='application/json')
 
                 if port.floating_ip is not None:
-                    return Response("We allow only one floating ip per port", status=400)
+                    return Response("We allow only one floating ip per port\n", status=400, mimetype='application/json')
             else:
                 num_ports = len(self.api.compute.ports)
                 name = "port:cp%s:fl:%s" % (num_ports, str(uuid.uuid4()))
@@ -849,8 +888,7 @@ class NeutronAddFloatingIp(Resource):
             resp["floating_ip_address"] = port.floating_ip
             resp["fixed_ip_address"] = port.floating_ip
 
-            return Response(json.dumps(response), status=200,
-                        mimetype='application/json')
+            return Response(json.dumps(response), status=200, mimetype='application/json')
         except Exception as ex:
             logging.exception("Neutron: Create FloatingIP exception %s.", ex)
-            return ex.message, 500
+            return Response(ex.message, status=500, mimetype='application/json')
