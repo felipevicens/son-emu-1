@@ -8,7 +8,9 @@ def docker_container_id(container_name):
     Uses the container name to return the container ID.
 
     :param container_name: The full name of the docker container.
+    :type container_name: ``str``
     :return: Returns the container ID or None if the container is not running or could not be found.
+    :rtype: ``dict``
     """
     c = Client()
     detail = c.inspect_container(container_name)
@@ -22,8 +24,10 @@ def docker_abs_cpu(container_id):
     Absolute number of nanoseconds, the docker container utilized the CPU till startup and the current system time
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns a dict with CPU_used in nanoseconds, the current system time in nanoseconds and the number of
         CPU cores available.
+    :rtype: ``dict``
     """
     with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/cpuacct.usage_percpu', 'r') as f:
         line = f.readline()
@@ -40,7 +44,9 @@ def docker_mem_used(container_id):
     Bytes of memory used from the docker container
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns the memory utilization in bytes.
+    :rtype: ``str``
     """
     with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.usage_in_bytes', 'r') as f:
         return int(f.readline())
@@ -51,7 +57,9 @@ def docker_max_mem(container_id):
     Bytes of memory the docker container could use.
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns the bytes of memory the docker container could use.
+    :rtype: ``str``
     """
     with open('/sys/fs/cgroup/memory/docker/' + container_id + '/memory.limit_in_bytes', 'r') as f:
         mem_limit = int(f.readline())
@@ -75,8 +83,10 @@ def docker_mem(container_id):
     Calculates the current, maximal and percentage usage of the specified docker container
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns a dictionary with the total memory usage, the maximal available memory and the percentage
         memory usage.
+    :rtype: ``dict``
     """
     out_dict = dict()
     out_dict['MEM_used'] = docker_mem_used(container_id)
@@ -90,8 +100,10 @@ def docker_abs_net_io(container_id):
     Network traffic of all network interfaces within the controller.
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns the absolute network I/O till container startup, in bytes. The return dict also contains the
         system time.
+    :rtype: ``dict``
     """
     c = Client()
     command = c.exec_create(container_id, 'ifconfig')
@@ -122,7 +134,9 @@ def docker_block_rw(container_id):
     Determines the disk read and write access from the controller since startup.
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns a dictionary with the total disc I/O since container startup, in bytes.
+    :rtype: ``dict``
     """
     with open('/sys/fs/cgroup/blkio/docker/' + container_id + '/blkio.throttle.io_service_bytes', 'r') as f:
         read = f.readline().split()
@@ -145,7 +159,9 @@ def docker_PIDS(container_id):
     Determines the number of processes within the docker container.
 
     :param container_id: The full ID of the docker container.
+    :type container_id: ``str``
     :return: Returns the number of PIDS within a dictionary.
+    :rtype: ``dict``
     """
     with open('/sys/fs/cgroup/cpuacct/docker/' + container_id + '/tasks', 'r') as f:
         return {'PIDS': len(f.read().split('\n')) - 1}
@@ -156,8 +172,10 @@ def monitoring_over_time(container_id):
     Calculates the cpu workload and the network traffic per second.
 
     :param container_id: The full docker container ID
+    :type container_id: ``str``
     :return: A dictionary with disk read and write per second, network traffic per second (in and out),
         the cpu workload and the number of cpu cores available.
+    :rtype: ``dict``
     """
     first_cpu_usage = docker_abs_cpu(container_id)
     first = docker_abs_net_io(container_id)

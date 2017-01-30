@@ -18,6 +18,12 @@ class Port:
         self.net_name = None
 
     def set_name(self, name):
+        """
+        Sets the port name.
+
+        :param name: New port name.
+        :type name: ``str``
+        """
         if self.name == name:
             return
 
@@ -39,8 +45,6 @@ class Port:
         for each name at 0 and can go up to 999. After creating the name each port will post its interface name
         into the global dictionary and adding his full name. Thus each port can determine if his desired interface
         name is already used and choose the next one.
-
-        :return:
         """
         split_name = self.name.split(':')
         if len(split_name) >= 3:
@@ -80,9 +84,11 @@ class Port:
         the new interface name contains the name of the port (this will occur if a stack will be updated and the
         old stack also contains the same connection).
 
-        :param new_intf_name: The new interface name (string).
-        :return: True, if the interface name is now the new interface name.
-            False, if the new interface name is already used.
+        :param new_intf_name: The new interface name.
+        :type new_intf_name: ``str``
+        :return: * *True*: If the interface name is now the new interface name.
+            * *False*: If the new interface name is already used.
+        :rtype: ``bool``
         """
         if self.intf_name == new_intf_name:
             return True
@@ -105,9 +111,23 @@ class Port:
         return ok
 
     def get_short_id(self):
+        """
+        Gets a shortened ID which only contains first 6 characters.
+
+        :return: The first 6 characters of the UUID.
+        :rtype: ``str``
+        """
         return str(self.id)[:6]
 
     def create_port_dict(self, compute):
+        """
+        Creates the port description dictionary.
+
+        :param compute: Requires the compute resource to determine the used network.
+        :type compute: :class:`heat.compute`
+        :return: Returns the description dictionary.
+        :rtype: ``dict``
+        """
         port_dict = dict()
         port_dict["admin_state_up"] = True  # TODO is it always true?
         port_dict["device_id"] = "257614cc-e178-4c92-9c61-3b28d40eca44"  # TODO find real values
@@ -115,14 +135,14 @@ class Port:
         net = compute.find_network_by_name_or_id(self.net_name)
         port_dict["fixed_ips"] = [
             {
-                "ip_address": self.ip_address.rsplit('/', 1)[0] if self.ip_address is not None else None,
-                "subnet_id": net.subnet_id if net is not None else None
+                "ip_address": self.ip_address.rsplit('/', 1)[0] if self.ip_address is not None else "",
+                "subnet_id": net.subnet_id if net is not None else ""
             }
         ]
         port_dict["id"] = self.id
         port_dict["mac_address"] = self.mac_address
         port_dict["name"] = self.name
-        port_dict["network_id"] = net.id if net is not None else None
+        port_dict["network_id"] = net.id if net is not None else ""
         port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
         port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
         return port_dict

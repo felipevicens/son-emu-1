@@ -32,7 +32,7 @@ class OpenstackApiEndpoint():
         An endpoint can only be connected to a single datacenter.
 
         :param dc: Datacenter object
-        :return:
+        :type dc: :class:`dc`
         """
         self.compute.dc = dc
         for ep in self.openstack_endpoints.values():
@@ -44,8 +44,8 @@ class OpenstackApiEndpoint():
         """
         Connect the datacenter network to the endpoint.
 
-        :param dc_network: :py:class:`.net`
-        :return:
+        :param dc_network: Datacenter network reference
+        :type dc_network: :class:`.net`
         """
         self.manage.net = dc_network
         self.compute.nets[self.manage.floating_network.id] = self.manage.floating_network
@@ -55,8 +55,6 @@ class OpenstackApiEndpoint():
     def start(self):
         """
         Start all connected OpenStack endpoints that are connected to this API endpoint.
-
-        :return:
         """
         for component in self.openstack_endpoints.values():
             component.compute = self.compute
@@ -69,8 +67,6 @@ class OpenstackApiEndpoint():
     def stop(self):
         """
         Stop all connected OpenStack endpoints that are connected to this API endpoint.
-
-        :return:
         """
         for component in self.openstack_endpoints.values():
             url = "http://"+component.ip+":"+str(component.port)+"/shutdown"
