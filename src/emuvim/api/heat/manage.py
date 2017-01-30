@@ -46,6 +46,11 @@ class OpenstackManage(object):
         # to keep track which src_vnf(input port on the switch) handles a load balancer
         self.lb_flow_cookies = dict()
         self.chain_flow_cookies = dict()
+
+        # for the visualization also store the complete chain data incl. paths
+        self.full_chain_data = dict()
+        self.full_lb_data = dict()
+
         # flow groups could be handled for each switch separately, but this global group counter should be easier to
         # debug and to maintain
         self.flow_groups = dict()
@@ -219,6 +224,22 @@ class OpenstackManage(object):
                 path=kwargs.get('path'))
 
             self.chain_flow_cookies[(vnf_src_name, kwargs.get('vnf_src_interface'))] = cookie
+
+
+            # to keep this logic seperate of the core son-emu do the housekeeping here
+            data = dict()
+            data["src_vnf"] = vnf_src_name
+            data["src_intf"] = kwargs.get('vnf_src_interface')
+            data["dst_vnf"] = vnf_dst_name
+            data["dst_intf"] = kwargs.get('vnf_dst_interface')
+            data["cookie"] = cookie
+            if kwargs.get('path') is not None:
+                data["path"] = kwargs.get('path')
+            else:
+                data["path"] = self._get_path(vnf_src_name, vnf_dst_name, kwargs.get('vnf_src_interface'),
+                                              kwargs.get('vnf_dst_interface'))[0]
+
+            self.full_chain_data[(vnf_src_name, kwargs.get('vnf_src_interface'))] = data
 
             if kwargs.get('bidirectional', False):
                 cookie = self.get_cookie()
@@ -405,6 +426,13 @@ class OpenstackManage(object):
         cookie = self.get_cookie()
         main_cmd = "add-flow -OOpenFlow13"
         self.lb_flow_cookies[(src_vnf_name, src_vnf_interface)].append(cookie)
+
+        # bookkeeping
+        data = dict()
+        data["src_vnf"] = src_vnf_name
+        data["src_intf"] = src_vnf_interface
+        data["paths"] = list()
+        data["cookie"] = cookie
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.items():
             path, src_sw, dst_sw = self._get_path(src_vnf_name, dst_vnf_name,
                                                   src_vnf_interface, dst_vnf_interface)
@@ -423,6 +451,7 @@ class OpenstackManage(object):
                 self.delete_loadbalancer(src_vnf_name, src_vnf_interface)
                 raise Exception(u"Can not find a valid path. Are you specifying the right interfaces?.")
 
+
             target_mac = "fa:17:00:03:13:37"
             target_ip = "0.0.0.0"
             for intf in net[dst_vnf_name].intfs.values():
@@ -438,6 +467,15 @@ class OpenstackManage(object):
                 vlan = net.vlans.pop()
             else:
                 vlan = None
+
+            single_flow_data = dict()
+            single_flow_data["dst_vnf"] = dst_vnf_name
+            single_flow_data["dst_intf"] = dst_vnf_interface
+            single_flow_data["path"] = path
+            single_flow_data["vlan"] = vlan
+            single_flow_data["cookie"] = cookie
+
+            data["paths"].append(single_flow_data)
 
             for i in range(0, len(path)):
                 if i < len(path) - 1:
@@ -524,6 +562,9 @@ class OpenstackManage(object):
         # actually add the flow
         logging.debug("Switch: %s, CMD: %s" % (src_sw, cmd))
         net[src_sw].dpctl(main_cmd, cmd)
+
+        # finally add all flow data to the internal data storage
+        self.full_lb_data[(src_vnf_name, src_vnf_interface)] = data
 
     def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
         """
@@ -625,6 +666,7 @@ class OpenstackManage(object):
 
         if success:
             del self.chain_flow_cookies[(vnf_name, vnf_intf)]
+            del self.full_chain_data[(vnf_name, vnf_intf)]
             return True
         return False
 
@@ -666,3 +708,4 @@ class OpenstackManage(object):
 
         # unmap groupid from the interface
         del self.flow_groups[(vnf_src_name, vnf_src_interface)]
+        del self.full_lb_data[(vnf_src_name, vnf_src_interface)]

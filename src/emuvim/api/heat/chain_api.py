@@ -24,12 +24,16 @@ class ChainApi(Resource):
         self.manage = manage
         self.api.add_resource(ChainVersionsList, "/",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(ChainList, "/v1/chain/list",
+                              resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnf, "/v1/chain/<src_vnf>/<dst_vnf>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfInterfaces, "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfDcStackInterfaces,
                               "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(BalanceHostList, "/v1/lb/list",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHost, "/v1/lb/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
@@ -85,6 +89,57 @@ class ChainVersionsList(Resource):
             logging.exception(u"%s: Could not show list of versions." % __name__)
             return ex.message, 500
 
+
+class ChainList(Resource):
+    '''
+    Will retrieve all chains including their paths.
+    '''
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self):
+        '''
+        :return: flask.Response containing all live chains
+        '''
+        # at least let it look like an open stack function
+        try:
+            resp = {"chains": list()}
+
+            for chain in self.api.manage.full_chain_data.values():
+                resp["chains"].append(chain)
+
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not list all network chains." % __name__)
+            return ex.message, 500
+
+
+class BalanceHostList(Resource):
+    '''
+    Will retrieve all loadbalance rules including their paths.
+    '''
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self):
+        '''
+        :return: flask.Response containing all live loadbalancer rules
+        '''
+        # at least let it look like an open stack function
+        try:
+            resp = {"loadbalancers": list()}
+
+            for lb in self.api.manage.full_lb_data.values():
+                resp["loadbalancers"].append(lb)
+
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
+            return ex.message, 500
 
 class ChainVnf(Resource):
     """
@@ -403,7 +458,6 @@ class ChainVnfDcStackInterfaces(Resource):
             logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
-
     def delete(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
         """
         A DELETE request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
@@ -438,7 +492,7 @@ class ChainVnfDcStackInterfaces(Resource):
             return real_names
 
         container_src, container_dst, interface_src, interface_dst = real_names
-        
+
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
             return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
