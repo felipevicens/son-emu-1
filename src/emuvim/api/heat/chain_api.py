@@ -332,11 +332,11 @@ class ChainVnfDcStackInterfaces(Resource):
         container_src, container_dst, interface_src, interface_dst = real_names
 
         # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
                             mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
                             mimetype="application/json")
 
         try:
@@ -384,17 +384,19 @@ class ChainVnfDcStackInterfaces(Resource):
             # something went wrong
             return real_names
 
+        container_src, container_dst, interface_src, interface_dst = real_names
+
         # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
                             mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
                             mimetype="application/json")
 
         try:
-            cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                          vnf_dst_interface=dst_intfs, bidirectional=True,
+            cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
+                                                          vnf_dst_interface=interface_dst, bidirectional=True,
                                                           path=path)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
@@ -440,11 +442,11 @@ class ChainVnfDcStackInterfaces(Resource):
         container_src, container_dst, interface_src, interface_dst = real_names
         
         # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
                             mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
-            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
                             mimetype="application/json")
 
         try:
