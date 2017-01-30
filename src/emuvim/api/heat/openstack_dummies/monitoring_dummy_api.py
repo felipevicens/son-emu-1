@@ -101,7 +101,9 @@ class MonitorVnf(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict) + '\n', status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
@@ -143,7 +145,9 @@ class MonitorVnfAbs(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
@@ -171,8 +175,9 @@ class MonitorVnfDcStack(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            return Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
-
+            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
         except Exception as e:
             logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
             return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
