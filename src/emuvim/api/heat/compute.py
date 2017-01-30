@@ -148,7 +148,7 @@ class OpenstackCompute(object):
 
         # Create the networks first
         for server in stack.servers.values():
-            self._start_compute(server, stack)
+            self._start_compute(server)
         return True
 
     def delete_stack(self, stack_id):
@@ -265,7 +265,7 @@ class OpenstackCompute(object):
         # Start all new servers
         for server in new_stack.servers.values():
             if server.name not in self.dc.containers:
-                self._start_compute(server, new_stack)
+                self._start_compute(server)
 
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
@@ -535,7 +535,7 @@ class OpenstackCompute(object):
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) == port.intf_name and \
-                            str(link.intf1.ip) == port.ip_address.split('/')[0]:
+               str(link.intf1.ip) == port.ip_address.split('/')[0]:
                 self._remove_link(link.intf1.node.name, link)
                 break
 
@@ -571,7 +571,7 @@ class OpenstackCompute(object):
         :param server_name: Specifies the server where the link starts.
         :type server_name: ``str``
         :param link: A reference of the link which should be removed.
-        :type list: :class:`mininet.link`
+        :type link: :class:`mininet.link`
         """
         self.dc.switch.detach(link.intf2)
         del self.dc.switch.intfs[self.dc.switch.ports[link.intf2]]
