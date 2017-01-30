@@ -326,10 +326,10 @@ class NeutronDeleteNetwork(Resource):
 
             net = self.api.compute.nets[network_id]
             delete_subnet = NeutronDeleteSubnet(self.api)
-            response_string, response_id = delete_subnet.delete(net.subnet_id)
+            resp = delete_subnet.delete(net.subnet_id)
 
-            if response_id != 204 and response_id != 404:
-                return Response(response_string, status=response_id, mimetype='application/json')
+            if resp["status"] != 204 and resp["status"] != 404:
+                return resp
 
             self.api.compute.delete_network(network_id)
 
