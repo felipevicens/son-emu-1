@@ -120,10 +120,6 @@ class OpenstackManage(object):
             self.net.nameToNode['root'] = self.floating_root
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
-            #self.floating_root.cmd('route add -net "' + root_ip + '" dev ' + str(self.floating_intf))
-            # for exclusive host-to-n connections
-            # self.floating_switch.dpctl("add-flow", 'in_port=1,actions=NORMAL')
-            # set up a simple learning switch
             self.floating_switch.dpctl("add-flow", 'actions=NORMAL')
             self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
 
