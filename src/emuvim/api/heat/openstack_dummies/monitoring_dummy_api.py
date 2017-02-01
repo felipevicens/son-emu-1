@@ -43,6 +43,7 @@ class MonitorVersionsList(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         # at least let it look like an open stack function
         try:
             resp = """[
@@ -85,6 +86,7 @@ class MonitorVnf(Resource):
         :return: Returns a json response with network, cpu and memory usage over time, and specifies the storage
         access, the number of running processes and the current system time.
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
@@ -117,6 +119,7 @@ class MonitorVnfAbs(Resource):
         :return: Returns a json response with network, cpu, memory usage and storage access, as absolute values from
         startup till this point of time. It also contains the number of running processes and the current system time.
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
         if vnf_name[3:] not in self.api.compute.dc.net:
@@ -145,7 +148,7 @@ class MonitorVnfDcStack(Resource):
         self.api = api
 
     def get(self, dc, stack, vnf_name):
-
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         # search for real name
         vnf_name = self._findName(dc,stack,vnf_name)
 

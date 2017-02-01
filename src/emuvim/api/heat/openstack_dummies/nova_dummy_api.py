@@ -65,6 +65,7 @@ class NovaVersionsList(Resource):
         self.api = api
 
     def get(self):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = """
                 {
@@ -98,6 +99,7 @@ class NovaVersionShow(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = """
             {
@@ -140,6 +142,7 @@ class NovaListServersApi(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['servers'] = list()
@@ -159,6 +162,7 @@ class NovaListServersApi(Resource):
             return ex.message, 500
 
     def post(self, id):
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         '''
         Creates a server instance
         :param id: tenant id
@@ -206,6 +210,7 @@ class NovaListServersDetailed(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = {"servers": list()}
             for server in self.api.compute.computeUnits.values():
@@ -255,6 +260,7 @@ class NovaListFlavors(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['flavors'] = list()
@@ -280,6 +286,7 @@ class NovaListFlavorsDetails(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['flavors'] = list()
@@ -314,6 +321,7 @@ class NovaListFlavorById(Resource):
         self.api = api
 
     def get(self, id, flavorid):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['flavor'] = dict()
@@ -341,13 +349,14 @@ class NovaListImages(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['images'] = list()
             for image in self.api.compute.images.values():
                 f = dict()
                 f['id'] = image.id
-                f['name'] = image.name
+                f['name'] = str(image.name).replace(":latest", "")
                 f['links'] = [{'href': "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
                                                                            self.api.port,
                                                                            id,
@@ -365,6 +374,7 @@ class NovaListImagesDetails(Resource):
         self.api = api
 
     def get(self, id):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             resp['images'] = list()
@@ -373,6 +383,7 @@ class NovaListImagesDetails(Resource):
                 # but use a copy so we don't modifiy the original
                 f = image.__dict__.copy()
                 # add additional expected stuff stay openstack compatible
+                f['name'] = str(image.name).replace(":latest", "")
                 f['links'] = [{'href': "http://%s:%d/v2.1/%s/images/%s" % (self.api.ip,
                                                                            self.api.port,
                                                                            id,
@@ -397,6 +408,7 @@ class NovaListImageById(Resource):
         self.api = api
 
     def get(self, id, imageid):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         '''
         Gets an image by id from the emulator with openstack nova compliant return values.
         :param id: tenantid, we ignore this most of the time
@@ -425,6 +437,7 @@ class NovaShowServerDetails(Resource):
         self.api = api
 
     def get(self, id, serverid):
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
@@ -474,6 +487,7 @@ class NovaInterfaceToServer(Resource):
         self.api = api
 
     def post(self, id, serverid):
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
@@ -549,6 +563,7 @@ class NovaShowAndDeleteInterfaceAtServer(Resource):
         self.api = api
 
     def delete(self, id, serverid, port_id):
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:

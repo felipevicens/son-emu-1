@@ -87,7 +87,7 @@ class NeutronListAPIVersions(Resource):
 
 class NeutronShowAPIv2Details(Resource):
     def get(self):
-        logging.debug("API CALL: Neutron - Show API v2 details")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
 
         resp['resources'] = dict()
@@ -136,7 +136,7 @@ class NeutronListNetworks(Resource):
         network with the name, or the networks specified via id.
         :return: Returns a json response, starting with 'networks' as root node.
         """
-        logging.debug("API CALL: Neutron - List networks")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 tmp_network = NeutronShowNetwork(self.api)
@@ -180,6 +180,7 @@ class NeutronShowNetwork(Resource):
         :param network_id: The unique ID string of the network.
         :return: Returns a json response, starting with 'network' as root node and one network description.
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_network(network_id, False)
 
     def get_network(self, network_name_or_id, as_list):
@@ -189,7 +190,6 @@ class NeutronShowNetwork(Resource):
         :param as_list: Determines if the network description should start with the root node 'network' or 'networks'.
         :return: Returns a json response, with one network description.
         """
-        logging.debug("API CALL: Neutron - Show network")
         try:
             net = self.api.compute.find_network_by_name_or_id(network_name_or_id)
             if net is None:
@@ -221,7 +221,7 @@ class NeutronCreateNetwork(Resource):
         500, if any exception occurred while creation.
         201, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Create network")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             network_dict = json.loads(request.data)
             name = network_dict['network']['name']
@@ -248,7 +248,7 @@ class NeutronUpdateNetwork(Resource):
         500, if any exception occurred while updating the network.
         200, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Update network")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             if network_id in self.api.compute.nets:
                 net = self.api.compute.nets[network_id]
@@ -289,7 +289,7 @@ class NeutronDeleteNetwork(Resource):
         500, if any exception occurred while deletion.
         204, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Delete network")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             if network_id not in self.api.compute.nets:
                 return 'Could not find network. (' + network_id + ')', 404
@@ -319,7 +319,7 @@ class NeutronListSubnets(Resource):
         subnet with the name, or the subnets specified via id.
         :return: Returns a json response, starting with 'subnets' as root node.
         """
-        logging.debug("API CALL: Neutron - List subnets")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 show_subnet = NeutronShowSubnet(self.api)
@@ -362,6 +362,7 @@ class NeutronShowSubnet(Resource):
         :param subnet_id: The unique ID string of the subnet.
         :return: Returns a json response, starting with 'subnet' as root node and one subnet description.
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_subnet(subnet_id, False)
 
     def get_subnet(self, subnet_name_or_id, as_list):
@@ -371,7 +372,6 @@ class NeutronShowSubnet(Resource):
         :param as_list: Determines if the subnet description should start with the root node 'subnet' or 'subnets'.
         :return: Returns a json response, with one subnet description.
         """
-        logging.debug("API CALL: Neutron - Show subnet")
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_name_or_id or net.subnet_name == subnet_name_or_id:
@@ -403,7 +403,7 @@ class NeutronCreateSubnet(Resource):
         500, if any exception occurred while creation and
         201, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Create subnet")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             subnet_dict = json.loads(request.data)
             net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
@@ -454,7 +454,7 @@ class NeutronUpdateSubnet(Resource):
         500, if any exception occurred while updating the network.
         200, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Update subnet")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
@@ -502,7 +502,7 @@ class NeutronDeleteSubnet(Resource):
         500, if any exception occurred while deletion.
         204, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Delete subnet")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
@@ -541,7 +541,7 @@ class NeutronListPorts(Resource):
         port with the name, or the ports specified via id.
         :return: Returns a json response, starting with 'ports' as root node.
         """
-        logging.debug("API CALL: Neutron - List ports")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 show_port = NeutronShowPort(self.api)
@@ -583,6 +583,7 @@ class NeutronShowPort(Resource):
         :param port_id: The unique ID string of the network.
         :return: Returns a json response, starting with 'port' as root node and one network description.
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_port(port_id, False)
 
     def get_port(self, port_name_or_id, as_list):
@@ -592,7 +593,6 @@ class NeutronShowPort(Resource):
         :param as_list: Determines if the port description should start with the root node 'port' or 'ports'.
         :return: Returns a json response, with one port description.
         """
-        logging.debug("API CALL: Neutron - Show port")
         try:
             port = self.api.compute.find_port_by_name_or_id(port_name_or_id)
             if port is None:
@@ -620,7 +620,7 @@ class NeutronCreatePort(Resource):
         500, if any exception occurred while creation and
         201, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Create port")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             port_dict = json.loads(request.data)
             net_id = port_dict['port']['network_id']
@@ -685,7 +685,7 @@ class NeutronUpdatePort(Resource):
         500, if any exception occurred while updating the network.
         200, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Update port")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             port_dict = json.loads(request.data)
             port = self.api.compute.find_port_by_name_or_id(port_id)
@@ -743,7 +743,7 @@ class NeutronDeletePort(Resource):
         500, if any exception occurred while deletion.
         204, if everything worked out.
         """
-        logging.debug("API CALL: Neutron - Delete port")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
@@ -777,7 +777,7 @@ class NeutronAddFloatingIp(Resource):
         self.api = api
 
     def post(self):
-        logging.debug("API CALL: Neutron - Create FloatingIP")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             #TODO: this is first implementation that will change with mgmt networks!
             # Fiddle with floating_network !
