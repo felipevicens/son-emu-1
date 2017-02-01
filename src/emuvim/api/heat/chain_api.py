@@ -142,6 +142,7 @@ class BalanceHostList(Resource):
             logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
             return ex.message, 500
 
+
 class ChainVnf(Resource):
     """
     Handles setting up a chain between two VNFs at "/v1/chain/<src_vnf>/<dst_vnf>"
@@ -282,10 +283,8 @@ class ChainVnfInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        try:
-            path = request.json['path']
-        except:
-            path = None
+        path = request.json.get('path')
+        layer2 = request.json.get('layer2', True)
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
@@ -297,7 +296,7 @@ class ChainVnfInterfaces(Resource):
         try:
             cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                           vnf_dst_interface=dst_intfs, bidirectional=True,
-                                                          path=path)
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -397,7 +396,8 @@ class ChainVnfDcStackInterfaces(Resource):
 
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
-                                                          vnf_dst_interface=interface_dst, bidirectional=True)
+                                                          vnf_dst_interface=interface_dst, bidirectional=True,
+                                                          layer2=True)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -429,10 +429,8 @@ class ChainVnfDcStackInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        try:
-            path = request.json['path']
-        except:
-            path = None
+        path = request.json.get('path')
+        layer2 = request.json.get('layer2', True)
 
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
@@ -442,18 +440,10 @@ class ChainVnfDcStackInterfaces(Resource):
 
         container_src, container_dst, interface_src, interface_dst = real_names
 
-        # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
-                            mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
-                            mimetype="application/json")
-
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
                                                           vnf_dst_interface=interface_dst, bidirectional=True,
-                                                          path=path)
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -495,14 +485,6 @@ class ChainVnfDcStackInterfaces(Resource):
             return real_names
 
         container_src, container_dst, interface_src, interface_dst = real_names
-
-        # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
-                            mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
-                            mimetype="application/json")
 
         try:
             cookie = self.api.manage.network_action_stop(container_src, container_dst, vnf_src_interface=interface_src,
