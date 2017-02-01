@@ -249,9 +249,12 @@ class OpenstackManage(object):
                                               vnf_dst_interface)[0]
 
             # add route to dst ip to this interface
+            # this might block on containers that are still setting up, so start a new thread
             if not kwargs.get('no_route'):
-                src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
-                                      vnf_src_interface)
+                t = threading.Thread(target= lambda: src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
+                                      vnf_src_interface))
+                t.daemon = True
+                t.start()
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -741,5 +744,8 @@ class OpenstackManage(object):
                 self.net.ryu_REST("stats/groupentry/delete", data=switch_del_group)
 
         # unmap groupid from the interface
-        del self.flow_groups[(vnf_src_name, vnf_src_interface)]
-        del self.full_lb_data[(vnf_src_name, vnf_src_interface)]
+        target_pair = (vnf_src_name, vnf_src_interface)
+        if target_pair in self.flow_groups:
+            del self.flow_groups[target_pair]
+        if target_pair in self.full_lb_data:
+            del self.full_lb_data[target_pair]
