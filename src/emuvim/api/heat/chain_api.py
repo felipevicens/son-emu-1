@@ -7,6 +7,7 @@ from mininet.node import OVSSwitch
 from flask import Flask
 from flask import Response, request
 from flask_restful import Api, Resource
+import uuid
 
 
 class ChainApi(Resource):
@@ -140,6 +141,7 @@ class BalanceHostList(Resource):
         except Exception as ex:
             logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
             return ex.message, 500
+
 
 class ChainVnf(Resource):
     """
@@ -281,10 +283,8 @@ class ChainVnfInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        try:
-            path = request.json['path']
-        except:
-            path = None
+        path = request.json.get('path')
+        layer2 = request.json.get('layer2', True)
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
@@ -296,7 +296,7 @@ class ChainVnfInterfaces(Resource):
         try:
             cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                           vnf_dst_interface=dst_intfs, bidirectional=True,
-                                                          path=path)
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -396,7 +396,8 @@ class ChainVnfDcStackInterfaces(Resource):
 
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
-                                                          vnf_dst_interface=interface_dst, bidirectional=True)
+                                                          vnf_dst_interface=interface_dst, bidirectional=True,
+                                                          layer2=True)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -428,10 +429,8 @@ class ChainVnfDcStackInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        try:
-            path = request.json['path']
-        except:
-            path = None
+        path = request.json.get('path')
+        layer2 = request.json.get('layer2', True)
 
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
@@ -441,18 +440,10 @@ class ChainVnfDcStackInterfaces(Resource):
 
         container_src, container_dst, interface_src, interface_dst = real_names
 
-        # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
-                            mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
-                            mimetype="application/json")
-
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
                                                           vnf_dst_interface=interface_dst, bidirectional=True,
-                                                          path=path)
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -494,14 +485,6 @@ class ChainVnfDcStackInterfaces(Resource):
             return real_names
 
         container_src, container_dst, interface_src, interface_dst = real_names
-
-        # check if both VNFs exist
-        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
-                            mimetype="application/json")
-        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
-            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
-                            mimetype="application/json")
 
         try:
             cookie = self.api.manage.network_action_stop(container_src, container_dst, vnf_src_interface=interface_src,
@@ -585,7 +568,7 @@ class BalanceHostDcStack(Resource):
 
     def post(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
         """
-        A POST request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+        A POST request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>"
         will set up a loadbalancer. The target VNFs and interfaces are in the post data.
 
         :Example:
@@ -595,6 +578,7 @@ class BalanceHostDcStack(Resource):
         :type src_dc: ``str``
         :param src_stack: Name of the source VNF interface to chain on
         :type src_stack: ``str``
+         * src_stack == "floating" sets up a new floating node, so only use this name if you know what you are doing.
         :param vnf_src_name:
         :type vnf_src_name: ``str``
         :param vnf_src_interface:
@@ -609,15 +593,40 @@ class BalanceHostDcStack(Resource):
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
-            # check src vnf/port
-            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-            if type(real_src) is not tuple:
-                # something went wrong, real_src is a Response object
-                return real_src
+            if src_stack != "floating":
+                # check src vnf/port
+                real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+                if type(real_src) is not tuple:
+                    # something went wrong, real_src is a Response object
+                    return real_src
 
-            container_src, interface_src = real_src
+                container_src, interface_src = real_src
+            else:
+                compute = None
+                for ep in self.api.manage.endpoints.values():
+                    if ep.compute.dc.name == src_dc or ep.compute.dc.label == src_dc:
+                        compute = ep.compute
+                        break
+                if compute is None:
+                    return Response(u"You have to specify a destination datacenter for the floating node.",
+                                    status=500, mimetype="application/json")
+                name = "floating-%d" % len(self.api.manage.floating_nodes)
+                server = self.api.compute.create_server(name)
+                server.full_name = str(compute.dc.name) + "_fip_" + name
 
-            # check dst vnf/ports
+                server.flavor = "m1.tiny"
+                server.image = req.get("floating-image", "xschlef/floatingip:latest")
+                num_ports = len(compute.ports)
+                name = "port:cp%s:fl:%s" % (num_ports, str(uuid.uuid4()))
+                port = compute.create_port(name)
+                port.net_name = self.api.manage.floating_network.name
+                port.ip_address = self.api.manage.floating_network.get_new_ip_address(name)
+                server.port_names.append(port)
+                compute._start_compute(server)
+
+                container_src = server.name
+                interface_src = port.intf_name
+
             dst_vnfs = req.get('dst_vnf_interfaces', list())
 
             real_dst_dict = {}
@@ -637,8 +646,7 @@ class BalanceHostDcStack(Resource):
 
             self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
 
-            return Response(u"Loadbalancer of type %s set up at %s:%s" % (req.get("type", "ALL"),
-                                                                          vnf_src_name, vnf_src_interface),
+            return Response(u"Loadbalancer set up at %s:%s" % (container_src, interface_src),
                             status=200, mimetype="application/json")
 
         except Exception as e:
