@@ -11,6 +11,7 @@ import threading
 import uuid
 import networkx as nx
 import chain_api
+import json
 from emuvim.api.heat.resources import Net, Port
 from mininet.node import OVSSwitch, RemoteController, Node
 from openstack_dummies import MonitorDummyApi
@@ -249,9 +250,26 @@ class OpenstackManage(object):
                                               vnf_dst_interface)[0]
 
             # add route to dst ip to this interface
+            # this might block on containers that are still setting up, so start a new thread
             if not kwargs.get('no_route'):
-                src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
-                                      vnf_src_interface)
+                t = threading.Thread(target= lambda: src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
+                                      vnf_src_interface))
+                t.daemon = True
+                t.start()
+
+            try:
+                data = json.loads(self.get_son_emu_data(vnf_src_name))
+            except:
+                data = dict()
+            if "son_emu_data" not in data:
+                data["son_emu_data"] = dict()
+            if "interfaces" not in data["son_emu_data"]:
+                data["son_emu_data"]["interfaces"] = dict()
+            if vnf_src_interface not in data["son_emu_data"]["interfaces"]:
+                data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
+            data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
+
+            self.set_son_emu_data(vnf_src_name, json.dumps(data))
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -301,6 +319,12 @@ class OpenstackManage(object):
         except Exception as ex:
             logging.exception("RPC error.")
             return ex.message
+
+    def set_son_emu_data(self, vnf_name, data):
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % data)
+
+    def get_son_emu_data(self, vnf_name):
+        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data")
 
     def _get_connected_switch_data(self, vnf_name, vnf_interface):
         """
@@ -489,10 +513,20 @@ class OpenstackManage(object):
             dst_sw_outport_nr = dest_vnf_outport_nrs[index]
             current_hop = src_sw
             switch_inport_nr = src_sw_inport_nr
+
+            octets = src_ip.split('.')
+            octets[3] =str(int(octets[3]) +1)
+            plus_one = '.'.join(octets)
+
+            # also add the arp reply for ip+1 to the interface
+            self.setup_arp_reply_at(src_sw, src_sw_inport_nr, plus_one, target_mac, cookie=cookie)
             self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
+
             # choose free vlan if path contains more than 1 switch
             if len(path) > 1:
                 vlan = net.vlans.pop()
+                if vlan == 0:
+                    vlan = net.vlans.pop()
             else:
                 vlan = None
 
@@ -505,6 +539,7 @@ class OpenstackManage(object):
 
             data["paths"].append(single_flow_data)
 
+            # src to target
             for i in range(0, len(path)):
                 if i < len(path) - 1:
                     next_hop = path[i + 1]
@@ -523,12 +558,13 @@ class OpenstackManage(object):
                     index_edge_out = 0
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
-                cmd = '",priority=1,in_port=%s' % switch_inport_nr
+                cmd = 'priority=1,in_port=%s,cookie=%s' % (switch_inport_nr, cookie)
+                cmd_back = 'priority=1,in_port=%s,cookie=%s' % (switch_outport_nr, cookie)
                 # if a vlan is picked, the connection is routed through multiple switches
                 if vlan is not None:
                     if path.index(current_hop) == 0:  # first node
                         # flow #index set up
-                        cmd = '"in_port=%s' % src_sw_inport_nr
+                        cmd = 'in_port=%s' % src_sw_inport_nr
                         cmd += ',cookie=%s' % cookie
                         cmd += ',table=%s' % cookie
                         cmd += ',ip'
@@ -540,37 +576,69 @@ class OpenstackManage(object):
                         cmd += ',set_field:%s->vlan_vid' % masked_vlan
                         cmd += ',set_field:%s->eth_dst' % target_mac
                         cmd += ',set_field:%s->ip_dst' % target_ip
-                        cmd += ',output:%s"' % switch_outport_nr
+                        cmd += ',output:%s' % switch_outport_nr
+
+                        # last switch for reverse route
+                        # remove any vlan tags
+                        cmd_back += ',dl_vlan=%s' % vlan
+                        cmd_back += ',actions=pop_vlan,output:%s' % switch_inport_nr
                     elif next_hop == dst_vnf_name:  # last switch
                         # remove any vlan tags
                         cmd += ',dl_vlan=%s' % vlan
-                        cmd += ',actions=pop_vlan,output:%s"' % switch_outport_nr
+                        cmd += ',actions=pop_vlan,output:%s' % switch_outport_nr
                         # set up arp replys at the port so the dst nodes know the src
                         self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
+
+                        #reverse route
+                        cmd_back = 'in_port=%s' % switch_outport_nr
+                        cmd_back += ',cookie=%s' % cookie
+                        cmd_back += ',ip'
+                        cmd_back += ',actions='
+                        cmd_back += 'push_vlan:0x8100'
+                        masked_vlan = vlan | 0x1000
+                        cmd_back += ',set_field:%s->vlan_vid' % masked_vlan
+                        cmd_back += ',set_field:%s->eth_src' % target_mac
+                        cmd_back += ',set_field:%s->ip_src' % plus_one
+                        cmd_back += ',output:%s' % switch_inport_nr
+                        t = threading.Thread(target=lambda: net.getNodeByName(dst_vnf_name).setHostRoute(src_ip,
+                                                                                  dst_vnf_interface))
+                        t.daemon = True
+                        t.start()
                     else:  # middle nodes
                         # if we have a circle in the path we need to specify this, as openflow will ignore the packet
                         # if we just output it on the same port as it came in
                         if switch_inport_nr == switch_outport_nr:
-                            cmd += ',dl_vlan=%s,actions=IN_PORT"' % (vlan)
+                            cmd += ',dl_vlan=%s,actions=IN_PORT' % (vlan)
+                            cmd_back += ',dl_vlan=%s,actions=IN_PORT' % (vlan)
                         else:
-                            cmd += ',dl_vlan=%s,actions=output:%s"' % (vlan, switch_outport_nr)
+                            cmd += ',dl_vlan=%s,actions=output:%s' % (vlan, switch_outport_nr)
+                            cmd_back += ',dl_vlan=%s,actions=output:%s' % (vlan, switch_inport_nr)
                 # output the packet at the correct outport
                 else:
-                    cmd += ',actions=output:%s"' % switch_outport_nr
+                    cmd += ',actions=output:%s' % switch_outport_nr
+
+                    #reverse route
+                    cmd_back = 'in_port=%s' % switch_outport_nr
+                    cmd_back += ',cookie=%s' % cookie
+                    cmd_back += ',ip'
+                    cmd_back += ',actions='
+                    cmd_back += ',set_field:%s->eth_src' % target_mac
+                    cmd_back += ',set_field:%s->ip_src' % plus_one
+                    cmd_back += ',output:%s' % src_sw_inport_nr
 
                 # excecute the command on the target switch
                 logging.debug(cmd)
+                cmd = "\"%s\"" % cmd
+                cmd_back = "\"%s\"" % cmd_back
                 net[current_hop].dpctl(main_cmd, cmd)
+                net[current_hop].dpctl(main_cmd, cmd_back)
+
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
                     switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
                     current_hop = next_hop
 
-            # set up chain to enable answers
-            self.network_action_start(dst_vnf_name, src_vnf_name,
-                                      vnf_src_interface=dst_vnf_interface,
-                                      vnf_dst_interface=src_vnf_interface, bidirectional=False,
-                                      cookie=cookie, path=list(reversed(path)))
+            # advance to next destination
             index += 1
 
         # set up the actual load balancing rule as a multipath on the very first switch
@@ -741,5 +809,12 @@ class OpenstackManage(object):
                 self.net.ryu_REST("stats/groupentry/delete", data=switch_del_group)
 
         # unmap groupid from the interface
-        del self.flow_groups[(vnf_src_name, vnf_src_interface)]
-        del self.full_lb_data[(vnf_src_name, vnf_src_interface)]
+        target_pair = (vnf_src_name, vnf_src_interface)
+        if target_pair in self.flow_groups:
+            del self.flow_groups[target_pair]
+        if target_pair in self.full_lb_data:
+            del self.full_lb_data[target_pair]
+
+    def set_arp_entry(self, vnf_name, vnf_interface, ip, mac):
+        node = self.net.getNodeByName(vnf_name)
+        node.cmd("arp -i %s -s %s %s" % (vnf_interface, ip, mac))

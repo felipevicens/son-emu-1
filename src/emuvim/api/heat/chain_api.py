@@ -568,7 +568,7 @@ class BalanceHostDcStack(Resource):
 
     def post(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
         """
-        A POST request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>"
+        A POST request to "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>"
         will set up a loadbalancer. The target VNFs and interfaces are in the post data.
 
         :Example:
@@ -589,7 +589,7 @@ class BalanceHostDcStack(Resource):
         """
         try:
             req = request.json
-            if req is None or len(req) == 0:
+            if req is None:
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
