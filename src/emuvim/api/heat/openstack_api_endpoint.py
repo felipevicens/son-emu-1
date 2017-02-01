@@ -19,6 +19,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['nova'] = NovaDummyApi(self.ip, self.port + 3774, self.compute)
         self.openstack_endpoints['heat'] = HeatDummyApi(self.ip, self.port + 3004, self.compute)
         self.openstack_endpoints['monitor'] = MonitorDummyApi(self.ip, self.port - 2000, self.compute)
+        self.openstack_endpoints['glance'] = GlanceDummyApi(self.ip, self.port + 4242, self.compute)
         self.rest_threads = list()
         self.manage = OpenstackManage()
         OpenstackApiEndpoint.dc_apis.append(self)
