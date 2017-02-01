@@ -1,8 +1,10 @@
 <?php
+$contents = file_get_contents("/tmp/son_emu_data");
+$results = json_decode($contents, true);
+$intfs = $results["son_emu_data"]["interfaces"];
+echo "";
 
-$ip = getenv ( "SON_EMU_OUT_PARTNER" );
-$ips = preg_split('/:/',$ip, PREG_SPLIT_NO_EMPTY);
-$servername = $ips[0];
+$servername = current($intfs)[0];
 $username = "admin";
 $password = "123";
 
@@ -12,31 +14,21 @@ $conn = new mysqli($servername, $username, $password);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
 // Create database
-$sql = "CREATE DATABASE testapp";
+$sql = "CREATE DATABASE testapp;";
 if ($conn->query($sql) === TRUE) {
     echo "Database created successfully";
-} else {
-    die "Error creating database: " . $conn->error;
 }
 
-$sql = "CREATE TABLE cooltable (
-id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-firstname VARCHAR(30) NOT NULL
-)";
+$conn->select_db("testapp");
+$sql = "CREATE TABLE cooltable (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,firstname VARCHAR(30) NOT NULL);";
 
-if ($conn->query($sql) === FALSE) {
-    die "Error creating table: " . $conn->error;
-}
+$conn->query($sql);
 
-$sql = "INSERT INTO cooltable (firstname)
-VALUES ('PG-SANDMAN')";
+$sql = "INSERT INTO cooltable (firstname) VALUES ('PG-SANDMAN')";
 
-if ($conn->query($sql) === FALSE) {
-    die "Error adding pg-sandman: " . $conn->error;
-}
+$conn->query($sql);
 
 
 $conn->close();
-?> 
+?>

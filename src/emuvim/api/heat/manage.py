@@ -11,6 +11,7 @@ import threading
 import uuid
 import networkx as nx
 import chain_api
+import json
 from emuvim.api.heat.resources import Net, Port
 from mininet.node import OVSSwitch, RemoteController, Node
 from openstack_dummies import MonitorDummyApi
@@ -256,7 +257,19 @@ class OpenstackManage(object):
                 t.daemon = True
                 t.start()
 
-            self.set_env(vnf_src_name, "SON_EMU_OUT_PARTNER", dst_intf.IP(), append=True)
+            try:
+                data = json.loads(self.get_son_emu_data(vnf_src_name))
+            except:
+                data = dict()
+            if "son_emu_data" not in data:
+                data["son_emu_data"] = dict()
+            if "interfaces" not in data["son_emu_data"]:
+                data["son_emu_data"]["interfaces"] = dict()
+            if vnf_src_interface not in data["son_emu_data"]["interfaces"]:
+                data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
+            data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
+
+            self.set_son_emu_data(vnf_src_name, json.dumps(data))
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -307,14 +320,11 @@ class OpenstackManage(object):
             logging.exception("RPC error.")
             return ex.message
 
+    def set_son_emu_data(self, vnf_name, data):
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % data)
 
-    def set_env(self, vnf_name, envvar, value, append=False, appendchar=':'):
-        c = self.net.getNodeByName(vnf_name)
-        if not append:
-            c.cmd("export %s=%s" % (envvar, value))
-        else:
-            c.cmd("export %s=$%s%s%s" % (envvar, envvar, appendchar, value))
-
+    def get_son_emu_data(self, vnf_name):
+        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data")
 
     def _get_connected_switch_data(self, vnf_name, vnf_interface):
         """
