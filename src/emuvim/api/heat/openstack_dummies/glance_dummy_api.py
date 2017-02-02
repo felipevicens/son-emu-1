@@ -109,10 +109,54 @@ class GlanceListImagesApi(Resource):
             logging.exception(u"%s: Could not retrieve the list of images." % __name__)
             return ex.message, 500
 
-     def post(self):
+    def post(self):
+        """
+        This one is a real fake! It does not really create anything and the mentioned image
+        should already be registered with Docker. However, this function returns a reply that looks
+        like the image was just created to make orchestrators, like OSM, happy.
+        """
         logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
-        logging.warning("Endpoint not implemented")
-        return None
+        # lets see what we should create
+        img_name = request.headers.get("X-Image-Meta-Name")
+        img_size = request.headers.get("X-Image-Meta-Size")
+        img_disk_format = request.headers.get("X-Image-Meta-Disk-Format")
+        img_is_public = request.headers.get("X-Image-Meta-Is-Public")
+        img_container_format = request.headers.get("X-Image-Meta-Container-Format")
+        # try to find ID of already existing image (matched by name)
+        img_id=None
+        for image in self.api.compute.images.values():
+            if img_name in image.name:
+                img_id = image.id
+        logging.debug("Image name: %s" % img_name)
+        logging.debug("Image id: %s" % img_id)
+        # build a response body that looks like a real one
+        resp = dict()
+        f = dict()
+        f['id'] = img_id
+        f['name'] = img_name
+        f['checksum'] = "2dad48f09e2a447a9bf852bcd93548c1"
+        f['container_format'] = img_container_format
+        f['disk_format'] = img_disk_format
+        f['size'] = img_size
+        f['created_at'] = "2016-03-15T15:09:07.000000"
+        f['deleted'] = False
+        f['deleted_at'] = None
+        f['is_public'] = img_is_public
+        f['min_disk'] = 1
+        f['min_ram'] = 128
+        f['owner'] = "3dad48f09e2a447a9bf852bcd93548c1"
+        f['properties'] = {}
+        f['protected'] = False
+        f['status'] = "active"
+        f['updated_at'] = "2016-03-15T15:09:07.000000"
+        f['virtual_size'] = 1
+        resp['image'] = f
+        # build actual response with headers and everything
+        r = Response(json.dumps(resp), status=201, mimetype="application/json")
+        r.headers.add("Location", "http://%s:%d/v1/images/%s" % (self.api.ip,
+                                                                 self.api.port,
+                                                                 img_id))
+        return r
 
 
 class GlanceImageByIdApi(Resource):
