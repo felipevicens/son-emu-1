@@ -96,6 +96,7 @@ class OpenstackCompute(object):
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
+        return flavor
 
     def deploy_stack(self, stackid):
         if self.dc is None:

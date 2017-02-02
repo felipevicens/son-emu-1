@@ -27,7 +27,7 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaShowAndDeleteInterfaceAtServer, "/v2.1/<id>/servers/<serverid>/os-interface/<portid>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors/",
+        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavorsDetails, "/v2.1/<id>/flavors/detail",
                               resource_class_kwargs={'api': self})
@@ -280,6 +280,25 @@ class NovaListFlavors(Resource):
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
+    def post(self, id):
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
+        data = json.loads(request.data).get("flavor")
+        logging.warning("Create Flavor: %s" % str(data))
+        # add to internal dict
+        f = self.api.compute.add_flavor(
+            data.get("name"),
+            data.get("vcpus"),
+            data.get("ram"), "MB",
+            data.get("disk"), "GB")
+        # create response based on incoming data
+        data["id"] = f.id
+        data["links"] = [{'href': "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                       self.api.port,
+                                                                       id,
+                                                                       f.id)}]
+        resp = {"flavor": data}
+        return Response(json.dumps(resp), status=200, mimetype="application/json")
+
 
 class NovaListFlavorsDetails(Resource):
     def __init__(self, api):
@@ -314,6 +333,25 @@ class NovaListFlavorsDetails(Resource):
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
+
+    def post(self, id):
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
+        data = json.loads(request.data).get("flavor")
+        logging.warning("Create Flavor: %s" % str(data))
+        # add to internal dict
+        f = self.api.compute.add_flavor(
+            data.get("name"),
+            data.get("vcpus"),
+            data.get("ram"), "MB",
+            data.get("disk"), "GB")
+        # create response based on incoming data
+        data["id"] = f.id
+        data["links"] = [{'href': "http://%s:%d/v2.1/%s/flavors/%s" % (self.api.ip,
+                                                                       self.api.port,
+                                                                       id,
+                                                                       f.id)}]
+        resp = {"flavor": data}
+        return Response(json.dumps(resp), status=200, mimetype="application/json")
 
 
 class NovaListFlavorById(Resource):
