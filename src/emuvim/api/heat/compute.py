@@ -15,6 +15,13 @@ class HeatApiStackInvalidException(Exception):
 
 
 class OpenstackCompute(object):
+    """
+    This class is a datacenter specific compute object that tracks all containers that are running in a datacenter,
+    as well as networks and configured ports.
+    It has some stack dependet logic and can check if a received stack is valid.
+
+    It also handles start and stop of containers.
+    """
     def __init__(self):
         self.dc = None
         self.stacks = dict()
@@ -29,7 +36,13 @@ class OpenstackCompute(object):
 
     @property
     def images(self):
-        # update the known images. ask the docker daemon for a list of all known images
+        """
+        Updates the known images. Asks the docker daemon for a list of all known images and returns
+        the new dictionary.
+
+        :return: Returns the new image dictionary.
+        :rtype: ``dict``
+        """
         for image in self.dcli.images():
             if 'RepoTags' in image:
                 found = False
@@ -53,8 +66,12 @@ class OpenstackCompute(object):
     def check_stack(self, stack):
         """
         Checks all dependencies of all servers, ports and routers and their most important parameters.
+
         :param stack: A reference of the stack that should be checked.
-        :return: True: if the stack is completely fine. - False: else
+        :type stack: :class:`heat.resources.stack`
+        :return: * *True*: If the stack is completely fine.
+         * *False*: Else
+        :rtype: ``bool``
         """
         everything_ok = True
         for server in stack.servers.values():
@@ -94,11 +111,36 @@ class OpenstackCompute(object):
         return everything_ok
 
     def add_flavor(self, name, cpu, memory, memory_unit, storage, storage_unit):
+        """
+        Adds a flavor to the stack.
+
+        :param name: Specifies the name of the flavor.
+        :type name: ``str``
+        :param cpu:
+        :type cpu: ``str``
+        :param memory:
+        :type memory: ``str``
+        :param memory_unit:
+        :type memory_unit: ``str``
+        :param storage:
+        :type storage: ``str``
+        :param storage_unit:
+        :type storage_unit: ``str``
+        """
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
         return flavor
 
     def deploy_stack(self, stackid):
+        """
+        Deploys the stack and starts the emulation.
+
+        :param stackid: An UUID str of the stack
+        :type stackid: ``str``
+        :return: * *False*: If the Datacenter is None
+            * *True*: Else
+        :rtype: ``bool``
+        """
         if self.dc is None:
             return False
 
@@ -107,9 +149,19 @@ class OpenstackCompute(object):
 
         # Create the networks first
         for server in stack.servers.values():
-            self._start_compute(server, stack)
+            self._start_compute(server)
+        return True
 
     def delete_stack(self, stack_id):
+        """
+        Delete a stack and all its components.
+
+        :param stack_id: An UUID str of the stack
+        :type stack_id: ``str``
+        :return: * *False*: If the Datacenter is None
+            * *True*: Else
+        :rtype: ``bool``
+        """
         if self.dc is None:
             return False
 
@@ -123,14 +175,20 @@ class OpenstackCompute(object):
             self.delete_port(port.id)
 
         del self.stacks[stack_id]
+        return True
 
     def update_stack(self, old_stack_id, new_stack):
         """
         Determines differences within the old and the new stack and deletes, create or changes only parts that
         differ between the two stacks.
+
         :param old_stack_id: The ID of the old stack.
+        :type old_stack_id: ``str``
         :param new_stack: A reference of the new stack.
-        :return: True: if the old stack could be updated to the new stack without any error. - False: else
+        :type new_stack: :class:`heat.resources.stack`
+        :return: * *True*: if the old stack could be updated to the new stack without any error.
+            * *False*: else
+        :rtype: ``bool``
         """
         if old_stack_id not in self.stacks:
             return False
@@ -208,13 +266,19 @@ class OpenstackCompute(object):
         # Start all new servers
         for server in new_stack.servers.values():
             if server.name not in self.dc.containers:
-                self._start_compute(server, new_stack)
+                self._start_compute(server)
 
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
 
     def update_compute_dicts(self, stack):
+        """
+        Update and add all stack components tho the compute dictionaries.
+
+        :param stack: A stack reference, to get all required components.
+        :type stack: :class:`heat.resources.stack`
+        """
         for server in stack.servers.values():
             self.computeUnits[server.id] = server
             if isinstance(server.flavor, dict):
@@ -230,12 +294,13 @@ class OpenstackCompute(object):
         for port in stack.ports.values():
             self.ports[port.id] = port
 
-    def _start_compute(self, server, stack=None):
-        """ Starts a new compute object (docker container) inside the emulator
+    def _start_compute(self, server):
+        """
+        Starts a new compute object (docker container) inside the emulator.
         Should only be called by stack modifications and not directly.
-        :param server: emuvim.api.heat.resources.server
-        :param stack: emuvim.api.heat.resources.stack
-        :return:
+
+        :param server: Specifies the compute resource.
+        :type server: :class:`heat.resources.server`
         """
         logging.debug("Starting new compute resources %s" % server.name)
         network = list()
@@ -281,8 +346,9 @@ class OpenstackCompute(object):
     def _stop_compute(self, server):
         """
         Determines which links should be removed before removing the server itself.
+
         :param server: The server that should be removed
-        :return:
+        :type server: ``heat.resources.server``
         """
         logging.debug("Stopping container %s with full name %s" % (server.name, server.full_name))
         link_names = list()
@@ -302,6 +368,14 @@ class OpenstackCompute(object):
         self.delete_server(server)
 
     def find_server_by_name_or_id(self, name_or_id):
+        """
+        Tries to find the server by ID and if this does not succeed then tries to find it via name.
+
+        :param name_or_id: UUID or name of the server.
+        :type name_or_id: ``str``
+        :return: Returns the server reference if it was found or None
+        :rtype: :class:`heat.resources.server`
+        """
         if name_or_id in self.computeUnits:
             return self.computeUnits[name_or_id]
 
@@ -311,6 +385,17 @@ class OpenstackCompute(object):
         return None
 
     def create_server(self, name, stack_operation=False):
+        """
+        Creates a server with the specified name. Raises an exception when a server with the given name already
+        exists!
+
+        :param name: Name of the new server.
+        :type name: ``str``
+        :param stack_operation: Allows the heat parser to create modules without adapting the current emulation.
+        :type stack_operation: ``bool``
+        :return: Returns the created server.
+        :rtype: :class:`heat.resources.server`
+        """
         if self.find_server_by_name_or_id(name) is not None and not stack_operation:
             raise Exception("Server with name %s already exists." % name)
         server = Server(name)
@@ -320,6 +405,16 @@ class OpenstackCompute(object):
         return server
 
     def delete_server(self, server):
+        """
+        Deletes the given server from the stack dictionary and the computeUnits dictionary.
+
+        :param server: Reference of the server that should be deleted.
+        :type server: :class:`heat.resources.server`
+        :return: * *False*: If the server name is not in the correct format ('datacentername_stackname_servername') \
+                or when no stack with the correct stackname was found.
+            * *True*: Else
+        :rtype: ``bool``
+        """
         if server is None:
             return False
         name_parts = server.name.split('_')
@@ -334,6 +429,14 @@ class OpenstackCompute(object):
         return False
 
     def find_network_by_name_or_id(self, name_or_id):
+        """
+        Tries to find the network by ID and if this does not succeed then tries to find it via name.
+
+        :param name_or_id: UUID or name of the network.
+        :type name_or_id: ``str``
+        :return: Returns the network reference if it was found or None
+        :rtype: :class:`heat.resources.net`
+        """
         if name_or_id in self.nets:
             return self.nets[name_or_id]
         for net in self.nets.values():
@@ -343,6 +446,16 @@ class OpenstackCompute(object):
         return None
 
     def create_network(self, name, stack_operation=False):
+        """
+        Creates a new network with the given name. Raises an exception when a network with the given name already
+        exists!
+
+        :param name: Name of the new network.
+        :type name: ``str``
+        :param stack_operation: Allows the heat parser to create modules without adapting the current emulation.
+        :type stack_operation: ``bool``
+        :return: :class:`heat.resources.net`
+        """
         logging.debug("Creating network with name %s" % name)
         if self.find_network_by_name_or_id(name) is not None and not stack_operation:
             logging.warning("Creating network with name %s failed, as it already exists" % name)
@@ -354,6 +467,12 @@ class OpenstackCompute(object):
         return network
 
     def delete_network(self, name_or_id):
+        """
+        Deletes the given network.
+
+        :param name_or_id: Name or UUID of the network.
+        :type name_or_id: ``str``
+        """
         net = self.find_network_by_name_or_id(name_or_id)
         if net is None:
             raise Exception("Network with name or id %s does not exists." % name_or_id)
@@ -364,6 +483,17 @@ class OpenstackCompute(object):
         self.nets.pop(net.id, None)
 
     def create_port(self, name, stack_operation=False):
+        """
+        Creates a new port with the given name. Raises an exception when a port with the given name already
+        exists!
+
+        :param name: Name of the new port.
+        :type name: ``str``
+        :param stack_operation: Allows the heat parser to create modules without adapting the current emulation.
+        :type stack_operation: ``bool``
+        :return: Returns the created port.
+        :rtype: :class:`heat.resources.port`
+        """
         port = self.find_port_by_name_or_id(name)
         if port is not None and not stack_operation:
             logging.warning("Creating port with name %s failed, as it already exists" % name)
@@ -376,6 +506,14 @@ class OpenstackCompute(object):
         return port
 
     def find_port_by_name_or_id(self, name_or_id):
+        """
+        Tries to find the port by ID and if this does not succeed then tries to find it via name.
+
+        :param name_or_id: UUID or name of the network.
+        :type name_or_id: ``str``
+        :return: Returns the port reference if it was found or None
+        :rtype: :class:`heat.resources.port`
+        """
         if name_or_id in self.ports:
             return self.ports[name_or_id]
         for port in self.ports.values():
@@ -385,6 +523,12 @@ class OpenstackCompute(object):
         return None
 
     def delete_port(self, name_or_id):
+        """
+        Deletes the given port. Raises an exception when the port was not found!
+
+        :param name_or_id:  UUID or name of the port.
+        :type name_or_id: ``str``
+        """
         port = self.find_port_by_name_or_id(name_or_id)
         if port is None:
             raise Exception("Port with name or id %s does not exists." % name_or_id)
@@ -392,7 +536,7 @@ class OpenstackCompute(object):
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) == port.intf_name and \
-                            str(link.intf1.ip) == port.ip_address.split('/')[0]:
+               str(link.intf1.ip) == port.ip_address.split('/')[0]:
                 self._remove_link(link.intf1.node.name, link)
                 break
 
@@ -401,6 +545,18 @@ class OpenstackCompute(object):
             stack.ports.pop(port.name, None)
 
     def _add_link(self, node_name, ip_address, link_name, net_name):
+        """
+        Adds a new link between datacenter switch and the node with the given name.
+
+        :param node_name: Name of the required node.
+        :type node_name: ``str``
+        :param ip_address: IP-Address of the node.
+        :type ip_address: ``str``
+        :param link_name: Link name.
+        :type link_name: ``str``
+        :param net_name: Network name.
+        :type net_name: ``str``
+        """
         node = self.dc.net.get(node_name)
         params = {'params1': {'ip': ip_address,
                               'id': link_name,
@@ -410,6 +566,14 @@ class OpenstackCompute(object):
         self.dc.net.addLink(node, self.dc.switch, **params)
 
     def _remove_link(self, server_name, link):
+        """
+        Removes a link between server and datacenter switch.
+
+        :param server_name: Specifies the server where the link starts.
+        :type server_name: ``str``
+        :param link: A reference of the link which should be removed.
+        :type link: :class:`mininet.link`
+        """
         self.dc.switch.detach(link.intf2)
         del self.dc.switch.intfs[self.dc.switch.ports[link.intf2]]
         del self.dc.switch.ports[link.intf2]

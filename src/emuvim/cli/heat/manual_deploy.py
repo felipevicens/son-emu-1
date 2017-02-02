@@ -2,6 +2,7 @@
 import requests
 import logging
 import json
+import time
 import argparse
 neutron_baseport = 9697
 nova_baseport = 8775
@@ -15,6 +16,8 @@ def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False,
     if not nova and not neutron and not chain:
         return False
 
+    resp = None
+    url = None
     if nova:
         url = "%s:%d%s%s" % (ip_or_hostname, (nova_baseport + dc), nova_baseurl, resource)
     if neutron:
@@ -34,6 +37,9 @@ def run_request(resource, data=None, dc=0, req="GET", nova=False, neutron=False,
     if req.upper() == "PUT":
         logging.debug("PUT %s DATA: %s" % (url, data))
         resp = requests.put(url, data=data, headers=headers)
+    if req.upper() == "DELETE":
+        logging.debug("DELETE %s DATA: %s" % (url, data))
+        resp = requests.delete(url, data=data, headers=headers)
 
     if resp is not None:
         logging.debug("RESPONSE: %s" % resp.content)
@@ -66,13 +72,27 @@ def create_server(name, flavor, image, portid, datacenter=0):
     if imageid == 0 or flavorid == 0:
         logging.warning("Could not find image or flavor id. For image %s and flavor %s." % (image, flavor))
         return False
-    data = '{"server": {' \
-           '"name": "%s",' \
-           '"imageRef": "%s",' \
-           '"flavorRef": "%s",' \
-           '"max_count": "1",' \
-           '"min_count": "1",' \
-           '"networks": [{"port": "%s"}]}}' % (name, imageid, flavorid, portid)
+
+    if isinstance(portid, list):
+        port_list = list()
+        for port in portid:
+            port_list.append({"port": port})
+
+        data = '{"server": {' \
+               '"name": "%s",' \
+               '"imageRef": "%s",' \
+               '"flavorRef": "%s",' \
+               '"max_count": "1",' \
+               '"min_count": "1",' \
+               '"networks": %s}}' % (name, imageid, flavorid, json.dumps(port_list))
+    else:
+        data = '{"server": {' \
+               '"name": "%s",' \
+               '"imageRef": "%s",' \
+               '"flavorRef": "%s",' \
+               '"max_count": "1",' \
+               '"min_count": "1",' \
+               '"networks": [{"port": "%s"}]}}' % (name, imageid, flavorid, portid)
     resp = run_request("/servers",data=data, nova=True, req="POST", dc=datacenter)
     return json.loads(resp.content)
 
@@ -128,58 +148,91 @@ def add_loadbalancer(server, intface, lb_data):
     resp = run_request("/lb/%s/%s" % (str(server), str(intface)), data=data, chain=True, req="POST")
     return resp
 
-def set_chain(src_vnf, src_intf, dst_vnf, dst_intf):
-    data = '{}'
-    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="PUT")
+def set_chain(src_vnf, src_intf, dst_vnf, dst_intf, data=None):
+    if data is None:
+        data = {}
+    data = json.dumps(data)
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="POST")
+
+def delete_chain(src_vnf, src_intf, dst_vnf, dst_intf, data=None):
+    resp = run_request("/chain/%s/%s/%s/%s" % (src_vnf, src_intf, dst_vnf, dst_intf), data=data, chain=True, req="DELETE")
+
+def create_network_and_port(port_name=None, datacenter=0, net_name=None, cidr=None):
+    netid = create_network_and_subnet(net_name, cidr, datacenter=datacenter)
+    portid = create_port(netid, datacenter=datacenter, name=port_name)
+    return netid, portid
 
 def sample_topo():
-    for dc in xrange(4):
+    for dc in range(4):
         net = create_network_and_subnet("test%s" % dc, "192.168.%d.0/24" % (dc+2), datacenter=dc)
 
-        for x in xrange(2):
+        for x in range(2):
             port = create_port(net, datacenter=dc)
             server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
             add_floatingip_to_server(server["server"]["id"], datacenter=dc)
 
-    lb_data = {"dst_vnf_interfaces": {"dc1_man_serv1": "port-cp2-man","dc2_man_serv0": "port-cp0-man",
-                                      "dc2_man_serv1": "port-cp2-man"}}
+    lb_data = {"dst_vnf_interfaces": {"dc1_man_serv1": "port-man-2","dc2_man_serv0": "port-man-3",
+                                      "dc2_man_serv1": "port-man-4"}}
     add_loadbalancer("dc1_man_serv0", "port-cp0-man", lb_data)
 
 
+def chain_topo_test():
+    for dc in range(4):
+        net = create_network_and_subnet("test%s" % dc, "192.168.%d.0/24" % (dc+2), datacenter=dc)
+
+        for x in range(1):
+            port = create_port(net, datacenter=dc)
+            server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
+
+    data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
+    #data = None
+    set_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3",data)
+    data = {"layer2": True}
+    set_chain("dc1_man_serv0", "port-man-0", "dc2_man_serv0", "port-man-1", data)
+
 def lb_webservice_topo():
-    # create a firewall in each DC
+    # floating entrypoint
+    net = create_network_and_subnet("net1", "192.168.2.0/24", datacenter=0)
+    port = create_port(net, datacenter=0)
+    server = create_server("fip", "m1.tiny", "xschlef/floatingip:latest", port, datacenter=0)
+    time.sleep(1)
+    add_floatingip_to_server(server["server"]["id"], datacenter=0)
+
+    # web and db in datacenter 2
+    dc = 1
+    netid, portid = create_network_and_port(net_name="net3", cidr="192.168.3.0/24", datacenter=dc)
+    netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.4.0/24",
+                                              datacenter=dc, port_name="port-out")
+    db_in_port = create_port(netid2, datacenter=dc)
+    server = create_server("db", "m1.tiny", "xschlef/database:latest", db_in_port, datacenter=dc)
+    server = create_server("web", "m1.tiny", "xschlef/webserver:latest",[portid, portid2], datacenter=dc)
+
+    # web in datacenter 3
+    dc = 2
+    netid, portid = create_network_and_port(net_name="net3", cidr="192.168.5.0/24", datacenter=dc)
+    netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.6.0/24",
+                                              datacenter=dc, port_name="port-out")
+    server = create_server("web", "m1.tiny", "xschlef/webserver:latest", [portid, portid2], datacenter=dc)
+
+    # web in datacenter 4
+    dc = 3
+    netid, portid = create_network_and_port(net_name="net3", cidr="192.168.7.0/24", datacenter=dc)
+    netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.8.0/24",
+                                              datacenter=dc, port_name="port-out")
+    server = create_server("web", "m1.tiny", "xschlef/webserver:latest", [portid, portid2], datacenter=dc)
 
 
-    for dc in xrange(4):
-        net = create_network_and_subnet("fw-net%s" % dc, "192.168.%d.0/24" % (2), datacenter=dc)
+    lb_data = {"dst_vnf_interfaces": {"dc2_man_web": "port-man-1", "dc3_man_web": "port-man-3","dc4_man_web": "port-man-4"}}
 
-        for x in xrange(1):
-            if dc == 0:
-                port = create_port(net, datacenter=dc)
-                server = create_server("fip%s" %x, "m1.tiny", "xschlef/floatingip:latest", port, datacenter=dc)
-                # this is actually a race condition. If the floating interface is too slow then the FW will not set up
-                # correctly!
-                add_floatingip_to_server(server["server"]["id"], datacenter=dc)
+    add_loadbalancer("dc1_man_fip","port-man-0", lb_data)
 
-            else:
-                port = create_port(net, datacenter=dc)
-                for y in xrange(1):
-                    port = create_port(net, datacenter=dc)
-                    server = create_server("web%s" % y, "m1.tiny", "xschlef/webserver:latest", port, datacenter=dc)
-                    # set_chain("dc%s_man_fw%s" %(dc,x), "port-cp0-man", "dc%s_man_web%s" %(dc,y), "port-cp%d-man" % (2+y))
+    set_chain("dc2_man_web", "port-out-0", "dc2_man_db", "port-man-2")
+    set_chain("dc3_man_web", "port-out-1", "dc2_man_db", "port-man-2")
+    set_chain("dc4_man_web", "port-out-2", "dc2_man_db", "port-man-2")
 
-    lb_data = {"dst_vnf_interfaces": {"dc2_man_web0": "port-cp1-man",
-                                              "dc3_man_web0": "port-cp1-man","dc4_man_web0": "port-cp1-man"},
-               "type": "SELECT"}
-
-                #lb_data = {"dst_vnf_interfaces": {"dc1_man_web0": "port-cp2-man"}}
-
-    add_loadbalancer("dc1_man_fip0","port-cp0-man", lb_data)
-
-
-    pass
 
 if __name__ == "__main__":
     #sample_topo()
     lb_webservice_topo()
+    #chain_topo_test()
 

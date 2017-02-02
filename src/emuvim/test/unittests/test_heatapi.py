@@ -58,6 +58,97 @@ class testRestApi(ApiBaseHeat):
         # start Mininet network
         self.startNet()
 
+    def testMonitoringDummy(self):
+        headers = {'Content-type': 'application/json'}
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
+        url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
+        requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),headers=headers)
+        print(" ")
+
+        print('->>>>>>> testMonitoringListVersions ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/"
+        listapiversionstackresponse = requests.get(url, headers=headers)
+        self.assertEqual(listapiversionstackresponse.status_code, 200)
+        self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v1")
+        print(" ")
+
+        print('->>>>>>> testMonitorVnf ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/dc0_s1_firewall1"
+        listmonitoringvnfresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(listmonitoringvnfresponse.content)["MEM_%"], 0)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfAbsWithoutMininetName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/abs/dc0_s1_firewall1"
+        listmonitoringvnfabsresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfabsresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(listmonitoringvnfabsresponse.content)["MEM_%"], 0)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfAbsWithoutMininetName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/abs/mn.dc0_s1_firewall1"
+        listmonitoringvnfabsmnresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfabsmnresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(listmonitoringvnfabsmnresponse.content)["MEM_%"], 0)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfAbsWithNonExistingVnf ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/abs/mn.dc0_s1_non_existing"
+        listmonitoringvnfabsnonexistingresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfabsnonexistingresponse.status_code, 500)
+        print(" ")
+
+        """
+        print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1"
+        listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
+        print(listmonitoringvnfdcstackresponse.content)
+        self.assertEqual(listmonitoringvnfdcstackresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/mn.firewall1"
+        listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfdcstackresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
+        print(" ")
+        """
+
+        print('->>>>>>> testMonitorVnfDcStackWithNonexistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/non_existing"
+        listmonitoringvnfdcstackwithnonexistingnameresponse = requests.get(url, headers=headers)
+
+        self.assertEqual(listmonitoringvnfdcstackwithnonexistingnameresponse.status_code, 500)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfDcStackWithNonexistingDC ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/non_exisintg0/s1/firewall1"
+        listmonitoringvnfdcstackwithnonexistingdcresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfdcstackwithnonexistingdcresponse.status_code, 500)
+        print(" ")
+
+        print('->>>>>>> testMonitorVnfDcStackWithNonexistingStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/non_existing_stack/firewall1"
+        listmonitoringvnfdcstackwithnonexistingstackresponse = requests.get(url, headers=headers)
+        self.assertEqual(listmonitoringvnfdcstackwithnonexistingstackresponse.status_code, 500)
+        print(" ")
+
+
+
+
+
     def testNovaDummy(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
@@ -163,7 +254,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listimagebynonexistingidresponse.status_code, 404)
         print(" ")
 
-        #find ubintu id
+        #find ubuntu id
         for image in json.loads(listimagesresponse.content)["images"]:
             if image["name"] == "ubuntu:trusty":
                 ubuntu_image_id = image["id"]
@@ -749,7 +840,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse = requests.get(url, headers=headers)
         self.assertEqual(listnetworksesponse.status_code, 200)
-        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 9)
+        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 10)
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
         print(" ")
@@ -781,7 +872,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse = requests.get(url, headers=headers)
         self.assertEqual(listnetworksesponse.status_code, 200)
-        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 13)
+        self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 14)
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
         print(" ")

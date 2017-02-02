@@ -165,6 +165,7 @@ class NovaListServersApi(Resource):
         logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         '''
         Creates a server instance
+
         :param id: tenant id
         :return:
         '''
@@ -449,6 +450,7 @@ class NovaListImageById(Resource):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         '''
         Gets an image by id from the emulator with openstack nova compliant return values.
+
         :param id: tenantid, we ignore this most of the time
         :param imageid: id of the image. If it is 1 the dummy CREATE-IMAGE is returned
         :return:
@@ -568,15 +570,6 @@ class NovaInterfaceToServer(Resource):
                 self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
                 dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
-
-                # if we want to have exclusive host-to-n connections we have to enable this
-                # link_dict = dc.net.DCNetwork_graph[server.name][self.api.manage.floating_switch]
-                # for link in link_dict:
-                #     if link_dict[link]['src_port_name'] == port.intf_name:
-                #         inport = int(link_dict[link]['dst_port_nr'])
-
-                # connect each VNF to the host only. No pinging between VNFs possible
-                # self.api.manage.floating_switch("add-flow", "in_port=%s,actions=OUTPUT:1" % inport)
             else:
                 dc.net.addLink(server.emulator_compute, dc.switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)

@@ -16,9 +16,23 @@ class Net:
         self._issued_ip_addresses = dict()
 
     def get_short_id(self):
+        """
+        Returns a shortened UUID, with only the first 6 characters.
+
+        :return: First 6 characters of the UUID
+        :rtype: ``str``
+        """
         return str(self.id)[:6]
 
     def get_new_ip_address(self, port_name):
+        """
+        Calculates the next unused IP Address which belongs to the subnet.
+
+        :param port_name: Specifies the port.
+        :type port_name: ``str``
+        :return: Returns a unused IP Address or none if all are in use.
+        :rtype: ``str``
+        """
         if self.start_end_dict is None:
             return None
 
@@ -35,29 +49,71 @@ class Net:
         return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def get_in_ip_address(self, port_name):
+        """
+        Returns the first allowed IP address of the subnet, even if someone else uses it already.
+
+        :param port_name: Specifies the port.
+        :type port_name: ``str``
+        :return: The first allowed IP address.
+        :rtype: ``str``
+        """
         int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2
         self._issued_ip_addresses[int_start_ip] = port_name
         return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def get_out_ip_address(self, port_name):
+        """
+        Returns the last allowed IP address of the subnet, even if someone else uses it already.
+
+        :param port_name: Specifies the port.
+        :type port_name: ``str``
+        :return: The last allowed IP address.
+        :rtype: ``str``
+        """
         int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 3
         self._issued_ip_addresses[int_start_ip] = port_name
         return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def withdraw_ip_address(self, ip_address):
+        """
+        Removes the IP address from the list of issued addresses, thus other ports can use it.
+
+        :param ip_address: The issued IP address.
+        :type ip_address: ``str``
+        """
         address, suffix = ip_address.rsplit('/', 1)
         int_ip_address = self.ip_2_int(address)
         del self._issued_ip_addresses[int_ip_address]
 
     def reset_issued_ip_addresses(self):
+        """
+        Resets all issued IP addresses.
+        """
         self._issued_ip_addresses = dict()
 
     def update_port_name_for_ip_address(self, ip_address, port_name):
+        """
+        Updates the port name of the issued IP address.
+
+        :param ip_address: The already issued IP address.
+        :type ip_address: ``str``
+        :param port_name: The new port name
+        :type port_name: ``str``
+        """
         address, suffix = ip_address.rsplit('/', 1)
         int_ip_address = self.ip_2_int(address)
         self._issued_ip_addresses[int_ip_address] = port_name
 
     def set_cidr(self, cidr):
+        """
+        Sets the CIDR for the subnet. It previously checks for the correct CIDR format.
+
+        :param cidr: The new CIDR for the subnet.
+        :type cidr: ``str``
+        :return: * *True*: When the new CIDR was set successfully.
+            * *False*: If the CIDR format was wrong.
+        :rtype: ``bool``
+        """
         if cidr is None:
             self._cidr = None
             return True
@@ -71,9 +127,23 @@ class Net:
         return True
 
     def get_cidr(self):
+        """
+        Gets the CIDR.
+
+        :return: The CIDR
+        :rtype: ``str``
+        """
         return self._cidr
 
     def calculate_start_and_end_dict(self, cidr):
+        """
+        Calculates the start and end IP address for the subnet.
+
+        :param cidr: The CIDR for the subnet.
+        :type cidr: ``str``
+        :return: Dict with start and end ip address
+        :rtype: ``dict``
+        """
         address, suffix = cidr.rsplit('/', 1)
         int_suffix = int(suffix)
         int_address = self.ip_2_int(address)
@@ -88,11 +158,27 @@ class Net:
         return {'start': self.int_2_ip(start), 'end': self.int_2_ip(end)}
 
     def ip_2_int(self, ip):
+        """
+        Converts a IP address to int.
+
+        :param ip: IP address
+        :type ip: ``str``
+        :return: IP address as int.
+        :rtype: ``int``
+        """
         o = map(int, ip.split('.'))
         res = (16777216 * o[0]) + (65536 * o[1]) + (256 * o[2]) + o[3]
         return res
 
     def int_2_ip(self, int_ip):
+        """
+        Converts a int IP address to string.
+
+        :param int_ip: Int IP address.
+        :type int_ip: ``int``
+        :return: IP address
+        :rtype: ``str``
+        """
         o1 = int(int_ip / 16777216) % 256
         o2 = int(int_ip / 65536) % 256
         o3 = int(int_ip / 256) % 256
@@ -100,15 +186,33 @@ class Net:
         return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
 
     def check_cidr_format(self, cidr):
+        """
+        Checks the CIDR format. An valid example is: 192.168.0.0/29
+
+        :param cidr: CIDR to be checked.
+        :type cidr: ``str``
+        :return: * *True*: If the Format is correct.
+            * *False*: If it is not correct.
+        :rtype: ``bool``
+        """
         r = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{2}')
         if r.match(cidr):
             return True
         return False
 
     def create_network_dict(self):
+        """
+        Creates the network description dictionary.
+
+        :return: Network description.
+        :rtype: ``dict``
+        """
         network_dict = dict()
         network_dict["status"] = "ACTIVE"  # TODO do we support inactive networks?
-        network_dict["subnets"] = [self.subnet_id]
+        if self.subnet_id == None:
+            network_dict["subnets"] = []
+        else:
+            network_dict["subnets"] = [self.subnet_id]
         network_dict["name"] = self.name
         network_dict["admin_state_up"] = True  # TODO is it always true?
         network_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO what should go in here
@@ -117,6 +221,12 @@ class Net:
         return network_dict
 
     def create_subnet_dict(self):
+        """
+        Creates the subnet description dictionary.
+
+        :return: Subnet description.
+        :rtype: ``dict``
+        """
         subnet_dict = dict()
         subnet_dict["name"] = self.subnet_name
         subnet_dict["network_id"] = self.id
