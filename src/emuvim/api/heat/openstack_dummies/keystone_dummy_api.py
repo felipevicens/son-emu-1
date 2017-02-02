@@ -199,11 +199,11 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/v2" % (self.api.ip, self.api.port + 4242),
+                            "adminURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/v2" % (self.api.ip, self.api.port + 4242),
+                            "internalURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
                             "id": "2dad48f09e2a447a9bf852bcd93548cf",
-                            "publicURL": "http://%s:%s/v2" % (self.api.ip, self.api.port + 4242)
+                            "publicURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242)
                         }
                     ],
                     "endpoints_links": [],
