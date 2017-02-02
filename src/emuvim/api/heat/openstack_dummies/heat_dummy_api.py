@@ -117,10 +117,10 @@ class HeatCreateStack(Resource):
 
     def get(self, tenant_id):
         """
-        Calculates informations about the requested stack.
+        Calculates information about the requested stack.
 
         :param tenant_id:
-        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
+        :return: Returns a json response which contains information like the stack id, name, status, creation time.
             500, if any exception occurred.
             200, if everything worked out.
         """
@@ -153,12 +153,12 @@ class HeatShowStack(Resource):
 
     def get(self, tenant_id, stack_name_or_id, stack_id=None):
         """
-        Calculates detailed informations about the requested stack.
+        Calculates detailed information about the requested stack.
 
         :param tenant_id:
         :param stack_name_or_id:
         :param stack_id:
-        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
+        :return: Returns a json response which contains information like the stack id, name, status, creation time.
             500, if any exception occurred.
             200, if everything worked out.
         """
