@@ -261,11 +261,11 @@ class OpenstackManage(object):
                 son_emu_data = json.loads(self.get_son_emu_data(vnf_src_name))
             except:
                 son_emu_data = dict()
-            if "son_emu_data" not in data:
+            if "son_emu_data" not in son_emu_data:
                 son_emu_data["son_emu_data"] = dict()
-            if "interfaces" not in data["son_emu_data"]:
+            if "interfaces" not in son_emu_data["son_emu_data"]:
                 son_emu_data["son_emu_data"]["interfaces"] = dict()
-            if vnf_src_interface not in data["son_emu_data"]["interfaces"]:
+            if vnf_src_interface not in son_emu_data["son_emu_data"]["interfaces"]:
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
 
