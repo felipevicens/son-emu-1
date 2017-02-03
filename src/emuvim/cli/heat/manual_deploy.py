@@ -184,7 +184,7 @@ def chain_topo_test():
             port = create_port(net, datacenter=dc)
             server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
 
-    data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
+    #data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
     #data = None
     set_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3",data)
     data = {"layer2": True}
