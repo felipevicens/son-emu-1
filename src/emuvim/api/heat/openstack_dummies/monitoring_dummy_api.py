@@ -41,7 +41,7 @@ class MonitorVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         # at least let it look like an open stack function
         try:
