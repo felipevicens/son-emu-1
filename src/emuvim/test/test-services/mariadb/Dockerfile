@@ -23,5 +23,5 @@ VOLUME  ["/etc/mysql", "/var/lib/mysql"]
 #Added to avoid in container connection to the database with mysql client error message "TERM environment variable not set"
 ENV TERM dumb
 
-EXPOSE 3306
-CMD ["/run.sh"]
+ENV SON_EMU_CMD "./run.sh"
+CMD ["/bin/bash"]

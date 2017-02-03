@@ -24,6 +24,7 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['heat'] = HeatDummyApi(self.ip, self.port + 3004, self.compute)
         self.rest_threads = list()
         self.manage = OpenstackManage()
+        self.manage.add_endpoint(self)
         OpenstackApiEndpoint.dc_apis.append(self)
 
     def connect_datacenter(self, dc):
