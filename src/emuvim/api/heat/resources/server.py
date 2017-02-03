@@ -43,7 +43,7 @@ class Server(object):
         """
         Creates the server description dictionary.
 
-        :param compute: The compute resource for further informations.
+        :param compute: The compute resource for further status information.
         :type compute: :class:`heat.compute`
         :return: Server description dictionary.
         :rtype: ``dict``

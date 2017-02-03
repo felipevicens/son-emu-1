@@ -65,6 +65,12 @@ class NovaVersionsList(Resource):
         self.api = api
 
     def get(self):
+        """
+        Lists API versions.
+
+        :return: Returns a json with API versions.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = """
@@ -99,7 +105,16 @@ class NovaVersionShow(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        Returns API details.
+
+        :param id:
+        :type id: ``str``
+        :return: Returns a json with API details.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         try:
             resp = """
             {
@@ -142,7 +157,16 @@ class NovaListServersApi(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        Creates a list with all running servers and their detailed information.
+
+        :param id: Used to create a individual link to quarry further information.
+        :type id: ``str``
+        :return: Returns a json response with a dictionary that contains the server information.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         try:
             resp = dict()
             resp['servers'] = list()
@@ -162,13 +186,15 @@ class NovaListServersApi(Resource):
             return ex.message, 500
 
     def post(self, id):
-        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
-        '''
-        Creates a server instance
+        """
+        Creates a server instance.
 
-        :param id: tenant id
-        :return:
-        '''
+        :param id: tenant id, we ignore this most of the time
+        :type id: ``str``
+        :return: Returns a flask response, with detailed information about the just created server.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             server_dict = json.loads(request.data)['server']
             networks = server_dict.get('networks', None)
@@ -211,7 +237,17 @@ class NovaListServersDetailed(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        As List Servers, it lists all running servers and their details but furthermore it also states the
+        used flavor and the server image.
+
+        :param id: tenant id, used for the 'href' link.
+        :type id: ``str``
+        :return: Returns a flask response, with detailed information aboit the servers and their flavor and image.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         try:
             resp = {"servers": list()}
             for server in self.api.compute.computeUnits.values():
@@ -261,6 +297,14 @@ class NovaListFlavors(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        Lists all available flavors.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :return: Returns a flask response with a list of all flavors.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
@@ -306,6 +350,14 @@ class NovaListFlavorsDetails(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        Lists all flavors with additional information like ram and disk space.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :return: Returns a flask response with a list of all flavors with additional information.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
@@ -360,6 +412,16 @@ class NovaListFlavorById(Resource):
         self.api = api
 
     def get(self, id, flavorid):
+        """
+        Returns details about one flavor.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :param flavorid: Represents the flavor.
+        :type flavorid: ``str``
+        :return: Returns a flask response with detailed information about the flavor.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
@@ -388,6 +450,14 @@ class NovaListImages(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        Creates a list of all usable images.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :return: Returns a flask response with a list of available images.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
@@ -413,6 +483,14 @@ class NovaListImagesDetails(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        As List Images but with additional metadata.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :return: Returns a flask response with a list of images and their metadata.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
@@ -447,14 +525,17 @@ class NovaListImageById(Resource):
         self.api = api
 
     def get(self, id, imageid):
-        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        '''
+        """
         Gets an image by id from the emulator with openstack nova compliant return values.
 
         :param id: tenantid, we ignore this most of the time
+        :type id: ``str``
         :param imageid: id of the image. If it is 1 the dummy CREATE-IMAGE is returned
-        :return:
-        '''
+        :type imageid: ``str``
+        :return: Returns a flask response with the information about one image.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             resp = dict()
             i = resp['image'] = dict()
@@ -477,6 +558,16 @@ class NovaShowServerDetails(Resource):
         self.api = api
 
     def get(self, id, serverid):
+        """
+        Returns detailed information about the specified server.
+
+        :param id: tenant id, used for the 'href' link
+        :type id: ``str``
+        :param serverid: Specifies the requested server.
+        :type serverid: ``str``
+        :return: Returns a flask response with details about the server.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
@@ -527,7 +618,17 @@ class NovaInterfaceToServer(Resource):
         self.api = api
 
     def post(self, id, serverid):
-        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
+        """
+        Add an interface to the specified server.
+
+        :param id: tenant id, we ignore this most of the time
+        :type id: ``str``
+        :param serverid: Specifies the server.
+        :type serverid: ``str``
+        :return: Returns a flask response with information about the attached interface.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
@@ -539,7 +640,6 @@ class NovaInterfaceToServer(Resource):
             dc = self.api.compute.dc
             network_dict = dict()
             network = None
-
 
             if net is not None and port is not None:
                 network_dict['id'] = port.intf_name
@@ -594,7 +694,20 @@ class NovaShowAndDeleteInterfaceAtServer(Resource):
         self.api = api
 
     def delete(self, id, serverid, port_id):
-        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
+        """
+        Deletes an existing interface.
+
+        :param id: tenant id, we ignore this most of the time
+        :type id: ``str``
+        :param serverid: Specifies the server, where the interface will be deleted.
+        :type serverid: ``str``
+        :param port_id: Specifies the port of the interface.
+        :type port_id: ``str``
+        :return: Returns a flask response with 202 if everything worked out. Otherwise it will return 404 and an
+         error message.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:

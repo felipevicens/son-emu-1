@@ -36,9 +36,9 @@ class Net:
         if self.start_end_dict is None:
             return None
 
-        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
+        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
         # Second one is for gateways only
-        int_end_ip = self.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
+        int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
         while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
             int_start_ip += 1
 
@@ -46,7 +46,7 @@ class Net:
             return None
 
         self._issued_ip_addresses[int_start_ip] = port_name
-        return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def get_in_ip_address(self, port_name):
         """
@@ -57,9 +57,9 @@ class Net:
         :return: The first allowed IP address.
         :rtype: ``str``
         """
-        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 2
+        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2
         self._issued_ip_addresses[int_start_ip] = port_name
-        return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def get_out_ip_address(self, port_name):
         """
@@ -70,9 +70,9 @@ class Net:
         :return: The last allowed IP address.
         :rtype: ``str``
         """
-        int_start_ip = self.ip_2_int(self.start_end_dict['start']) + 3
+        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 3
         self._issued_ip_addresses[int_start_ip] = port_name
-        return self.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
     def withdraw_ip_address(self, ip_address):
         """
@@ -82,7 +82,7 @@ class Net:
         :type ip_address: ``str``
         """
         address, suffix = ip_address.rsplit('/', 1)
-        int_ip_address = self.ip_2_int(address)
+        int_ip_address = Net.ip_2_int(address)
         del self._issued_ip_addresses[int_ip_address]
 
     def reset_issued_ip_addresses(self):
@@ -101,7 +101,7 @@ class Net:
         :type port_name: ``str``
         """
         address, suffix = ip_address.rsplit('/', 1)
-        int_ip_address = self.ip_2_int(address)
+        int_ip_address = Net.ip_2_int(address)
         self._issued_ip_addresses[int_ip_address] = port_name
 
     def set_cidr(self, cidr):
@@ -146,7 +146,7 @@ class Net:
         """
         address, suffix = cidr.rsplit('/', 1)
         int_suffix = int(suffix)
-        int_address = self.ip_2_int(address)
+        int_address = Net.ip_2_int(address)
         address_space = 2 ** 32 - 1
 
         for x in range(0, 31 - int_suffix):
@@ -155,9 +155,10 @@ class Net:
         start = int_address & address_space
         end = start + (2 ** (32 - int_suffix) - 1)
 
-        return {'start': self.int_2_ip(start), 'end': self.int_2_ip(end)}
+        return {'start': Net.int_2_ip(start), 'end': Net.int_2_ip(end)}
 
-    def ip_2_int(self, ip):
+    @staticmethod
+    def ip_2_int(ip):
         """
         Converts a IP address to int.
 
@@ -170,7 +171,8 @@ class Net:
         res = (16777216 * o[0]) + (65536 * o[1]) + (256 * o[2]) + o[3]
         return res
 
-    def int_2_ip(self, int_ip):
+    @staticmethod
+    def int_2_ip(int_ip):
         """
         Converts a int IP address to string.
 

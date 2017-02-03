@@ -258,18 +258,18 @@ class OpenstackManage(object):
                 t.start()
 
             try:
-                data = json.loads(self.get_son_emu_data(vnf_src_name))
+                son_emu_data = json.loads(self.get_son_emu_data(vnf_src_name))
             except:
-                data = dict()
-            if "son_emu_data" not in data:
-                data["son_emu_data"] = dict()
-            if "interfaces" not in data["son_emu_data"]:
-                data["son_emu_data"]["interfaces"] = dict()
-            if vnf_src_interface not in data["son_emu_data"]["interfaces"]:
-                data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
-            data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
+                son_emu_data = dict()
+            if "son_emu_data" not in son_emu_data:
+                son_emu_data["son_emu_data"] = dict()
+            if "interfaces" not in son_emu_data["son_emu_data"]:
+                son_emu_data["son_emu_data"]["interfaces"] = dict()
+            if vnf_src_interface not in son_emu_data["son_emu_data"]["interfaces"]:
+                son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
+                son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
 
-            self.set_son_emu_data(vnf_src_name, json.dumps(data))
+            self.set_son_emu_data(vnf_src_name, json.dumps(son_emu_data))
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -492,7 +492,7 @@ class OpenstackManage(object):
 
             # use custom path if one is supplied
             # json does not support hashing on tuples so we use nested dicts
-            if dst_vnf_name in custom_paths:
+            if custom_paths is not None and dst_vnf_name in custom_paths:
                 if dst_vnf_interface in custom_paths[dst_vnf_name]:
                     path = custom_paths[dst_vnf_name][dst_vnf_interface]
                     logging.debug("Taking custom path from %s to %s: %s" % (src_vnf_name, dst_vnf_name, path))
