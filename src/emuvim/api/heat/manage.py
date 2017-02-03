@@ -269,7 +269,7 @@ class OpenstackManage(object):
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
 
-            self.set_son_emu_data(vnf_src_name, json.dumps(data))
+            self.set_son_emu_data(vnf_src_name, json.dumps(son_emu_data))
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
