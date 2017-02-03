@@ -32,8 +32,8 @@ class OpenstackManage(object):
 
     def __init__(self, ip="0.0.0.0", port=4000):
         # we are a singleton, only initialize once!
-        lock = threading.Lock()
-        with lock:
+        self.lock = threading.Lock()
+        with self.lock:
             if hasattr(self, "init"):
                 return
             self.init = True
@@ -55,6 +55,8 @@ class OpenstackManage(object):
         # flow groups could be handled for each switch separately, but this global group counter should be easier to
         # debug and to maintain
         self.flow_groups = dict()
+
+        self.interface_locks = dict()
 
         # we want one global chain api. this should not be datacenter dependent!
         self.chain = chain_api.ChainApi(ip, port, self)
@@ -252,10 +254,16 @@ class OpenstackManage(object):
             # add route to dst ip to this interface
             # this might block on containers that are still setting up, so start a new thread
             if not kwargs.get('no_route'):
-                t = threading.Thread(target= lambda: src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
-                                      vnf_src_interface))
-                t.daemon = True
-                t.start()
+                # son_emu does not like concurrent commands for a container so we need to lock this if multiple chains
+                # on the same interface are created
+                if (vnf_src_name, vnf_src_interface) not in self.interface_locks:
+                    self.interface_locks[(vnf_src_name, vnf_src_interface)] = threading.Lock()
+
+                with self.interface_locks[(vnf_src_name, vnf_src_interface)]:
+                    t = threading.Thread(target= lambda: src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(),
+                                          vnf_src_interface))
+                    t.daemon = True
+                    t.start()
 
             try:
                 son_emu_data = json.loads(self.get_son_emu_data(vnf_src_name))
