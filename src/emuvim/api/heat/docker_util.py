@@ -21,7 +21,8 @@ def docker_container_id(container_name):
 
 def docker_abs_cpu(container_id):
     """
-    Absolute number of nanoseconds, the docker container utilized the CPU till startup and the current system time
+    Returns the used CPU time since container startup and the system time in nanoseconds and returns the number
+    of available CPU cores.
 
     :param container_id: The full ID of the docker container.
     :type container_id: ``str``
@@ -41,7 +42,7 @@ def docker_abs_cpu(container_id):
 
 def docker_mem_used(container_id):
     """
-    Bytes of memory used from the docker container
+    Bytes of memory used from the docker container.
 
     :param container_id: The full ID of the docker container.
     :type container_id: ``str``
@@ -80,7 +81,7 @@ def docker_max_mem(container_id):
 
 def docker_mem(container_id):
     """
-    Calculates the current, maximal and percentage usage of the specified docker container
+    Calculates the current, maximal and percentage usage of the specified docker container.
 
     :param container_id: The full ID of the docker container.
     :type container_id: ``str``

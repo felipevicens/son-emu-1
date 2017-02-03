@@ -42,7 +42,14 @@ class MonitorVersionsList(Resource):
         self.api = api
 
     def get(self, id):
+        """
+        List API versions.
+
+        :return: Returns the api versions.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         # at least let it look like an open stack function
         try:
             resp = dict()
@@ -77,8 +84,10 @@ class MonitorVnf(Resource):
         the network traffic and cpu usage over time.
 
         :param vnf_name: Specifies the docker container via name.
+        :type vnf_name: ``str``
         :return: Returns a json response with network, cpu and memory usage over time, and specifies the storage
             access, the number of running processes and the current system time.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
@@ -107,8 +116,8 @@ class MonitorVnf(Resource):
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
-            logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
-            return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
+            logging.exception(u"%s: Error getting monitoring information.\n %s" % (__name__, e))
+            return Response(u"Error getting monitoring information.\n", status=500, mimetype="application/json")
 
 
 class MonitorVnfAbs(Resource):
@@ -118,11 +127,14 @@ class MonitorVnfAbs(Resource):
 
     def get(self, vnf_name):
         """
-        Calculates the workload for the specified docker container, to this point of time.
+        Calculates the workload for the specified docker container, at this point in time.
 
         :param vnf_name: Specifies the docker container via name.
+        :type vnf_name: ``str``
         :return: Returns a json response with network, cpu, memory usage and storage access, as absolute values from
-            startup till this point of time. It also contains the number of running processes and the current system time.
+            startup till this point of time. It also contains the number of running processes and the current
+            system time.
+        :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
@@ -152,8 +164,8 @@ class MonitorVnfAbs(Resource):
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
-            logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
-            return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
+            logging.exception(u"%s: Error getting monitoring information.\n %s" % (__name__, e))
+            return Response(u"Error getting monitoring information.\n", status=500, mimetype="application/json")
 
 
 class MonitorVnfDcStack(Resource):
@@ -182,8 +194,8 @@ class MonitorVnfDcStack(Resource):
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
-            logging.exception(u"%s: Error getting monitoring informations.\n %s" % (__name__, e))
-            return Response(u"Error getting monitoring informations.\n", status=500, mimetype="application/json")
+            logging.exception(u"%s: Error getting monitoring information.\n %s" % (__name__, e))
+            return Response(u"Error getting monitoring information.\n", status=500, mimetype="application/json")
 
     # Tries to find real container name according to heat template names
     # Returns a string or a Response object

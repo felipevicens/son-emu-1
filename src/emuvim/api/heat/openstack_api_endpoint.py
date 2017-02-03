@@ -27,6 +27,7 @@ class OpenstackApiEndpoint():
 
         self.rest_threads = list()
         self.manage = OpenstackManage()
+        self.manage.add_endpoint(self)
         OpenstackApiEndpoint.dc_apis.append(self)
 
     def connect_datacenter(self, dc):
