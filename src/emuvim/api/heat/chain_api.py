@@ -612,7 +612,7 @@ class BalanceHostDcStack(Resource):
                     return Response(u"You have to specify a destination datacenter for the floating node.",
                                     status=500, mimetype="application/json")
                 name = "floating-%d" % len(self.api.manage.floating_nodes)
-                server = self.api.compute.create_server(name)
+                server = compute.create_server(name)
                 server.full_name = str(compute.dc.name) + "_fip_" + name
 
                 server.flavor = "m1.tiny"
@@ -622,7 +622,7 @@ class BalanceHostDcStack(Resource):
                 port = compute.create_port(name)
                 port.net_name = self.api.manage.floating_network.name
                 port.ip_address = self.api.manage.floating_network.get_new_ip_address(name)
-                server.port_names.append(port)
+                server.port_names.append(port.name)
                 compute._start_compute(server)
 
                 container_src = server.name
