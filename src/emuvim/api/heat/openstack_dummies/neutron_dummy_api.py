@@ -841,6 +841,35 @@ class NeutronAddFloatingIp(Resource):
     def __init__(self, api):
         self.api = api
 
+    def get(self):
+        """
+        Added a quick and dirty fake for the OSM integration. Returns a list of
+        floating IPs. Has nothing to do with the setup inside the emulator.
+        But its enough to make the OSM driver happy.
+        @PG Sandman: Feel free to improve this and let it do something meaningful.
+        """
+        resp = dict()
+        resp["floatingips"] = list()
+        # create a list of floting IP definitions and return it
+        for i in range(100, 110):
+            ip=dict()
+            ip["router_id"] = "router_id"
+            ip["description"] = "hardcoded in api"
+            ip["created_at"] = "router_id"
+            ip["updated_at"] = "router_id"
+            ip["revision_number"] = 1
+            ip["tenant_id"] = "tenant_id"
+            ip["project_id"] = "project_id"
+            ip["floating_network_id"] = str(i)
+            ip["status"] = "ACTIVE"
+            ip["id"] = str(i)
+            ip["port_id"] = "port_id"
+            ip["floating_ip_address"] = "172.0.0.%d" % i
+            ip["fixed_ip_address"] = "10.0.0.%d" % i
+            resp["floatingips"].append(ip)
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
+
     def post(self):
         """
         Adds a floating ... TODO
