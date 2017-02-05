@@ -9,6 +9,7 @@
 import logging
 import threading
 import uuid
+import re
 import networkx as nx
 import chain_api
 import json
@@ -674,7 +675,7 @@ class OpenstackManage(object):
          "s1", "dc2.s1"]}}}
         """
         net = self.net
-        src_sw_inport_nr = 0
+        src_sw_inport_nr = 1
         src_sw = self.floating_switch.name
         dest_intfs_mapping = lb_data.get('dst_vnf_interfaces', dict())
         # a custom path can be specified as a list of switches
@@ -701,6 +702,7 @@ class OpenstackManage(object):
         index = 0
         cookie = self.get_cookie()
         main_cmd = "add-flow -OOpenFlow13"
+        floating_ip = self.floating_network.get_new_ip_address("floating-ip").split("/")[0]
 
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.items():
             path = None
@@ -713,7 +715,7 @@ class OpenstackManage(object):
             else:
                 if (dst_vnf_name, dst_vnf_interface) not in self.floating_links:
                     self.floating_links[(dst_vnf_name, dst_vnf_interface)] = \
-                        net.addLink(self.floating_switch, datacenter)
+                        net.addLink(self.floating_switch, datacenter, delay="5ms")
                 path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)
 
             if isinstance(path, dict):
@@ -726,13 +728,10 @@ class OpenstackManage(object):
             dst_sw_outport_nr = dest_vnf_outport_nrs[index]
             current_hop = src_sw
             switch_inport_nr = src_sw_inport_nr
-
-            floating_ip = self.floating_network.get_new_ip_address("floating-ip")
-
             vlan = net.vlans.pop()
 
             # src to target
-            for i in range(0, len(path)):
+            for i in range(1, len(path)):
                 if i < len(path) - 1:
                     next_hop = path[i + 1]
                 else:
@@ -746,8 +745,9 @@ class OpenstackManage(object):
                     logging.info("Next node: {0} is not a switch".format(next_hop))
                     return "Next node: {0} is not a switch".format(next_hop)
                 elif i == 0:
-                    switch_outport_nr = self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1.params.get('port')
-                    print self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1
+                    # i have no idea how to get the port name any other way, this is just sad :(
+                    port_nmbr = re.search("-eth(.+)$", str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1))
+                    switch_outport_nr = port_nmbr.group(1)
                 else:
                     # take first link between switches by default
                     index_edge_out = 0
@@ -755,8 +755,7 @@ class OpenstackManage(object):
 
                 cmd = 'priority=1,in_port=%s,cookie=%s' % (switch_inport_nr, cookie)
                 cmd_back = 'priority=1,in_port=%s,cookie=%s' % (switch_outport_nr, cookie)
-                if path.index(current_hop) == 0:  # first node
-                    # flow #index set up
+                if i == 1:  # first node
                     cmd = 'in_port=%s' % src_sw_inport_nr
                     cmd += ',cookie=%s' % cookie
                     cmd += ',table=%s' % cookie
@@ -793,7 +792,7 @@ class OpenstackManage(object):
                     masked_vlan = vlan | 0x1000
                     cmd_back += ',set_field:%s->vlan_vid' % masked_vlan
                     cmd_back += ',set_field:%s->eth_src' % src_mac
-                    cmd_back += ',set_field:%s->ip_src' % src_ip
+                    cmd_back += ',set_field:%s->ip_src' % floating_ip
                     cmd_back += ',output:%s' % switch_inport_nr
                     net.getNodeByName(dst_vnf_name).setHostRoute(src_ip, dst_vnf_interface)
                 else:  # middle node
@@ -813,13 +812,15 @@ class OpenstackManage(object):
                 net[current_hop].dpctl(main_cmd, cmd)
                 net[current_hop].dpctl(main_cmd, cmd_back)
 
-                print(cmd)
-                print(cmd_back)
+                print(main_cmd, cmd)
+                print(main_cmd, cmd_back)
 
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
                     if i == 0:
-                        switch_inport_nr = self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf2.params.get('port')
+                        port_nmbr = re.search("-eth(.+)$",
+                                              str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf2))
+                        switch_inport_nr = port_nmbr.group(1)
                     else:
                         switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
                     current_hop = next_hop
