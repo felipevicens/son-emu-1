@@ -627,11 +627,10 @@ class BalanceHostDcStack(Resource):
                 return Response(u"Loadbalancer set up at %s:%s" % (container_src, interface_src),
                                 status=200, mimetype="application/json")
             else:
-                self.api.manage.add_floating_lb(src_dc, lb_data=input_object)
-                return Response(u"Loadbalancer set up for floating ip at datacenter %s" % src_dc,
+                cookie, floating_ip = self.api.manage.add_floating_lb(src_dc, lb_data=input_object)
+
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
                                 status=200, mimetype="application/json")
-
-
 
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
@@ -658,17 +657,23 @@ class BalanceHostDcStack(Resource):
         """
         try:
             # check src vnf/port
-            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-            if type(real_src) is not tuple:
-                # something went wrong, real_src is a Response object
-                return real_src
+            if src_stack != "floating":
+                real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+                if type(real_src) is not tuple:
+                    # something went wrong, real_src is a Response object
+                    return real_src
 
-            container_src, interface_src = real_src
+                container_src, interface_src = real_src
 
-            self.api.manage.delete_loadbalancer(container_src, interface_src)
+                self.api.manage.delete_loadbalancer(container_src, interface_src)
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s %s %s%s.\n %s" %
                               (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))

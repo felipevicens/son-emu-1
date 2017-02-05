@@ -75,6 +75,7 @@ class OpenstackManage(object):
         self.floating_network = None
         self.floating_netmask = "192.168.100.0/24"
         self.floating_nodes = dict()
+        self.floating_cookies = dict()
         self.floating_intf = None
         self.floating_links = dict()
 
@@ -844,6 +845,10 @@ class OpenstackManage(object):
         logging.debug("Switch: %s, CMD: %s" % (src_sw, cmd))
         net[src_sw].dpctl(main_cmd, cmd)
 
+        self.floating_cookies[cookie] = floating_ip
+
+        return cookie, floating_ip
+
     def setup_arp_reply_at(self, switch, port_nr, target_ip, target_mac, cookie=None):
         """
         Sets up a custom ARP reply at a switch.
@@ -996,6 +1001,19 @@ class OpenstackManage(object):
             del self.flow_groups[target_pair]
         if target_pair in self.full_lb_data:
             del self.full_lb_data[target_pair]
+
+
+    def delete_floating_lb(self, cookie):
+        cookie = int(cookie)
+        if cookie not in self.floating_cookies:
+            raise Exception("Can not delete floating loadbalancer as the flowcookie is not known")
+
+        self.delete_flow_by_cookie(cookie)
+        floating_ip = self.floating_cookies[cookie]
+        self.floating_network.withdraw_ip_address(floating_ip)
+
+        return True
+
 
     def set_arp_entry(self, vnf_name, vnf_interface, ip, mac):
         node = self.net.getNodeByName(vnf_name)
