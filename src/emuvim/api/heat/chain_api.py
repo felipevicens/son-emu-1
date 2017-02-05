@@ -671,7 +671,7 @@ class BalanceHostDcStack(Resource):
             else:
                 cookie = vnf_src_name
                 self.api.manage.delete_floating_lb(cookie)
-                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                return Response(u"Floating loadbalancer with cookie %s deleted" % (cookie),
                                 status=200, mimetype="application/json")
 
         except Exception as e:
@@ -759,11 +759,16 @@ class BalanceHost(Resource):
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
-            self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
+            if vnf_src_name != "floating":
+                self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
 
-            return Response(u"Loadbalancer set up at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer set up at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie, floating_ip = self.api.manage.add_floating_lb(vnf_src_interface, lb_data=req)
 
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s:%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
@@ -791,15 +796,21 @@ class BalanceHost(Resource):
             logging.debug("Deleting loadbalancer at %s: interface: %s" % (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net
 
-            # check if VNF exists
-            if vnf_src_name not in net:
-                return Response(u"Source VNF or interface can not be found." % vnf_src_name,
-                                status=404, mimetype="application/json")
+            if vnf_src_name != "floating":
+                # check if VNF exists
+                if vnf_src_name not in net:
+                    return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                                    status=404, mimetype="application/json")
 
-            self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
+                self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Floating loadbalancer with cookie %s removed" % (cookie),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
