@@ -590,11 +590,11 @@ class BalanceHostDcStack(Resource):
         """
         try:
             req = request.json
-            dst_vnfs = req.get('dst_vnf_interfaces', list())
-            if req is None:
+            if req is None or len(req) == 0 or "dst_vnf_interfaces" not in req:
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
+            dst_vnfs = req.get('dst_vnf_interfaces')
             container_src = None
             interface_src = None
 
@@ -755,7 +755,7 @@ class BalanceHost(Resource):
                             mimetype="application/json")
         try:
             req = request.json
-            if req is None or len(req) == 0:
+            if req is None or len(req) == 0 or "dst_vnf_interfaces" not in req:
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 

@@ -696,6 +696,9 @@ class OpenstackManage(object):
                     if link_dict[link]['src_port_name'] == dest_intfs_mapping[vnf_name]:
                         dest_vnf_outport_nrs.append(int(link_dict[link]['dst_port_nr']))
 
+
+        if len(dest_vnf_outport_nrs) == 0:
+            raise Exception("There are no paths specified for the loadbalancer")
         src_ip = self.floating_intf.IP()
         src_mac = self.floating_intf.MAC()
 
