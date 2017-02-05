@@ -515,7 +515,7 @@ class OpenstackManage(object):
             switch_inport_nr = src_sw_inport_nr
 
             octets = src_ip.split('.')
-            octets[3] =str(int(octets[3]) +1)
+            octets[3] = str(int(octets[3]) + 1)
             plus_one = '.'.join(octets)
 
             # also add the arp reply for ip+1 to the interface
@@ -589,7 +589,7 @@ class OpenstackManage(object):
                         # set up arp replys at the port so the dst nodes know the src
                         self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
 
-                        #reverse route
+                        # reverse route
                         cmd_back = 'in_port=%s' % switch_outport_nr
                         cmd_back += ',cookie=%s' % cookie
                         cmd_back += ',ip'
@@ -601,7 +601,7 @@ class OpenstackManage(object):
                         cmd_back += ',set_field:%s->ip_src' % plus_one
                         cmd_back += ',output:%s' % switch_inport_nr
                         t = threading.Thread(target=lambda: net.getNodeByName(dst_vnf_name).setHostRoute(src_ip,
-                                                                                  dst_vnf_interface))
+                                                                                                         dst_vnf_interface))
                         t.daemon = True
                         t.start()
                     else:  # middle nodes
@@ -617,7 +617,7 @@ class OpenstackManage(object):
                 else:
                     cmd += ',actions=output:%s' % switch_outport_nr
 
-                    #reverse route
+                    # reverse route
                     cmd_back = 'in_port=%s' % switch_outport_nr
                     cmd_back += ',cookie=%s' % cookie
                     cmd_back += ',ip'
@@ -719,7 +719,7 @@ class OpenstackManage(object):
                 path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)
 
             if isinstance(path, dict):
-                #TODO: delete LB
+                self.delete_flow_by_cookie(cookie)
                 raise Exception(u"Can not find a valid path. Are you specifying the right interfaces?.")
 
             intf = net[dst_vnf_name].nameToIntf[dst_vnf_interface]
@@ -746,7 +746,8 @@ class OpenstackManage(object):
                     return "Next node: {0} is not a switch".format(next_hop)
                 elif i == 0:
                     # i have no idea how to get the port name any other way, this is just sad :(
-                    port_nmbr = re.search("-eth(.+)$", str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1))
+                    port_nmbr = re.search("-eth(.+)$",
+                                          str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1))
                     switch_outport_nr = port_nmbr.group(1)
                 else:
                     # take first link between switches by default
@@ -783,7 +784,7 @@ class OpenstackManage(object):
                     # set up arp replys at the port so the dst nodes know the src
                     self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
 
-                    #reverse route
+                    # reverse route
                     cmd_back = 'in_port=%s' % switch_outport_nr
                     cmd_back += ',cookie=%s' % cookie
                     cmd_back += ',ip'
@@ -811,9 +812,6 @@ class OpenstackManage(object):
                 cmd_back = "\"%s\"" % cmd_back
                 net[current_hop].dpctl(main_cmd, cmd)
                 net[current_hop].dpctl(main_cmd, cmd_back)
-
-                print(main_cmd, cmd)
-                print(main_cmd, cmd_back)
 
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
