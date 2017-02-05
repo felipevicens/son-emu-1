@@ -7,6 +7,7 @@ from mininet.node import OVSSwitch
 from flask import Flask
 from flask import Response, request
 from flask_restful import Api, Resource
+from mininet.link import Link
 import uuid
 
 
@@ -594,41 +595,17 @@ class BalanceHostDcStack(Resource):
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
+            container_src = None
+            interface_src = None
+
+            # check src vnf/port
             if src_stack != "floating":
-                # check src vnf/port
                 real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
                 if type(real_src) is not tuple:
                     # something went wrong, real_src is a Response object
                     return real_src
 
                 container_src, interface_src = real_src
-            else:
-                compute = None
-                for ep in self.api.manage.endpoints.values():
-                    if ep.compute.dc.name == src_dc or ep.compute.dc.label == src_dc:
-                        compute = ep.compute
-                        break
-                if compute is None:
-                    return Response(u"You have to specify a destination datacenter for the floating node.",
-                                    status=500, mimetype="application/json")
-                name = "floating-%d" % len(self.api.manage.floating_nodes)
-                server = compute.create_server(name)
-                server.full_name = str(compute.dc.name) + "_fip_" + name
-
-                server.flavor = "m1.tiny"
-                server.image = req.get("floating-image", "xschlef/floatingip:latest")
-                num_ports = len(compute.ports)
-                name = "port:cp%s:fl:%s" % (num_ports, str(uuid.uuid4()))
-                port = compute.create_port(name)
-                port.net_name = self.api.manage.floating_network.name
-                port.ip_address = self.api.manage.floating_network.get_new_ip_address(name)
-                server.port_names.append(port.name)
-                compute._start_compute(server)
-
-                container_src = server.name
-                interface_src = port.intf_name
-
-
 
             real_dst_dict = {}
             for dst_vnf in dst_vnfs:
@@ -645,10 +622,15 @@ class BalanceHostDcStack(Resource):
 
             input_object = {"dst_vnf_interfaces": real_dst_dict, "path": req.get("path", None)}
 
-            self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
+            if src_stack != "floating":
+                self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
+                return Response(u"Loadbalancer set up at %s:%s" % (container_src, interface_src),
+                                status=200, mimetype="application/json")
+            else:
+                cookie, floating_ip = self.api.manage.add_floating_lb(src_dc, lb_data=input_object)
 
-            return Response(u"Loadbalancer set up at %s:%s" % (container_src, interface_src),
-                            status=200, mimetype="application/json")
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
+                                status=200, mimetype="application/json")
 
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
@@ -675,17 +657,23 @@ class BalanceHostDcStack(Resource):
         """
         try:
             # check src vnf/port
-            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-            if type(real_src) is not tuple:
-                # something went wrong, real_src is a Response object
-                return real_src
+            if src_stack != "floating":
+                real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+                if type(real_src) is not tuple:
+                    # something went wrong, real_src is a Response object
+                    return real_src
 
-            container_src, interface_src = real_src
+                container_src, interface_src = real_src
 
-            self.api.manage.delete_loadbalancer(container_src, interface_src)
+                self.api.manage.delete_loadbalancer(container_src, interface_src)
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Floating loadbalancer with cookie %s deleted" % (cookie),
+                                status=200, mimetype="application/json")
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s %s %s%s.\n %s" %
                               (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))
@@ -771,11 +759,16 @@ class BalanceHost(Resource):
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
-            self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
+            if vnf_src_name != "floating":
+                self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
 
-            return Response(u"Loadbalancer set up at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer set up at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie, floating_ip = self.api.manage.add_floating_lb(vnf_src_interface, lb_data=req)
 
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s:%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
@@ -803,15 +796,21 @@ class BalanceHost(Resource):
             logging.debug("Deleting loadbalancer at %s: interface: %s" % (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net
 
-            # check if VNF exists
-            if vnf_src_name not in net:
-                return Response(u"Source VNF or interface can not be found." % vnf_src_name,
-                                status=404, mimetype="application/json")
+            if vnf_src_name != "floating":
+                # check if VNF exists
+                if vnf_src_name not in net:
+                    return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                                    status=404, mimetype="application/json")
 
-            self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
+                self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Floating loadbalancer with cookie %s removed" % (cookie),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
