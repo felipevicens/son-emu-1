@@ -4,6 +4,7 @@ from docker import Client
 import logging
 import threading
 import uuid
+import time
 
 
 class HeatApiStackInvalidException(Exception):
@@ -592,4 +593,4 @@ class OpenstackCompute(object):
         stop_time = current_time + max_sleep
         while not function() and current_time < stop_time:
             current_time = time.time()
-
+            time.sleep(0.1)
