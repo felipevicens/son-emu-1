@@ -769,7 +769,6 @@ class OpenstackManage(object):
                 else:
                     # take first link between switches by default
                     index_edge_out = 0
-                    logging.error("%s %s %s" % (current_hop, next_hop, index_edge_out))
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
                 # default filters, just overwritten on the first node and last node
