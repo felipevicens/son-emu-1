@@ -324,9 +324,8 @@ class OpenstackCompute(object):
                 port = self.find_port_by_name_or_id(port_name)
                 if port is not None:
                     if intf.name == port.intf_name:
-                        # wait for the interface to be up
-                        while not intf.isUp():
-                            time.sleep(0.1)
+                        # wait up to one second for the intf to come up
+                        self.timeout_sleep(intf.isUp, 1)
                         if port.mac_address is not None:
                             intf.setMAC(port.mac_address)
                         else:
@@ -595,4 +594,5 @@ class OpenstackCompute(object):
         stop_time = current_time + max_sleep
         while not function() and current_time < stop_time:
             current_time = time.time()
+            time.sleep(0.1)
 
