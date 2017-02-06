@@ -565,7 +565,8 @@ class OpenstackCompute(object):
                               link_name: net_name},
                   'intfName1': link_name,
                   'cls': Link}
-        self.dc.net.addLink(node, self.dc.switch, **params)
+        link = self.dc.net.addLink(node, self.dc.switch, **params)
+        OpenstackCompute.timeout_sleep(link.intf1.isUp, 1)
 
     def _remove_link(self, server_name, link):
         """
@@ -587,3 +588,11 @@ class OpenstackCompute(object):
             if self.dc.net[server_name].intfs[intf_key].link == link:
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
+
+    @staticmethod
+    def timeout_sleep(function, max_sleep):
+        current_time = time.time()
+        stop_time = current_time + max_sleep
+        while not function() and current_time < stop_time:
+            current_time = time.time()
+
