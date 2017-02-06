@@ -230,6 +230,10 @@ class OpenstackCompute(object):
                     for port_name in server.port_names:
                         if port_name in old_stack.ports and port_name in new_stack.ports:
                             if not old_stack.ports.get(port_name) == new_stack.ports.get(port_name):
+                                if self.update_id_address(old_stack.ports.get(port_name),
+                                                          new_stack.ports.get(port_name),
+                                                          new_stack):
+                                    continue
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
@@ -271,6 +275,39 @@ class OpenstackCompute(object):
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
+
+    def update_id_address(self, old_port, new_port, new_stack):
+        if old_port is None or new_port is None:
+            return False
+        if not old_port.compare_attributes(new_port):
+            return False
+
+        if old_port.ip_address == new_port.ip_address:
+            return False
+
+        for port in new_stack.ports.values():
+            if port is new_port:
+                continue
+            if port.ip_address == old_port.ip_address:
+                tmp_net = new_stack.nets.get(port.net_name)
+                tmp_net.withdraw_ip_address(new_port.ip_address)
+                tmp_net.update_port_name_for_ip_address(port.ip_address, new_port.name)
+                tmp_net.get_new_ip_address(port.name)
+
+        new_port.ip_address = old_port.ip_address
+        new_port.mac_address = old_port.mac_address
+        return True
+
+    def update_subnet_cidr(self, old_stack, new_stack):
+        for subnet in new_stack.nets.values():
+            for old_subnet in old_stack.nets.values():
+                if subnet.subnet_name == old_subnet.subnet_name:
+                    tmp_cidr = subnet.get_cidr()
+                    subnet.set_cidr(old_subnet.get_cidr())
+                    for tmp_subnet in new_stack.nets.values():
+                        if tmp_subnet
+
+        return
 
     def update_compute_dicts(self, stack):
         """
