@@ -4,6 +4,7 @@ from docker import Client
 import logging
 import threading
 import uuid
+import time
 
 
 class HeatApiStackInvalidException(Exception):
@@ -323,11 +324,13 @@ class OpenstackCompute(object):
                 port = self.find_port_by_name_or_id(port_name)
                 if port is not None:
                     if intf.name == port.intf_name:
+                        # wait for the interface to be up
+                        while not intf.isUp():
+                            time.sleep(0.1)
                         if port.mac_address is not None:
-                            c.setMAC(port.mac_address)
+                            intf.setMAC(port.mac_address)
                         else:
-                            port.mac_address = intf.mac
-                            # TODO: mac addresses in neutron_dummy_api!
+                            port.mac_address = intf.MAC()
 
         # Start the real emulator command now as specified in the dockerfile
         # ENV SON_EMU_CMD
