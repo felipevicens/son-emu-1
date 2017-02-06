@@ -81,7 +81,10 @@ class Net:
         :param ip_address: The issued IP address.
         :type ip_address: ``str``
         """
-        address, suffix = ip_address.rsplit('/', 1)
+        if "/" in ip_address:
+            address, suffix = ip_address.rsplit('/', 1)
+        else:
+            address = ip_address
         int_ip_address = Net.ip_2_int(address)
         del self._issued_ip_addresses[int_ip_address]
 

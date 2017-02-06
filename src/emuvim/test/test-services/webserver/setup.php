@@ -21,11 +21,11 @@ if ($conn->query($sql) === TRUE) {
 }
 
 $conn->select_db("testapp");
-$sql = "CREATE TABLE cooltable (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,firstname VARCHAR(30) NOT NULL);";
+$sql = "CREATE TABLE cooltable (firstname VARCHAR(30) NOT NULL KEY, counter INT);";
 
 $conn->query($sql);
 
-$sql = "INSERT INTO cooltable (firstname) VALUES ('PG-SANDMAN')";
+$sql = "INSERT INTO cooltable (firstname, counter) VALUES ('PG-SANDMAN', 1)";
 
 $conn->query($sql);
 
