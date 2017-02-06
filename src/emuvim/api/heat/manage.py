@@ -322,9 +322,25 @@ class OpenstackManage(object):
             return ex.message
 
     def set_son_emu_data(self, vnf_name, data):
+        """
+        Set son-emu data for this node.
+
+        :param vnf_name: The name of the vnf where the data is stored.
+        :type vnf_name: ``str``
+        :param data: Raw data to store on the node.
+        :type data: ``str``
+        """
         self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % data)
 
     def get_son_emu_data(self, vnf_name):
+        """
+        Get the current son-emu data set for this node.
+
+        :param vnf_name: The name of the vnf where the data is stored.
+        :type vnf_name: ``str``
+        :return: raw data stored on the node
+        :rtype: ``str``
+        """
         return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data")
 
     def _get_connected_switch_data(self, vnf_name, vnf_interface):
@@ -662,8 +678,11 @@ class OpenstackManage(object):
 
     def add_floating_lb(self, datacenter, lb_data):
         """
-        This function will set up a loadbalancer at the given interface.
+        This function will set up a loadbalancer at the given datacenter.
+        This function returns the floating ip assigned to the loadbalancer as multiple ones are possible.
 
+        :param datacenter: The datacenter entrypoint
+        :type datacenter: ``str``
         :param lb_data: A dictionary containing the destination data as well as custom path settings
         :type lb_data: ``dict``
 
@@ -731,15 +750,16 @@ class OpenstackManage(object):
             switch_inport_nr = src_sw_inport_nr
             vlan = net.vlans.pop()
 
-            # src to target
+            # iterate all switches on the path
             for i in range(0, len(path)):
-                next_hop = ""
                 if i < len(path) - 1:
                     next_hop = path[i + 1]
                 else:
                     # last switch reached
                     next_hop = dst_vnf_name
                 next_node = net.getNodeByName(next_hop)
+
+                # sanity checks
                 if next_hop == dst_vnf_name:
                     switch_outport_nr = dst_sw_outport_nr
                     logging.info("end node reached: {0}".format(dst_vnf_name))
@@ -752,6 +772,7 @@ class OpenstackManage(object):
                     logging.error("%s %s %s" % (current_hop, next_hop, index_edge_out))
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
+                # default filters, just overwritten on the first node and last node
                 cmd = 'priority=1,in_port=%s,cookie=%s' % (switch_inport_nr, cookie)
                 cmd_back = 'priority=1,in_port=%s,cookie=%s' % (switch_outport_nr, cookie)
                 if i == 0:  # first node
@@ -996,6 +1017,12 @@ class OpenstackManage(object):
 
 
     def delete_floating_lb(self, cookie):
+        """
+        Delete a floating loadbalancer.
+        Floating loadbalancers are different from normal ones as there are multiple ones on the same interface.
+        :param cookie: The cookie of the loadbalancer
+        :type cookie: ``int``
+        """
         cookie = int(cookie)
         if cookie not in self.floating_cookies:
             raise Exception("Can not delete floating loadbalancer as the flowcookie is not known")
@@ -1004,9 +1031,17 @@ class OpenstackManage(object):
         floating_ip = self.floating_cookies[cookie]
         self.floating_network.withdraw_ip_address(floating_ip)
 
-        return True
-
-
     def set_arp_entry(self, vnf_name, vnf_interface, ip, mac):
+        """
+        Sets an arp entry on the specified VNF. This is done on the node directly and not by open vswitch!
+        :param vnf_name: Name of the VNF
+        :type vnf_name: ``str``
+        :param vnf_interface: Name of the interface
+        :type vnf_interface: ``str``
+        :param ip: IP to reply to
+        :type ip: ``str``
+        :param mac: Answer with this MAC
+        :type mac: ``str``
+        """
         node = self.net.getNodeByName(vnf_name)
         node.cmd("arp -i %s -s %s %s" % (vnf_interface, ip, mac))

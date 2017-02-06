@@ -8,6 +8,9 @@ import time
 
 
 class HeatApiStackInvalidException(Exception):
+    """
+    Exception thrown when a submitted stack is invalid.
+    """
     def __init__(self, value):
         self.value = value
 
@@ -60,6 +63,12 @@ class OpenstackCompute(object):
         return self._images
 
     def add_stack(self, stack):
+        """
+        Adds a new stack to the compute node.
+
+        :param stack: Stack dictionary.
+        :type stack: ``dict``
+        """
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
@@ -590,6 +599,15 @@ class OpenstackCompute(object):
 
     @staticmethod
     def timeout_sleep(function, max_sleep):
+        """
+        This function will execute a function all 0.1 seconds until it successfully returns.
+        Will return after `max_sleep` seconds if not successful.
+
+        :param function: The function to execute. Should return true if done.
+        :type function: ``function``
+        :param max_sleep: Max seconds to sleep. 1 equals 1 second.
+        :type max_sleep: ``float``
+        """
         current_time = time.time()
         stop_time = current_time + max_sleep
         while not function() and current_time < stop_time:
