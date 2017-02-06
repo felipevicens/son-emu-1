@@ -601,10 +601,7 @@ class OpenstackManage(object):
                         cmd_back += ',set_field:%s->eth_src' % target_mac
                         cmd_back += ',set_field:%s->ip_src' % plus_one
                         cmd_back += ',output:%s' % switch_inport_nr
-                        t = threading.Thread(target=lambda: net.getNodeByName(dst_vnf_name).setHostRoute(src_ip,
-                                                                                                         dst_vnf_interface))
-                        t.daemon = True
-                        t.start()
+                        net.getNodeByName(dst_vnf_name).setHostRoute(src_ip,dst_vnf_interface)
                     else:  # middle nodes
                         # if we have a circle in the path we need to specify this, as openflow will ignore the packet
                         # if we just output it on the same port as it came in
