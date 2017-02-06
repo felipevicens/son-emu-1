@@ -19,6 +19,9 @@ class KeystoneDummyApi(BaseOpenstackDummy):
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 class Shutdown(Resource):
+    """
+    A get request to /shutdown will shut down this endpoint.
+    """
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -28,11 +31,21 @@ class Shutdown(Resource):
 
 
 class KeystoneListVersions(Resource):
+    """
+    List all known keystone versions.
+    Hardcoded for our version!
+    """
 
     def __init__(self, api):
         self.api = api
 
     def get(self):
+        """
+        List API versions.
+
+        :return: Returns the api versions.
+        :rtype: :class:`flask.response` containing a static json encoded dict.
+        """
         logging.debug("API CALL: Keystone - List Versions")
         resp = dict()
         resp['versions'] = dict()
@@ -60,14 +73,24 @@ class KeystoneListVersions(Resource):
 
 
 class KeystoneShowAPIv2(Resource):
+    """
+    Entrypoint for all openstack clients.
+    This returns all current entrypoints running on son-emu.
+    """
 
     def __init__(self, api):
         self.api = api
 
     def get(self):
+        """
+        List API entrypoints.
+
+        :return: Returns an openstack style response for all entrypoints.
+        :rtype: :class:`flask.response`
+        """
         logging.debug("API CALL: Show API v2.0 details")
 
-        neutrnon_port = self.api.port + 4696
+        neutron_port = self.api.port + 4696
         heat_port = self.api.port + 3004
 
         resp = dict()
@@ -90,15 +113,15 @@ class KeystoneShowAPIv2(Resource):
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
                         "rel": "self"
                     },
                     {
-                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutrnon_port),
+                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
                         "rel": "self"
                     },
                     {
@@ -107,25 +130,34 @@ class KeystoneShowAPIv2(Resource):
                     }
                 ]
             }
-        # TODO add all API calls
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 
 class KeystoneGetToken(Resource):
+    """
+    Returns a static keystone token.
+    We don't do any validation so we don't care.
+    """
 
     def __init__(self, api):
         self.api = api
 
     def post(self):
-        # everything is hardcoded here
-        # to work with this keystone setup you need the following parameters
-        # OS_AUTH_URL=http://<ip>:<port>/v2.0
-        # OS_IDENTITY_API_VERSION=2.0
-        # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
-        # OS_REGION_NAME=RegionOne
-        # OS_USERNAME=bla
-        # OS_PASSWORD = bla
+        """
+        List API entrypoints.
+
+        This is hardcoded. For a working "authentication" use these ENVVARS:
+        `OS_AUTH_URL`=http://<ip>:<port>/v2.0
+        `OS_IDENTITY_API_VERSION`=2.0
+        `OS_TENANT_ID`=fc394f2ab2df4114bde39905f800dc57
+        `OS_REGION_NAME`=RegionOne
+        `OS_USERNAME`=bla
+        `OS_PASSWORD`=bla
+
+        :return: Returns an openstack style response for all entrypoints.
+        :rtype: :class:`flask.response`
+        """
 
         logging.debug("API CALL: Keystone - Get token")
         try:

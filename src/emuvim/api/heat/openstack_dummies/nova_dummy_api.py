@@ -52,6 +52,9 @@ class NovaDummyApi(BaseOpenstackDummy):
 
 
 class Shutdown(Resource):
+    """
+    A get request to /shutdown will shut down this endpoint.
+    """
     def get(self):
         logging.debug(("%s is beeing shut doen") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
