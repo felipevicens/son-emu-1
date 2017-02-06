@@ -714,10 +714,10 @@ class OpenstackManage(object):
                     path = custom_paths[dst_vnf_name][dst_vnf_interface]
                     logging.debug("Taking custom path to %s: %s" % (dst_vnf_name, path))
             else:
-                if (dst_vnf_name, dst_vnf_interface) not in self.floating_links:
-                    self.floating_links[(dst_vnf_name, dst_vnf_interface)] = \
+                if datacenter not in self.floating_links:
+                    self.floating_links[datacenter] = \
                         net.addLink(self.floating_switch, datacenter, delay="5ms")
-                path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)
+                path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)[0]
 
             if isinstance(path, dict):
                 self.delete_flow_by_cookie(cookie)
@@ -732,7 +732,8 @@ class OpenstackManage(object):
             vlan = net.vlans.pop()
 
             # src to target
-            for i in range(1, len(path)):
+            for i in range(0, len(path)):
+                next_hop = ""
                 if i < len(path) - 1:
                     next_hop = path[i + 1]
                 else:
@@ -745,19 +746,15 @@ class OpenstackManage(object):
                 elif not isinstance(next_node, OVSSwitch):
                     logging.info("Next node: {0} is not a switch".format(next_hop))
                     return "Next node: {0} is not a switch".format(next_hop)
-                elif i == 0:
-                    # i have no idea how to get the port name any other way, this is just sad :(
-                    port_nmbr = re.search("-eth(.+)$",
-                                          str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf1))
-                    switch_outport_nr = port_nmbr.group(1)
                 else:
                     # take first link between switches by default
                     index_edge_out = 0
+                    logging.error("%s %s %s" % (current_hop, next_hop, index_edge_out))
                     switch_outport_nr = net.DCNetwork_graph[current_hop][next_hop][index_edge_out]['src_port_nr']
 
                 cmd = 'priority=1,in_port=%s,cookie=%s' % (switch_inport_nr, cookie)
                 cmd_back = 'priority=1,in_port=%s,cookie=%s' % (switch_outport_nr, cookie)
-                if i == 1:  # first node
+                if i == 0:  # first node
                     cmd = 'in_port=%s' % src_sw_inport_nr
                     cmd += ',cookie=%s' % cookie
                     cmd += ',table=%s' % cookie
@@ -816,12 +813,7 @@ class OpenstackManage(object):
 
                 # set next hop for the next iteration step
                 if isinstance(next_node, OVSSwitch):
-                    if i == 0:
-                        port_nmbr = re.search("-eth(.+)$",
-                                              str(self.floating_links[(dst_vnf_name, dst_vnf_interface)].intf2))
-                        switch_inport_nr = port_nmbr.group(1)
-                    else:
-                        switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
+                    switch_inport_nr = net.DCNetwork_graph[current_hop][next_hop][0]['dst_port_nr']
                     current_hop = next_hop
 
             # advance to next destination
