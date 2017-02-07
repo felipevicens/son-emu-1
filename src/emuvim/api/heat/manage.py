@@ -735,7 +735,7 @@ class OpenstackManage(object):
             else:
                 if datacenter not in self.floating_links:
                     self.floating_links[datacenter] = \
-                        net.addLink(self.floating_switch, datacenter, delay="5ms")
+                        net.addLink(self.floating_switch, datacenter)
                 path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)[0]
 
             if isinstance(path, dict):
