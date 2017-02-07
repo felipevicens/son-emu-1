@@ -872,14 +872,13 @@ class NeutronAddFloatingIp(Resource):
 
     def post(self):
         """
-        Adds a floating ... TODO
+        Adds a floating IP to neutron.
 
         :return: Returns a floating network description.
         :rtype: :class:`flask.response`
         """
         logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
-            #TODO: this is first implementation that will change with mgmt networks!
             # Fiddle with floating_network !
             req = json.loads(request.data)
 
