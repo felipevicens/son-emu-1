@@ -1,5 +1,6 @@
 import uuid
 
+
 class Router:
     def __init__(self, name, id=None):
         self.name = name
@@ -11,6 +12,6 @@ class Router:
 
     def __eq__(self, other):
         if self.name == other.name and len(self.subnet_names) == len(other.subnet_names) and \
-                                       set(self.subnet_names) == set(other.subnet_names):
+                        set(self.subnet_names) == set(other.subnet_names):
             return True
         return False

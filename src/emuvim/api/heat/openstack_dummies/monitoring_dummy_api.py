@@ -31,6 +31,7 @@ class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -40,7 +41,6 @@ class Shutdown(Resource):
 
 
 class MonitorVersionsList(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -60,7 +60,7 @@ class MonitorVersionsList(Resource):
                 "links": [{
                     "href": "http://%s:%d/v1/" % (self.api.ip, self.api.port),
                     "rel": "self"
-                    }],
+                }],
                 "status": "CURRENT",
                 "version": "1",
                 "min_version": "1",
@@ -75,7 +75,6 @@ class MonitorVersionsList(Resource):
 
 
 class MonitorVnf(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -121,7 +120,6 @@ class MonitorVnf(Resource):
 
 
 class MonitorVnfAbs(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -159,7 +157,7 @@ class MonitorVnfAbs(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict) + '\n', status=200, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
@@ -168,7 +166,6 @@ class MonitorVnfAbs(Resource):
 
 
 class MonitorVnfDcStack(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -204,7 +201,7 @@ class MonitorVnfDcStack(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict) + '\n', status=200, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
@@ -248,4 +245,3 @@ class MonitorVnfDcStack(Resource):
             return Response(u"VNF %s does not exist\n" % (vnf), status=500, mimetype="application/json")
         container_real = 'mn.' + server_real.name
         return container_real
-

@@ -617,7 +617,7 @@ class OpenstackManage(object):
                         cmd_back += ',set_field:%s->eth_src' % target_mac
                         cmd_back += ',set_field:%s->ip_src' % plus_one
                         cmd_back += ',output:%s' % switch_inport_nr
-                        net.getNodeByName(dst_vnf_name).setHostRoute(src_ip,dst_vnf_interface)
+                        net.getNodeByName(dst_vnf_name).setHostRoute(src_ip, dst_vnf_interface)
                     else:  # middle nodes
                         # if we have a circle in the path we need to specify this, as openflow will ignore the packet
                         # if we just output it on the same port as it came in
@@ -712,7 +712,6 @@ class OpenstackManage(object):
                     if link_dict[link]['src_port_name'] == dest_intfs_mapping[vnf_name]:
                         dest_vnf_outport_nrs.append(int(link_dict[link]['dst_port_nr']))
 
-
         if len(dest_vnf_outport_nrs) == 0:
             raise Exception("There are no paths specified for the loadbalancer")
         src_ip = self.floating_intf.IP()
@@ -736,7 +735,8 @@ class OpenstackManage(object):
                 if datacenter not in self.floating_links:
                     self.floating_links[datacenter] = \
                         net.addLink(self.floating_switch, datacenter)
-                path = self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)[0]
+                path = \
+                self._get_path(self.floating_root.name, dst_vnf_name, self.floating_intf.name, dst_vnf_interface)[0]
 
             if isinstance(path, dict):
                 self.delete_flow_by_cookie(cookie)
@@ -1014,7 +1014,6 @@ class OpenstackManage(object):
             del self.flow_groups[target_pair]
         if target_pair in self.full_lb_data:
             del self.full_lb_data[target_pair]
-
 
     def delete_floating_lb(self, cookie):
         """

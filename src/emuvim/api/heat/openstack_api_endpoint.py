@@ -70,5 +70,5 @@ class OpenstackApiEndpoint():
         Stop all connected OpenStack endpoints that are connected to this API endpoint.
         """
         for component in self.openstack_endpoints.values():
-            url = "http://"+component.ip+":"+str(component.port)+"/shutdown"
+            url = "http://" + component.ip + ":" + str(component.port) + "/shutdown"
             requests.get(url)

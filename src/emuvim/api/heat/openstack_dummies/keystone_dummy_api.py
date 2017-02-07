@@ -4,6 +4,7 @@ from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstack
 import logging
 import json
 
+
 class KeystoneDummyApi(BaseOpenstackDummy):
     def __init__(self, in_ip, in_port):
         super(KeystoneDummyApi, self).__init__(in_ip, in_port)
@@ -18,10 +19,12 @@ class KeystoneDummyApi(BaseOpenstackDummy):
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
 class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -51,22 +54,22 @@ class KeystoneListVersions(Resource):
         resp['versions'] = dict()
 
         version = [{
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    }
-                ],
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "status": "stable",
-                "updated": "2014-04-17T00:00:00Z"
-            }]
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "status": "stable",
+            "updated": "2014-04-17T00:00:00Z"
+        }]
         resp['versions']['values'] = version
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
@@ -95,41 +98,41 @@ class KeystoneShowAPIv2(Resource):
 
         resp = dict()
         resp['version'] = {
-                "status": "stable",
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
-                        "rel": "self"
-                    }
-                ]
-            }
+            "status": "stable",
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
+                    "rel": "self"
+                }
+            ]
+        }
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 

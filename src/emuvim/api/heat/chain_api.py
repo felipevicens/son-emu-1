@@ -141,6 +141,7 @@ class BalanceHostList(Resource):
             logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
             return ex.message, 500
 
+
 class ChainVnfInterfaces(Resource):
     """
     Handles requests targeted at: "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
