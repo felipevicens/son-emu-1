@@ -44,6 +44,7 @@ class MonitorVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
+
     def get(self):
         """
         List API versions.
@@ -51,6 +52,8 @@ class MonitorVersionsList(Resource):
         :return: Returns the api versions.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         # at least let it look like an open stack function
         try:
             resp = dict()
@@ -89,6 +92,7 @@ class MonitorVnf(Resource):
             access, the number of running processes and the current system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -134,6 +138,7 @@ class MonitorVnfAbs(Resource):
             system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -185,6 +190,7 @@ class MonitorVnfDcStack(Resource):
             system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
 
         # search for real name
         vnf_name = self._findName(dc, stack, vnf_name)

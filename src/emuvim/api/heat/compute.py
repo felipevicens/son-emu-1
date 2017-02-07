@@ -1,6 +1,6 @@
 from mininet.link import Link
 from resources import *
-from docker import Client
+from docker import DockerClient
 import logging
 import threading
 import uuid
@@ -38,7 +38,7 @@ class OpenstackCompute(object):
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
-        self.dcli = Client(base_url='unix://var/run/docker.sock')
+        self.dcli = DockerClient(base_url='unix://var/run/docker.sock')
 
     @property
     def images(self):
@@ -49,19 +49,11 @@ class OpenstackCompute(object):
         :return: Returns the new image dictionary.
         :rtype: ``dict``
         """
-        for image in self.dcli.images():
-            if 'RepoTags' in image:
-                found = False
-                imageName = image['RepoTags']
-                if imageName == None:
-                    continue
-                imageName = imageName[0]
-                for i in self._images.values():
-                    if i.name == imageName:
-                        found = True
-                        break
-                if not found:
-                    self._images[imageName] = Image(imageName)
+        for image in self.dcli.images.list():
+            if len(image.tags) > 0:
+                for t in image.tags:
+                    if t not in self._images:
+                        self._images[t] = Image(t)
         return self._images
 
     def add_stack(self, stack):
@@ -141,6 +133,7 @@ class OpenstackCompute(object):
         """
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
+        return flavor
 
     def deploy_stack(self, stackid):
         """
