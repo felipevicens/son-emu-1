@@ -1,6 +1,6 @@
 from mininet.link import Link
 from resources import *
-from docker import Client
+from docker import DockerClient
 import logging
 import threading
 import uuid
@@ -32,7 +32,7 @@ class OpenstackCompute(object):
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
-        self.dcli = Client(base_url='unix://var/run/docker.sock')
+        self.dcli = DockerClient(base_url='unix://var/run/docker.sock')
 
     @property
     def images(self):
