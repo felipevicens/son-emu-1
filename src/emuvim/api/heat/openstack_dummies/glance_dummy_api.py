@@ -74,9 +74,9 @@ class GlanceListImagesApi(Resource):
 
     def get(self):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        try:
+        try:           
             resp = dict()
-            # resp['next'] = None
+            resp['next'] = None
             resp['first'] = "/v2/images"
             resp['schema'] = "/v2/schemas/images"
             resp['images'] = list()
@@ -107,6 +107,8 @@ class GlanceListImagesApi(Resource):
                 c+=1
                 if c > limit:  # ugly hack to stop buggy glance client to do infinite requests
                     break
+            if "marker" in request.args:  # ugly hack to fix pageination of openstack client
+                resp['images'] = None
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
         except Exception as ex:
