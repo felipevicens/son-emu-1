@@ -184,7 +184,7 @@ def chain_topo_test():
             port = create_port(net, datacenter=dc)
             server = create_server("serv%s" %x, "m1.tiny", "ubuntu:trusty", port, datacenter=dc)
 
-    data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
+    #data = {"path": ["dc1.s1", "s1", "dc4.s1"]}
     #data = None
     set_chain("dc1_man_serv0","port-man-0","dc4_man_serv0","port-man-3",data)
     data = {"layer2": True}
@@ -194,9 +194,6 @@ def lb_webservice_topo():
     # floating entrypoint
     net = create_network_and_subnet("net1", "192.168.2.0/24", datacenter=0)
     port = create_port(net, datacenter=0)
-    server = create_server("fip", "m1.tiny", "xschlef/floatingip:latest", port, datacenter=0)
-    time.sleep(1)
-    add_floatingip_to_server(server["server"]["id"], datacenter=0)
 
     # web and db in datacenter 2
     dc = 1
@@ -224,7 +221,7 @@ def lb_webservice_topo():
 
     lb_data = {"dst_vnf_interfaces": {"dc2_man_web": "port-man-1", "dc3_man_web": "port-man-3","dc4_man_web": "port-man-4"}}
 
-    add_loadbalancer("dc1_man_fip","port-man-0", lb_data)
+    add_loadbalancer("floating","dc1", lb_data)
 
     set_chain("dc2_man_web", "port-out-0", "dc2_man_db", "port-man-2")
     set_chain("dc3_man_web", "port-out-1", "dc2_man_db", "port-man-2")
