@@ -47,19 +47,10 @@ class OpenstackCompute(object):
         :return: Returns the new image dictionary.
         :rtype: ``dict``
         """
-        for image in self.dcli.images():
-            if 'RepoTags' in image:
-                found = False
-                imageName = image['RepoTags']
-                if imageName == None:
-                    continue
-                imageName = imageName[0]
-                for i in self._images.values():
-                    if i.name == imageName:
-                        found = True
-                        break
-                if not found:
-                    self._images[imageName] = Image(imageName)
+        for image in self.dcli.images.list():
+            if len(image.tags) > 0:
+                for t in image.tags:
+                    self._images[t] = Image(t)
         return self._images
 
     def add_stack(self, stack):
