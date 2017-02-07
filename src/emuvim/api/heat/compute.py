@@ -50,7 +50,8 @@ class OpenstackCompute(object):
         for image in self.dcli.images.list():
             if len(image.tags) > 0:
                 for t in image.tags:
-                    self._images[t] = Image(t)
+                    if t not in self._images:
+                        self._images[t] = Image(t)
         return self._images
 
     def add_stack(self, stack):
