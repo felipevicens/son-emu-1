@@ -4,9 +4,13 @@ from docker import Client
 import logging
 import threading
 import uuid
+import time
 
 
 class HeatApiStackInvalidException(Exception):
+    """
+    Exception thrown when a submitted stack is invalid.
+    """
     def __init__(self, value):
         self.value = value
 
@@ -59,6 +63,12 @@ class OpenstackCompute(object):
         return self._images
 
     def add_stack(self, stack):
+        """
+        Adds a new stack to the compute node.
+
+        :param stack: Stack dictionary.
+        :type stack: ``dict``
+        """
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
@@ -324,11 +334,12 @@ class OpenstackCompute(object):
                 port = self.find_port_by_name_or_id(port_name)
                 if port is not None:
                     if intf.name == port.intf_name:
+                        # wait up to one second for the intf to come up
+                        self.timeout_sleep(intf.isUp, 1)
                         if port.mac_address is not None:
-                            c.setMAC(port.mac_address)
+                            intf.setMAC(port.mac_address)
                         else:
-                            port.mac_address = intf.mac
-                            # TODO: mac addresses in neutron_dummy_api!
+                            port.mac_address = intf.MAC()
 
         # Start the real emulator command now as specified in the dockerfile
         # ENV SON_EMU_CMD
@@ -563,7 +574,8 @@ class OpenstackCompute(object):
                               link_name: net_name},
                   'intfName1': link_name,
                   'cls': Link}
-        self.dc.net.addLink(node, self.dc.switch, **params)
+        link = self.dc.net.addLink(node, self.dc.switch, **params)
+        OpenstackCompute.timeout_sleep(link.intf1.isUp, 1)
 
     def _remove_link(self, server_name, link):
         """
@@ -585,3 +597,21 @@ class OpenstackCompute(object):
             if self.dc.net[server_name].intfs[intf_key].link == link:
                 self.dc.net[server_name].intfs[intf_key].delete()
                 del self.dc.net[server_name].intfs[intf_key]
+
+    @staticmethod
+    def timeout_sleep(function, max_sleep):
+        """
+        This function will execute a function all 0.1 seconds until it successfully returns.
+        Will return after `max_sleep` seconds if not successful.
+
+        :param function: The function to execute. Should return true if done.
+        :type function: ``function``
+        :param max_sleep: Max seconds to sleep. 1 equals 1 second.
+        :type max_sleep: ``float``
+        """
+        current_time = time.time()
+        stop_time = current_time + max_sleep
+        while not function() and current_time < stop_time:
+            current_time = time.time()
+            time.sleep(0.1)
+
