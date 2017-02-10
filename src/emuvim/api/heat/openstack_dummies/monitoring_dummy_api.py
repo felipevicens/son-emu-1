@@ -31,6 +31,7 @@ class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -40,9 +41,9 @@ class Shutdown(Resource):
 
 
 class MonitorVersionsList(Resource):
-
     def __init__(self, api):
         self.api = api
+
 
     def get(self):
         """
@@ -51,6 +52,8 @@ class MonitorVersionsList(Resource):
         :return: Returns the api versions.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         # at least let it look like an open stack function
         try:
             resp = dict()
@@ -60,7 +63,7 @@ class MonitorVersionsList(Resource):
                 "links": [{
                     "href": "http://%s:%d/v1/" % (self.api.ip, self.api.port),
                     "rel": "self"
-                    }],
+                }],
                 "status": "CURRENT",
                 "version": "1",
                 "min_version": "1",
@@ -75,7 +78,6 @@ class MonitorVersionsList(Resource):
 
 
 class MonitorVnf(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -90,6 +92,7 @@ class MonitorVnf(Resource):
             access, the number of running processes and the current system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -121,7 +124,6 @@ class MonitorVnf(Resource):
 
 
 class MonitorVnfAbs(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -136,6 +138,7 @@ class MonitorVnfAbs(Resource):
             system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -159,7 +162,7 @@ class MonitorVnfAbs(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict) + '\n', status=200, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
@@ -168,7 +171,6 @@ class MonitorVnfAbs(Resource):
 
 
 class MonitorVnfDcStack(Resource):
-
     def __init__(self, api):
         self.api = api
 
@@ -188,6 +190,7 @@ class MonitorVnfDcStack(Resource):
             system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
 
         # search for real name
         vnf_name = self._findName(dc, stack, vnf_name)
@@ -204,7 +207,7 @@ class MonitorVnfDcStack(Resource):
             out_dict.update(DockerUtil.docker_PIDS(docker_id))
             out_dict['SYS_time'] = int(time.time() * 1000000000)
 
-            response = Response(json.dumps(out_dict)+'\n', status=200, mimetype="application/json")
+            response = Response(json.dumps(out_dict) + '\n', status=200, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
         except Exception as e:
@@ -248,4 +251,3 @@ class MonitorVnfDcStack(Resource):
             return Response(u"VNF %s does not exist\n" % (vnf), status=500, mimetype="application/json")
         container_real = 'mn.' + server_real.name
         return container_real
-

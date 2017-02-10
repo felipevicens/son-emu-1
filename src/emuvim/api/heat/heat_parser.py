@@ -6,10 +6,12 @@ import sys
 import uuid
 import logging
 
+
 class HeatParser:
     """
     The HeatParser will parse a heat dictionary and create a stack and its components, to instantiate it within son-emu.
     """
+
     def __init__(self, compute):
         self.description = None
         self.parameter_groups = None
@@ -104,7 +106,7 @@ class HeatParser:
                     net.gateway_ip = resource['properties']['gateway_ip']
                 net.subnet_id = resource['properties'].get('id', str(uuid.uuid4()))
                 net.subnet_creation_time = str(datetime.now())
-                #net.set_cidr(resource['properties']['cidr'])
+                # net.set_cidr(resource['properties']['cidr'])
                 net.set_cidr(Net.int_2_ip(self.subnet_counter) + '/24')
                 self.subnet_counter += 256
             except Exception as e:

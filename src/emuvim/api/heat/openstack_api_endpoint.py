@@ -22,6 +22,8 @@ class OpenstackApiEndpoint():
         self.openstack_endpoints['neutron'] = NeutronDummyApi(self.ip, self.port + 4696, self.compute)
         self.openstack_endpoints['nova'] = NovaDummyApi(self.ip, self.port + 3774, self.compute)
         self.openstack_endpoints['heat'] = HeatDummyApi(self.ip, self.port + 3004, self.compute)
+        self.openstack_endpoints['glance'] = GlanceDummyApi(self.ip, self.port + 4242, self.compute)
+
         self.rest_threads = list()
         self.manage = OpenstackManage()
         self.manage.add_endpoint(self)
@@ -70,5 +72,5 @@ class OpenstackApiEndpoint():
         Stop all connected OpenStack endpoints that are connected to this API endpoint.
         """
         for component in self.openstack_endpoints.values():
-            url = "http://"+component.ip+":"+str(component.port)+"/shutdown"
+            url = "http://" + component.ip + ":" + str(component.port) + "/shutdown"
             requests.get(url)

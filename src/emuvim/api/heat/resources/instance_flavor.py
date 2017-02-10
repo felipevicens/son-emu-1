@@ -1,4 +1,6 @@
 import uuid
+
+
 class InstanceFlavor:
     def __init__(self, name, cpu=None, memory=None, memory_unit=None, storage=None, storage_unit=None):
         self.id = str(uuid.uuid4())

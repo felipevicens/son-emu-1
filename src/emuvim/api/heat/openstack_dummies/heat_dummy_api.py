@@ -38,6 +38,7 @@ class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -51,7 +52,7 @@ class HeatListAPIVersions(Resource):
         self.api = api
 
     def get(self):
-        logging.debug("API CALL: Heat - List API Versions")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
 
         resp['versions'] = dict()
@@ -83,7 +84,7 @@ class HeatCreateStack(Resource):
             500, if any exception occurred while creation.
             200, if everything worked out.
         """
-        logging.debug("HEAT: Create Stack")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
 
         try:
             stack_dict = json.loads(request.data)
@@ -127,7 +128,7 @@ class HeatCreateStack(Resource):
             500, if any exception occurred.
             200, if everything worked out.
         """
-        logging.debug("HEAT: Stack List")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             return_stacks = dict()
             return_stacks['stacks'] = list()
@@ -165,7 +166,7 @@ class HeatShowStack(Resource):
             500, if any exception occurred.
             200, if everything worked out.
         """
-        logging.debug("HEAT: Show Stack")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             stack = None
             if stack_name_or_id in self.api.compute.stacks:
@@ -234,7 +235,7 @@ class HeatUpdateStack(Resource):
             500, if any exception occurred while updating.
             202, if everything worked out.
         """
-        logging.debug("Heat: Update Stack")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             old_stack = None
             if stack_name_or_id in self.api.compute.stacks:
@@ -285,7 +286,7 @@ class HeatDeleteStack(Resource):
         :return: 500, if any exception occurred while deletion.
             204, if everything worked out.
         """
-        logging.debug("Heat: Delete Stack")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             if stack_name_or_id in self.api.compute.stacks:
                 self.api.compute.delete_stack(stack_name_or_id)

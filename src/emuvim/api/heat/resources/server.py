@@ -1,4 +1,3 @@
-
 class Server(object):
     def __init__(self, name, id=None, flavor=None, image=None, command=None, nw_list=None):
         self.name = name
@@ -23,23 +22,23 @@ class Server(object):
         :rtype: ``bool``
         """
         if self.name == other.name and self.full_name == other.full_name and \
-                                       self.flavor == other.flavor and \
-                                       self.image == other.image and \
-                                       self.command == other.command:
+                        self.flavor == other.flavor and \
+                        self.image == other.image and \
+                        self.command == other.command:
             return True
         return False
 
     def __eq__(self, other):
-        if self.name == other.name and self.full_name == other.full_name and\
-                                       self.flavor == other.flavor and \
-                                       self.image == other.image and \
-                                       self.command == other.command and \
-                                       len(self.port_names) == len(other.port_names) and \
-                                       set(self.port_names) == set(other.port_names):
+        if self.name == other.name and self.full_name == other.full_name and \
+                        self.flavor == other.flavor and \
+                        self.image == other.image and \
+                        self.command == other.command and \
+                        len(self.port_names) == len(other.port_names) and \
+                        set(self.port_names) == set(other.port_names):
             return True
         return False
 
-    def create_server_dict(self, compute = None):
+    def create_server_dict(self, compute=None):
         """
         Creates the server description dictionary.
 

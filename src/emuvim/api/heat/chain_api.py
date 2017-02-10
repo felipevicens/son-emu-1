@@ -141,6 +141,7 @@ class BalanceHostList(Resource):
             logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
             return ex.message, 500
 
+
 class ChainVnfInterfaces(Resource):
     """
     Handles requests targeted at: "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
@@ -197,8 +198,12 @@ class ChainVnfInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        path = request.json.get('path')
-        layer2 = request.json.get('layer2', True)
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
@@ -343,8 +348,12 @@ class ChainVnfDcStackInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        path = request.json.get('path')
-        layer2 = request.json.get('layer2', True)
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
 
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)

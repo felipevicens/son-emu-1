@@ -1,11 +1,13 @@
 from flask import Flask
-from flask_restful import Api,Resource
+from flask_restful import Api, Resource
 import logging
+
 
 class BaseOpenstackDummy(Resource):
     """
     This class is the base class for all openstack entrypoints of son-emu.
     """
+
     def __init__(self, listenip, port):
         self.ip = listenip
         self.port = port
