@@ -220,6 +220,8 @@ class OpenstackCompute(object):
         # Update the compute dicts to now contain the new_stack components
         self.update_compute_dicts(new_stack)
 
+        self.update_ip_addresses(old_stack, new_stack)
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -276,7 +278,7 @@ class OpenstackCompute(object):
         self.stacks[new_stack.id] = new_stack
         return True
 
-    def update_ip_address(self, old_stack, new_stack):
+    def update_ip_addresses(self, old_stack, new_stack):
         self.update_subnet_cidr(old_stack, new_stack)
         self.update_port_addresses(old_stack, new_stack)
 
@@ -323,6 +325,7 @@ class OpenstackCompute(object):
         subnet_counter = Net.ip_2_int('10.0.0.1')
         issued_ip_addresses = list()
         for subnet in new_stack.nets.values():
+            subnet.clear_cidr()
             for old_subnet in old_stack.nets.values():
                 if subnet.subnet_name == old_subnet.subnet_name:
                     subnet.set_cidr(old_subnet.get_cidr())

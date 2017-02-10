@@ -6,6 +6,7 @@ import sys
 import uuid
 import logging
 
+
 class HeatParser:
     """
     The HeatParser will parse a heat dictionary and create a stack and its components, to instantiate it within son-emu.
@@ -124,13 +125,7 @@ class HeatParser:
                     net = stack.nets[resource['properties']['network']['get_resource']]
                     if net.subnet_id is not None:
                         port.net_name = net.name
-                        name_part = port.name.split(':')
-                        if name_part[2] == 'input' or name_part[2] == 'in':
-                            port.ip_address = net.get_in_ip_address(port.name)
-                        elif name_part[2] == 'output' or name_part[2] == 'out':
-                            port.ip_address = net.get_out_ip_address(port.name)
-                        else:
-                            port.ip_address = net.get_new_ip_address(port.name)
+                        port.ip_address = net.get_new_ip_address(port.name)
                         return
             except Exception as e:
                 logging.warning('Could not create Port: ' + e.message)
