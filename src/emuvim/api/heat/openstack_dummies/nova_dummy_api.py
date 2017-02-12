@@ -95,7 +95,9 @@ class NovaVersionsList(Resource):
                 }
             """ % (self.api.ip, self.api.port)
 
-            return Response(resp, status=200, mimetype="application/json")
+            response = Response(resp, status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not show list of versions." % __name__)
@@ -145,7 +147,9 @@ class NovaVersionShow(Resource):
             }
             """ % (self.api.ip, self.api.port)
 
-            return Response(resp, status=200, mimetype="application/json")
+            response = Response(resp, status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not show list of versions." % __name__)
@@ -177,7 +181,9 @@ class NovaListServersApi(Resource):
 
                 resp['servers'].append(s)
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -222,7 +228,9 @@ class NovaListServersApi(Resource):
 
             self.api.compute._start_compute(server)
 
-            return NovaShowServerDetails(self.api).get(id, server.id)
+            response = NovaShowServerDetails(self.api).get(id, server.id)
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not create the server." % __name__)
@@ -280,7 +288,9 @@ class NovaListServersDetailed(Resource):
 
                 resp['servers'].append(s)
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -313,7 +323,9 @@ class NovaListFlavors(Resource):
                                                                             flavor.id)}]
                 resp['flavors'].append(f)
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -355,7 +367,9 @@ class NovaListFlavorsDetails(Resource):
                 f['rxtx_factor'] = 1.0
                 resp['flavors'].append(f)
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
@@ -392,7 +406,9 @@ class NovaListFlavorById(Resource):
                                                                                      self.api.port,
                                                                                      id,
                                                                                      flavor.id)}]
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve flavor with id %s" % (__name__, flavorid))
@@ -424,7 +440,9 @@ class NovaListImages(Resource):
                                                                            id,
                                                                            image.id)}]
                 resp['images'].append(f)
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of images." % __name__)
@@ -464,7 +482,9 @@ class NovaListImagesDetails(Resource):
                 }
                 resp['images'].append(f)
 
-            return Response(json.dumps(resp), status=200, mimetype="application/json")
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the list of images." % __name__)
@@ -496,7 +516,9 @@ class NovaListImageById(Resource):
 
                     return Response(json.dumps(resp), status=200, mimetype="application/json")
 
-            return Response("Image with id or name %s does not exists." % imageid, status=404)
+            response = Response("Image with id or name %s does not exists." % imageid, status=404)
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve image with id %s." % (__name__, imageid))
@@ -555,7 +577,9 @@ class NovaShowServerDetails(Resource):
                 ]
             }
 
-            return Response(json.dumps({'server': s}), status=200, mimetype="application/json")
+            response = Response(json.dumps({'server': s}), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the server details." % __name__)
@@ -630,7 +654,9 @@ class NovaInterfaceToServer(Resource):
             fixed_ips["ip_address"] = port.ip_address
             fixed_ips["subnet_id"] = network.subnet_name
             resp["fixed_ips"].append(fixed_ips)
-            return Response(json.dumps({"interfaceAttachment": resp}), status=202, mimetype="application/json")
+            response = Response(json.dumps({"interfaceAttachment": resp}), status=202, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not add interface to the server." % __name__)
@@ -672,7 +698,9 @@ class NovaShowAndDeleteInterfaceAtServer(Resource):
             if self.api.manage.get_flow_group(server.name, port.intf_name) is not None:
                 self.api.manage.delete_loadbalancer(server.name, port.intf_name)
 
-            return Response("", status=202, mimetype="application/json")
+            response = Response("", status=202, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
         except Exception as ex:
             logging.exception(u"%s: Could not detach interface to the server." % __name__)
