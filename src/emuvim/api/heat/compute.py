@@ -52,6 +52,7 @@ class OpenstackCompute(object):
         for image in self.dcli.images.list():
             if len(image.tags) > 0:
                 for t in image.tags:
+                    t = t.replace(":latest", "")  # only use short tag names for OSM compatibility
                     if t not in self._images:
                         self._images[t] = Image(t)
         return self._images

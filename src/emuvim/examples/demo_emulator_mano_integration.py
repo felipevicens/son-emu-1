@@ -21,7 +21,7 @@ class DemoTopology(DCNetwork):
         """
         super(DemoTopology, self).__init__(
             monitor=False,
-            enable_learning=False
+            enable_learning=True
         )
         # define members for later use
         self.pop1 = None
