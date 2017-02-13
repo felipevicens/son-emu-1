@@ -235,10 +235,6 @@ class OpenstackCompute(object):
                     for port_name in server.port_names:
                         if port_name in old_stack.ports and port_name in new_stack.ports:
                             if not old_stack.ports.get(port_name) == new_stack.ports.get(port_name):
-                                if self.update_id_address(old_stack.ports.get(port_name),
-                                                          new_stack.ports.get(port_name),
-                                                          new_stack):
-                                    continue
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
@@ -294,35 +290,16 @@ class OpenstackCompute(object):
                 if port.compare_attributes(old_port):
                     for net in new_stack.nets.values():
                         if net.name == port.net_name:
-                            if not net.assign_ip_address(old_port.ip_address, port.name):
+                            if net.assign_ip_address(old_port.ip_address, port.name):
+                                port.ip_address = old_port.ip_address
+                                port.mac_address = old_port.mac_address
+                            else:
                                 port.ip_address = net.get_new_ip_address(port.name)
 
         for port in new_stack.ports.values():
             for net in new_stack.nets.values():
-                if port.net_name == net.name and not net.ip_used(port.ip_address):
+                if port.net_name == net.name and not net.is_my_ip(port.ip_address, port.name):
                     port.ip_address = net.get_new_ip_address(port.name)
-
-    def update_port_address(self, old_port, new_port, new_stack):
-        if old_port is None or new_port is None:
-            return False
-        if not old_port.compare_attributes(new_port):
-            return False
-
-        if old_port.ip_address == new_port.ip_address:
-            return False
-
-        for port in new_stack.ports.values():
-            if port is new_port:
-                continue
-            if port.ip_address == old_port.ip_address:
-                tmp_net = new_stack.nets.get(port.net_name)
-                tmp_net.withdraw_ip_address(new_port.ip_address)
-                tmp_net.update_port_name_for_ip_address(port.ip_address, new_port.name)
-                tmp_net.get_new_ip_address(port.name)
-
-        new_port.ip_address = old_port.ip_address
-        new_port.mac_address = old_port.mac_address
-        return True
 
     def update_subnet_cidr(self, old_stack, new_stack):
         subnet_counter = Net.ip_2_int('10.0.0.1')

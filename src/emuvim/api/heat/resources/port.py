@@ -16,7 +16,7 @@ class Port:
         ip_address is structured like 10.0.0.1/24
         """
         self.ip_address = ip_address
-        self.mac_address = mac_address  # not set
+        self.mac_address = mac_address
         self.floating_ip = floating_ip
         self.net_name = None
 
