@@ -182,10 +182,10 @@ class KeystoneGetToken(Resource):
 
             ret['access']['user'] = dict()
             user = ret['access']['user']
-            user['username'] = "username"
+            user['username'] = req.get('username', "username")
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = token['tenant']['id']
+            user['id'] = token['tenant'].get('id', "fc394f2ab2df4114bde39905f800dc57")
             user['roles'] = [{'name': 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"
