@@ -9,18 +9,18 @@ virtualenv:
   system_site_packages: true
 
 env:
-  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
+  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/:~/son-emu/src/:~/containernet/
 
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y git aptitude python-heatclient curl python-dev python-zmq libzmq-dev libffi-dev libssl-dev python-pip 
   - sudo pip install --upgrade pip
-  - sudo pip install docker==2.0.2
+  # we need some extra packages that setup.py seems to fail with...
+  - sudo pip install docker==2.0.2 Flask simplejson oslo.config==3.13.0 oslo.i18n==3.8.0 oslo.utils==0.2.0
 install:
   - sudo git clone https://github.com/mpeuster/containernet.git ~/containernet
   - cd ~/containernet
   - sudo python setup.py install
-  - sudo pip install Flask simplejson oslo.config==3.13.0 oslo.i18n==3.8.0 oslo.utils==0.2.0
   - sudo git clone https://github.com/CN-UPB/son-emu.git ~/son-emu
   - cd ~/son-emu/
   - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sudo git pull --no-edit origin pull/$TRAVIS_PULL_REQUEST/head ; fi
@@ -28,7 +28,7 @@ install:
   - cd ~/son-emu
 
 script:
-  - sudo PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/ python src/emuvim/test/unittests/test_heatapi.py
+  - sudo PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/:~/son-emu/src/:~/containernet/ python src/emuvim/test/unittests/test_heatapi.py
 
 
 
