@@ -170,9 +170,9 @@ class Port:
             return False
 
         if self.name == other.name and self.ip_address == other.ip_address and \
-                                       self.mac_address == other.mac_address and \
-                                       self.floating_ip == other.floating_ip and \
-                                       self.net_name == other.net_name:
+                        self.mac_address == other.mac_address and \
+                        self.floating_ip == other.floating_ip and \
+                        self.net_name == other.net_name:
             return True
         return False
 

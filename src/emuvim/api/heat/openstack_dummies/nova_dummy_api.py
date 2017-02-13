@@ -55,6 +55,7 @@ class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut doen") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -219,7 +220,7 @@ class NovaListServersApi(Resource):
 
             for flavor in self.api.compute.flavors.values():
                 if flavor.id == server_dict.get('flavorRef', ''):
-                     server.flavor = flavor.name
+                    server.flavor = flavor.name
             for image in self.api.compute.images.values():
                 if image.id == server_dict['imageRef']:
                     server.image = image.name
