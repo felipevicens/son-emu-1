@@ -796,6 +796,9 @@ class QueryTopology(Resource):
                             for edge in link:
                                 # the translator wants everything as a string!
                                 for key, value in link[edge].items():
+                                    # do not add any links to the floating switch to the topology!
+                                    if key == "name" and value == "fs1":
+                                        continue
                                     link[edge][key] = str(value)
                                 # name of the destination
                                 link[edge]["name"] = graph_node
