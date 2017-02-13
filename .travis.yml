@@ -15,7 +15,6 @@ before_install:
   - sudo apt-get update
   - sudo apt-get install -y git aptitude python-heatclient curl python-dev python-zmq libzmq-dev libffi-dev libssl-dev python-pip 
   - sudo pip install --upgrade pip
-  - sudo apt-get remove python-docker
   - sudo pip install docker==2.0.2
 install:
   - sudo git clone https://github.com/mpeuster/containernet.git ~/containernet
