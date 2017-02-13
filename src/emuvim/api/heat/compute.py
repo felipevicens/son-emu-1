@@ -282,10 +282,28 @@ class OpenstackCompute(object):
         return True
 
     def update_ip_addresses(self, old_stack, new_stack):
+        """
+        Updates the subnet and the port IP addresses - which should always be in this order!
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
         self.update_subnet_cidr(old_stack, new_stack)
         self.update_port_addresses(old_stack, new_stack)
 
     def update_port_addresses(self, old_stack, new_stack):
+        """
+        Updates the port IP addresses. First resets all issued addresses. Then get all IP addresses from the old
+        stack and sets them to the same ports in the new stack. Finally all new or changed instances will get new
+        IP addresses.
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
         for net in new_stack.nets.values():
             net.reset_issued_ip_addresses()
 
@@ -306,6 +324,15 @@ class OpenstackCompute(object):
                     port.ip_address = net.get_new_ip_address(port.name)
 
     def update_subnet_cidr(self, old_stack, new_stack):
+        """
+        Updates the subnet IP addresses. If the new stack contains subnets from the old stack it will take those
+        IP addresses. Otherwise it will create new IP addresses for the subnet.
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
         subnet_counter = Net.ip_2_int('10.0.0.1')
         issued_ip_addresses = list()
         for subnet in new_stack.nets.values():

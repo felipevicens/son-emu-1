@@ -50,11 +50,14 @@ class Net:
 
     def assign_ip_address(self, cidr, port_name):
         """
-        Assigns the ip to the port if it is currently unused.
+        Assigns the IP address to the port if it is currently NOT used.
 
-        :param ip: e.g. 10.0.0.1/24
-        :type ip: ``str``
-        :return:
+        :param cidr: The cidr used by the port - e.g. 10.0.0.1/24
+        :type cidr: ``str``
+        :param port_name: The port name
+        :type port_name: ``str``
+        :return: * *False*: If the IP address is already issued or if it is not within this subnet mask.
+            * *True*: Else
         """
         int_ip = Net.cidr_2_int(cidr)
         if self._issued_ip_addresses.has_key(int_ip):
@@ -68,27 +71,15 @@ class Net:
         self._issued_ip_addresses[int_ip] = port_name
         return True
 
-    def ip_used(self, cidr):
-        """
-        Checks if the IP address is already used.
-
-        :param cidr: e.g. 10.0.0.1/24
-        :type ``str``
-        :return: Returns True if the IP is already issued, otherwise returns False.
-        """
-        int_ip = Net.cidr_2_int(cidr)
-
-        if self._issued_ip_addresses.has_key(int_ip):
-            return True
-        return False
-
     def is_my_ip(self, cidr, port_name):
         """
         Checks if the IP is registered for this port name.
 
-        :param cidr:
-        :param port_name:
-        :return:
+        :param cidr: The cidr used by the port - e.g. 10.0.0.1/24
+        :type cidr: ``str``
+        :param port_name: The port name
+        :type port_name: ``str``
+        :return: Returns true if the IP address belongs to the port name. Else it returns false.
         """
         int_ip = Net.cidr_2_int(cidr)
 
