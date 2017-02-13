@@ -11,6 +11,7 @@ class HeatApiStackInvalidException(Exception):
     """
     Exception thrown when a submitted stack is invalid.
     """
+
     def __init__(self, value):
         self.value = value
 
@@ -26,6 +27,7 @@ class OpenstackCompute(object):
 
     It also handles start and stop of containers.
     """
+
     def __init__(self):
         self.dc = None
         self.stacks = dict()
@@ -236,7 +238,8 @@ class OpenstackCompute(object):
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                       str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
+                                                    str(link.intf1.ip) == \
+                                                    old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
                                         new_stack.ports[port_name].update_intf_name(
@@ -252,7 +255,8 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
+                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
+                                            0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -286,9 +290,9 @@ class OpenstackCompute(object):
             self.computeUnits[server.id] = server
             if isinstance(server.flavor, dict):
                 self.add_flavor(server.flavor['flavorName'],
-                                        server.flavor['vcpu'],
-                                        server.flavor['ram'], 'MB',
-                                        server.flavor['storage'], 'GB')
+                                server.flavor['vcpu'],
+                                server.flavor['ram'], 'MB',
+                                server.flavor['storage'], 'GB')
                 server.flavor = server.flavor['flavorName']
         for router in stack.routers.values():
             self.routers[router.id] = router
@@ -540,7 +544,7 @@ class OpenstackCompute(object):
         my_links = self.dc.net.links
         for link in my_links:
             if str(link.intf1) == port.intf_name and \
-               str(link.intf1.ip) == port.ip_address.split('/')[0]:
+                            str(link.intf1.ip) == port.ip_address.split('/')[0]:
                 self._remove_link(link.intf1.node.name, link)
                 break
 
@@ -607,4 +611,3 @@ class OpenstackCompute(object):
         while not function() and current_time < stop_time:
             current_time = time.time()
             time.sleep(0.1)
-

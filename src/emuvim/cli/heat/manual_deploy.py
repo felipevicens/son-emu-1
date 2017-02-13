@@ -201,22 +201,22 @@ def lb_webservice_topo():
     netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.4.0/24",
                                               datacenter=dc, port_name="port-out")
     db_in_port = create_port(netid2, datacenter=dc)
-    server = create_server("db", "m1.tiny", "xschlef/database:latest", db_in_port, datacenter=dc)
-    server = create_server("web", "m1.tiny", "xschlef/webserver:latest",[portid, portid2], datacenter=dc)
+    server = create_server("db", "m1.tiny", "xschlef/database", db_in_port, datacenter=dc)
+    server = create_server("web", "m1.tiny", "xschlef/webserver",[portid, portid2], datacenter=dc)
 
     # web in datacenter 3
     dc = 2
     netid, portid = create_network_and_port(net_name="net3", cidr="192.168.5.0/24", datacenter=dc)
     netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.6.0/24",
                                               datacenter=dc, port_name="port-out")
-    server = create_server("web", "m1.tiny", "xschlef/webserver:latest", [portid, portid2], datacenter=dc)
+    server = create_server("web", "m1.tiny", "xschlef/webserver", [portid, portid2], datacenter=dc)
 
     # web in datacenter 4
     dc = 3
     netid, portid = create_network_and_port(net_name="net3", cidr="192.168.7.0/24", datacenter=dc)
     netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.8.0/24",
                                               datacenter=dc, port_name="port-out")
-    server = create_server("web", "m1.tiny", "xschlef/webserver:latest", [portid, portid2], datacenter=dc)
+    server = create_server("web", "m1.tiny", "xschlef/webserver", [portid, portid2], datacenter=dc)
 
 
     lb_data = {"dst_vnf_interfaces": {"dc2_man_web": "port-man-1", "dc3_man_web": "port-man-3","dc4_man_web": "port-man-4"}}
