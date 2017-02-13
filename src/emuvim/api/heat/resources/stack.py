@@ -1,5 +1,6 @@
 import uuid
 
+
 class Stack:
     def __init__(self, id=None):
         self.servers = dict()

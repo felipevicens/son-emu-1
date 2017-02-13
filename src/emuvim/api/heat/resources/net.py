@@ -39,7 +39,7 @@ class Net:
         int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
         # Second one is for gateways only
         int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
-        while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
+        while self._issued_ip_addresses.has_key(int_start_ip) and int_start_ip <= int_end_ip:
             int_start_ip += 1
 
         if int_start_ip > int_end_ip:
@@ -79,6 +79,23 @@ class Net:
         int_ip = Net.cidr_2_int(cidr)
 
         if self._issued_ip_addresses.has_key(int_ip):
+            return True
+        return False
+
+    def is_my_ip(self, cidr, port_name):
+        """
+        Checks if the IP is registered for this port name.
+
+        :param cidr:
+        :param port_name:
+        :return:
+        """
+        int_ip = Net.cidr_2_int(cidr)
+
+        if not self._issued_ip_addresses.has_key(int_ip):
+            return False
+
+        if self._issued_ip_addresses[int_ip] == port_name:
             return True
         return False
 
@@ -149,6 +166,11 @@ class Net:
         :rtype: ``str``
         """
         return self._cidr
+
+    def clear_cidr(self):
+        self._cidr = None
+        self.start_end_dict = dict()
+        self.reset_issued_ip_addresses()
 
     def calculate_start_and_end_dict(self, cidr):
         """

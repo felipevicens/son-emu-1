@@ -16,7 +16,7 @@ class Port:
         ip_address is structured like 10.0.0.1/24
         """
         self.ip_address = ip_address
-        self.mac_address = mac_address  # not set
+        self.mac_address = mac_address
         self.floating_ip = floating_ip
         self.net_name = None
 
@@ -170,9 +170,9 @@ class Port:
             return False
 
         if self.name == other.name and self.ip_address == other.ip_address and \
-                                       self.mac_address == other.mac_address and \
-                                       self.floating_ip == other.floating_ip and \
-                                       self.net_name == other.net_name:
+                        self.mac_address == other.mac_address and \
+                        self.floating_ip == other.floating_ip and \
+                        self.net_name == other.net_name:
             return True
         return False
 

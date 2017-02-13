@@ -39,7 +39,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def create_topology1():
-    net = DCNetwork(monitor=True, enable_learning=True)
+    net = DCNetwork(monitor=False, enable_learning=True)
     dc1 = net.addDatacenter("dc1")
 
     heatapi1 = OpenstackApiEndpoint("131.234.31.45", 5001)
