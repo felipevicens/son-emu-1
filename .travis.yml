@@ -20,6 +20,7 @@ install:
   - sudo git clone https://github.com/mpeuster/containernet.git ~/containernet
   - cd ~/containernet
   - sudo python setup.py install
+  - sudo pip install Flask simplejson
   - sudo git clone https://github.com/CN-UPB/son-emu.git ~/son-emu
   - cd ~/son-emu/
   - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sudo git pull --no-edit origin pull/$TRAVIS_PULL_REQUEST/head ; fi
