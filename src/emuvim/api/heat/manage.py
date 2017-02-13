@@ -97,7 +97,7 @@ class OpenstackManage(object):
         """
         if self.net is not None and self.floating_switch is None:
             # create a floating network
-            fn = self.floating_network = Net("floating-network")
+            fn = self.floating_network = Net("default")
             fn.id = str(uuid.uuid4())
             fn.set_cidr(self.floating_netmask)
 

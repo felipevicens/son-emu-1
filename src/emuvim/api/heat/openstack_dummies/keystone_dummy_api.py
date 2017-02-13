@@ -46,7 +46,7 @@ class KeystoneListVersions(Resource):
         :return: Returns the api versions.
         :rtype: :class:`flask.response` containing a static json encoded dict.
         """
-        logging.debug("API CALL: Keystone - List Versions")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
         resp['versions'] = dict()
 
@@ -88,7 +88,7 @@ class KeystoneShowAPIv2(Resource):
         :return: Returns an openstack style response for all entrypoints.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Show API v2.0 details")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
 
         neutron_port = self.api.port + 4696
         heat_port = self.api.port + 3004
@@ -159,7 +159,7 @@ class KeystoneGetToken(Resource):
         :rtype: :class:`flask.response`
         """
 
-        logging.debug("API CALL: Keystone - Get token")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             ret = dict()
             req = json.loads(request.data)
@@ -217,16 +217,30 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
+                            "adminURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
+                            "internalURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696),
                             "id": "2dad48f09e2a447a9bf852bcd93548cf",
-                            "publicURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696)
+                            "publicURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696)
                         }
                     ],
                     "endpoints_links": [],
                     "type": "network",
                     "name": "neutron"
+                },
+                {
+                    "endpoints": [
+                        {
+                            "adminURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
+                            "region": "RegionOne",
+                            "internalURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
+                            "id": "2dad48f09e2a447a9bf852bcd93548cf",
+                            "publicURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242)
+                        }
+                    ],
+                    "endpoints_links": [],
+                    "type": "image",
+                    "name": "glance"
                 },
                 {
                     "endpoints": [

@@ -99,7 +99,7 @@ class NeutronShowAPIv2Details(Resource):
         :return: Returns a json with API details.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Show API v2 details")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
 
         resp['resources'] = dict()
@@ -150,7 +150,7 @@ class NeutronListNetworks(Resource):
         :return: Returns a json response, starting with 'networks' as root node.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - List networks")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 tmp_network = NeutronShowNetwork(self.api)
@@ -197,6 +197,7 @@ class NeutronShowNetwork(Resource):
         :return: Returns a json response, starting with 'network' as root node and one network description.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_network(network_id, False)
 
     def get_network(self, network_name_or_id, as_list):
@@ -210,7 +211,6 @@ class NeutronShowNetwork(Resource):
         :return: Returns a json response, with one network description.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Show network")
         try:
             net = self.api.compute.find_network_by_name_or_id(network_name_or_id)
             if net is None:
@@ -244,7 +244,7 @@ class NeutronCreateNetwork(Resource):
             * 201, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Create network")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             network_dict = json.loads(request.data)
             name = network_dict['network']['name']
@@ -274,7 +274,7 @@ class NeutronUpdateNetwork(Resource):
             * 200, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Update network")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             if network_id in self.api.compute.nets:
                 net = self.api.compute.nets[network_id]
@@ -318,7 +318,7 @@ class NeutronDeleteNetwork(Resource):
             * 204, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Delete network")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             if network_id not in self.api.compute.nets:
                 return Response('Could not find network. (' + network_id + ')\n',
@@ -351,7 +351,7 @@ class NeutronListSubnets(Resource):
         :return: Returns a json response, starting with 'subnets' as root node.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - List subnets")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 show_subnet = NeutronShowSubnet(self.api)
@@ -397,6 +397,7 @@ class NeutronShowSubnet(Resource):
         :return: Returns a json response, starting with 'subnet' as root node and one subnet description.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_subnet(subnet_id, False)
 
     def get_subnet(self, subnet_name_or_id, as_list):
@@ -410,7 +411,6 @@ class NeutronShowSubnet(Resource):
         :return: Returns a json response, with one subnet description.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Show subnet")
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_name_or_id or net.subnet_name == subnet_name_or_id:
@@ -444,7 +444,7 @@ class NeutronCreateSubnet(Resource):
             * 201, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Create subnet")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             subnet_dict = json.loads(request.data)
             net = self.api.compute.find_network_by_name_or_id(subnet_dict['subnet']['network_id'])
@@ -498,7 +498,7 @@ class NeutronUpdateSubnet(Resource):
             * 200, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Update subnet")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
@@ -549,7 +549,7 @@ class NeutronDeleteSubnet(Resource):
             * 204, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Delete subnet")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             for net in self.api.compute.nets.values():
                 if net.subnet_id == subnet_id:
@@ -591,7 +591,7 @@ class NeutronListPorts(Resource):
         :return: Returns a json response, starting with 'ports' as root node.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - List ports")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             if request.args.get('name'):
                 show_port = NeutronShowPort(self.api)
@@ -636,6 +636,7 @@ class NeutronShowPort(Resource):
         :return: Returns a json response, starting with 'port' as root node and one network description.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         return self.get_port(port_id, False)
 
     def get_port(self, port_name_or_id, as_list):
@@ -649,7 +650,6 @@ class NeutronShowPort(Resource):
         :return: Returns a json response, with one port description.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Show port")
         try:
             port = self.api.compute.find_port_by_name_or_id(port_name_or_id)
             if port is None:
@@ -679,7 +679,7 @@ class NeutronCreatePort(Resource):
             * 201, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Create port")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             port_dict = json.loads(request.data)
             net_id = port_dict['port']['network_id']
@@ -747,7 +747,7 @@ class NeutronUpdatePort(Resource):
             * 200, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Update port")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             port_dict = json.loads(request.data)
             port = self.api.compute.find_port_by_name_or_id(port_id)
@@ -808,7 +808,7 @@ class NeutronDeletePort(Resource):
             * 204, if everything worked out.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Delete port")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             port = self.api.compute.find_port_by_name_or_id(port_id)
             if port is None:
@@ -841,6 +841,35 @@ class NeutronAddFloatingIp(Resource):
     def __init__(self, api):
         self.api = api
 
+    def get(self):
+        """
+        Added a quick and dirty fake for the OSM integration. Returns a list of
+        floating IPs. Has nothing to do with the setup inside the emulator.
+        But its enough to make the OSM driver happy.
+        @PG Sandman: Feel free to improve this and let it do something meaningful.
+        """
+        resp = dict()
+        resp["floatingips"] = list()
+        # create a list of floting IP definitions and return it
+        for i in range(100, 110):
+            ip=dict()
+            ip["router_id"] = "router_id"
+            ip["description"] = "hardcoded in api"
+            ip["created_at"] = "router_id"
+            ip["updated_at"] = "router_id"
+            ip["revision_number"] = 1
+            ip["tenant_id"] = "tenant_id"
+            ip["project_id"] = "project_id"
+            ip["floating_network_id"] = str(i)
+            ip["status"] = "ACTIVE"
+            ip["id"] = str(i)
+            ip["port_id"] = "port_id"
+            ip["floating_ip_address"] = "172.0.0.%d" % i
+            ip["fixed_ip_address"] = "10.0.0.%d" % i
+            resp["floatingips"].append(ip)
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
+
     def post(self):
         """
         Adds a floating IP to neutron.
@@ -848,7 +877,7 @@ class NeutronAddFloatingIp(Resource):
         :return: Returns a floating network description.
         :rtype: :class:`flask.response`
         """
-        logging.debug("API CALL: Neutron - Create FloatingIP")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             # Fiddle with floating_network !
             req = json.loads(request.data)

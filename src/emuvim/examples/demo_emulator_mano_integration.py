@@ -7,7 +7,7 @@ from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
 
 logging.basicConfig(level=logging.INFO)
 setLogLevel('info')  # set Mininet loglevel
-logging.getLogger('werkzeug').setLevel(logging.WARNING)
+logging.getLogger('werkzeug').setLevel(logging.DEBUG)
 
 
 class DemoTopology(DCNetwork):
@@ -21,7 +21,7 @@ class DemoTopology(DCNetwork):
         """
         super(DemoTopology, self).__init__(
             monitor=False,
-            enable_learning=False
+            enable_learning=True
         )
         # define members for later use
         self.pop1 = None
