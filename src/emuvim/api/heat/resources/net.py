@@ -39,7 +39,7 @@ class Net:
         int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
         # Second one is for gateways only
         int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
-        while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
+        while self._issued_ip_addresses.has_key(int_start_ip) and int_start_ip <= int_end_ip:
             int_start_ip += 1
 
         if int_start_ip > int_end_ip:
@@ -48,31 +48,56 @@ class Net:
         self._issued_ip_addresses[int_start_ip] = port_name
         return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
-    def get_in_ip_address(self, port_name):
+    def assign_ip_address(self, cidr, port_name):
         """
-        Returns the first allowed IP address of the subnet, even if someone else uses it already.
+        Assigns the ip to the port if it is currently unused.
 
-        :param port_name: Specifies the port.
-        :type port_name: ``str``
-        :return: The first allowed IP address.
-        :rtype: ``str``
+        :param ip: e.g. 10.0.0.1/24
+        :type ip: ``str``
+        :return:
         """
-        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2
-        self._issued_ip_addresses[int_start_ip] = port_name
-        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        int_ip = Net.cidr_2_int(cidr)
+        if self._issued_ip_addresses.has_key(int_ip):
+            return False
 
-    def get_out_ip_address(self, port_name):
-        """
-        Returns the last allowed IP address of the subnet, even if someone else uses it already.
+        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 1  # First address as network address not usable
+        int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
+        if int_ip < int_start_ip or int_ip > int_end_ip:
+            return False
 
-        :param port_name: Specifies the port.
-        :type port_name: ``str``
-        :return: The last allowed IP address.
-        :rtype: ``str``
+        self._issued_ip_addresses[int_ip] = port_name
+        return True
+
+    def ip_used(self, cidr):
         """
-        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 3
-        self._issued_ip_addresses[int_start_ip] = port_name
-        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        Checks if the IP address is already used.
+
+        :param cidr: e.g. 10.0.0.1/24
+        :type ``str``
+        :return: Returns True if the IP is already issued, otherwise returns False.
+        """
+        int_ip = Net.cidr_2_int(cidr)
+
+        if self._issued_ip_addresses.has_key(int_ip):
+            return True
+        return False
+
+    def is_my_ip(self, cidr, port_name):
+        """
+        Checks if the IP is registered for this port name.
+
+        :param cidr:
+        :param port_name:
+        :return:
+        """
+        int_ip = Net.cidr_2_int(cidr)
+
+        if not self._issued_ip_addresses.has_key(int_ip):
+            return False
+
+        if self._issued_ip_addresses[int_ip] == port_name:
+            return True
+        return False
 
     def withdraw_ip_address(self, ip_address):
         """
@@ -81,12 +106,16 @@ class Net:
         :param ip_address: The issued IP address.
         :type ip_address: ``str``
         """
+        if ip_address is None:
+            return
+
         if "/" in ip_address:
             address, suffix = ip_address.rsplit('/', 1)
         else:
             address = ip_address
         int_ip_address = Net.ip_2_int(address)
-        del self._issued_ip_addresses[int_ip_address]
+        if int_ip_address in self._issued_ip_addresses.keys():
+            del self._issued_ip_addresses[int_ip_address]
 
     def reset_issued_ip_addresses(self):
         """
@@ -138,6 +167,11 @@ class Net:
         """
         return self._cidr
 
+    def clear_cidr(self):
+        self._cidr = None
+        self.start_end_dict = dict()
+        self.reset_issued_ip_addresses()
+
     def calculate_start_and_end_dict(self, cidr):
         """
         Calculates the start and end IP address for the subnet.
@@ -159,6 +193,13 @@ class Net:
         end = start + (2 ** (32 - int_suffix) - 1)
 
         return {'start': Net.int_2_ip(start), 'end': Net.int_2_ip(end)}
+
+    @staticmethod
+    def cidr_2_int(cidr):
+        if cidr is None:
+            return None
+        ip = cidr.rsplit('/', 1)[0]
+        return Net.ip_2_int(ip)
 
     @staticmethod
     def ip_2_int(ip):

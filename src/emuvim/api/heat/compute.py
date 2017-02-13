@@ -225,6 +225,8 @@ class OpenstackCompute(object):
         # Update the compute dicts to now contain the new_stack components
         self.update_compute_dicts(new_stack)
 
+        self.update_ip_addresses(old_stack, new_stack)
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -278,6 +280,53 @@ class OpenstackCompute(object):
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
+
+    def update_ip_addresses(self, old_stack, new_stack):
+        self.update_subnet_cidr(old_stack, new_stack)
+        self.update_port_addresses(old_stack, new_stack)
+
+    def update_port_addresses(self, old_stack, new_stack):
+        for net in new_stack.nets.values():
+            net.reset_issued_ip_addresses()
+
+        for old_port in old_stack.ports.values():
+            for port in new_stack.ports.values():
+                if port.compare_attributes(old_port):
+                    for net in new_stack.nets.values():
+                        if net.name == port.net_name:
+                            if net.assign_ip_address(old_port.ip_address, port.name):
+                                port.ip_address = old_port.ip_address
+                                port.mac_address = old_port.mac_address
+                            else:
+                                port.ip_address = net.get_new_ip_address(port.name)
+
+        for port in new_stack.ports.values():
+            for net in new_stack.nets.values():
+                if port.net_name == net.name and not net.is_my_ip(port.ip_address, port.name):
+                    port.ip_address = net.get_new_ip_address(port.name)
+
+    def update_subnet_cidr(self, old_stack, new_stack):
+        subnet_counter = Net.ip_2_int('10.0.0.1')
+        issued_ip_addresses = list()
+        for subnet in new_stack.nets.values():
+            subnet.clear_cidr()
+            for old_subnet in old_stack.nets.values():
+                if subnet.subnet_name == old_subnet.subnet_name:
+                    subnet.set_cidr(old_subnet.get_cidr())
+                    issued_ip_addresses.append(old_subnet.get_cidr())
+
+        for subnet in new_stack.nets.values():
+            if subnet.get_cidr() in issued_ip_addresses:
+                continue
+
+            cird = Net.int_2_ip(subnet_counter) + '/24'
+            subnet_counter += 256
+            while cird in issued_ip_addresses:
+                cird = Net.int_2_ip(subnet_counter) + '/24'
+                subnet_counter += 256
+
+            subnet.set_cidr(cird)
+        return
 
     def update_compute_dicts(self, stack):
         """
