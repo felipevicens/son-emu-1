@@ -1,6 +1,6 @@
 from mininet.link import Link
 from resources import *
-from docker import Client
+from docker import DockerClient
 import logging
 import threading
 import uuid
@@ -8,6 +8,9 @@ import time
 
 
 class HeatApiStackInvalidException(Exception):
+    """
+    Exception thrown when a submitted stack is invalid.
+    """
     def __init__(self, value):
         self.value = value
 
@@ -33,7 +36,7 @@ class OpenstackCompute(object):
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
-        self.dcli = Client(base_url='unix://var/run/docker.sock')
+        self.dcli = DockerClient(base_url='unix://var/run/docker.sock')
 
     @property
     def images(self):
@@ -44,22 +47,21 @@ class OpenstackCompute(object):
         :return: Returns the new image dictionary.
         :rtype: ``dict``
         """
-        for image in self.dcli.images():
-            if 'RepoTags' in image:
-                found = False
-                imageName = image['RepoTags']
-                if imageName == None:
-                    continue
-                imageName = imageName[0]
-                for i in self._images.values():
-                    if i.name == imageName:
-                        found = True
-                        break
-                if not found:
-                    self._images[imageName] = Image(imageName)
+        for image in self.dcli.images.list():
+            if len(image.tags) > 0:
+                for t in image.tags:
+                    t = t.replace(":latest", "")  # only use short tag names for OSM compatibility
+                    if t not in self._images:
+                        self._images[t] = Image(t)
         return self._images
 
     def add_stack(self, stack):
+        """
+        Adds a new stack to the compute node.
+
+        :param stack: Stack dictionary.
+        :type stack: ``dict``
+        """
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
@@ -130,6 +132,7 @@ class OpenstackCompute(object):
         """
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
+        return flavor
 
     def deploy_stack(self, stackid):
         """
@@ -220,6 +223,8 @@ class OpenstackCompute(object):
         # Update the compute dicts to now contain the new_stack components
         self.update_compute_dicts(new_stack)
 
+        self.update_ip_addresses(old_stack, new_stack)
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -230,6 +235,10 @@ class OpenstackCompute(object):
                     for port_name in server.port_names:
                         if port_name in old_stack.ports and port_name in new_stack.ports:
                             if not old_stack.ports.get(port_name) == new_stack.ports.get(port_name):
+                                if self.update_id_address(old_stack.ports.get(port_name),
+                                                          new_stack.ports.get(port_name),
+                                                          new_stack):
+                                    continue
                                 my_links = self.dc.net.links
                                 for link in my_links:
                                     if str(link.intf1) == old_stack.ports[port_name].intf_name and \
@@ -271,6 +280,72 @@ class OpenstackCompute(object):
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
         return True
+
+    def update_ip_addresses(self, old_stack, new_stack):
+        self.update_subnet_cidr(old_stack, new_stack)
+        self.update_port_addresses(old_stack, new_stack)
+
+    def update_port_addresses(self, old_stack, new_stack):
+        for net in new_stack.nets.values():
+            net.reset_issued_ip_addresses()
+
+        for old_port in old_stack.ports.values():
+            for port in new_stack.ports.values():
+                if port.compare_attributes(old_port):
+                    for net in new_stack.nets.values():
+                        if net.name == port.net_name:
+                            if not net.assign_ip_address(old_port.ip_address, port.name):
+                                port.ip_address = net.get_new_ip_address(port.name)
+
+        for port in new_stack.ports.values():
+            for net in new_stack.nets.values():
+                if port.net_name == net.name and not net.ip_used(port.ip_address):
+                    port.ip_address = net.get_new_ip_address(port.name)
+
+    def update_port_address(self, old_port, new_port, new_stack):
+        if old_port is None or new_port is None:
+            return False
+        if not old_port.compare_attributes(new_port):
+            return False
+
+        if old_port.ip_address == new_port.ip_address:
+            return False
+
+        for port in new_stack.ports.values():
+            if port is new_port:
+                continue
+            if port.ip_address == old_port.ip_address:
+                tmp_net = new_stack.nets.get(port.net_name)
+                tmp_net.withdraw_ip_address(new_port.ip_address)
+                tmp_net.update_port_name_for_ip_address(port.ip_address, new_port.name)
+                tmp_net.get_new_ip_address(port.name)
+
+        new_port.ip_address = old_port.ip_address
+        new_port.mac_address = old_port.mac_address
+        return True
+
+    def update_subnet_cidr(self, old_stack, new_stack):
+        subnet_counter = Net.ip_2_int('10.0.0.1')
+        issued_ip_addresses = list()
+        for subnet in new_stack.nets.values():
+            subnet.clear_cidr()
+            for old_subnet in old_stack.nets.values():
+                if subnet.subnet_name == old_subnet.subnet_name:
+                    subnet.set_cidr(old_subnet.get_cidr())
+                    issued_ip_addresses.append(old_subnet.get_cidr())
+
+        for subnet in new_stack.nets.values():
+            if subnet.get_cidr() in issued_ip_addresses:
+                continue
+
+            cird = Net.int_2_ip(subnet_counter) + '/24'
+            subnet_counter += 256
+            while cird in issued_ip_addresses:
+                cird = Net.int_2_ip(subnet_counter) + '/24'
+                subnet_counter += 256
+
+            subnet.set_cidr(cird)
+        return
 
     def update_compute_dicts(self, stack):
         """
@@ -590,9 +665,17 @@ class OpenstackCompute(object):
 
     @staticmethod
     def timeout_sleep(function, max_sleep):
+        """
+        This function will execute a function all 0.1 seconds until it successfully returns.
+        Will return after `max_sleep` seconds if not successful.
+
+        :param function: The function to execute. Should return true if done.
+        :type function: ``function``
+        :param max_sleep: Max seconds to sleep. 1 equals 1 second.
+        :type max_sleep: ``float``
+        """
         current_time = time.time()
         stop_time = current_time + max_sleep
         while not function() and current_time < stop_time:
             current_time = time.time()
             time.sleep(0.1)
-

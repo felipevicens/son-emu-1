@@ -272,7 +272,8 @@ class testRestApi(ApiBaseHeat):
         listimagesresponse = requests.get(url, headers=headers)
         self.assertEqual(listimagesresponse.status_code, 200)
         print listimagesresponse.content
-        self.assertIn(json.loads(listimagesresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        # deactivated: highly depends on the environment in which the tests are executed. one cannot make such an assumption.
+        #self.assertIn(json.loads(listimagesresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         #self.assertIn(json.loads(listimagesresponse.content)["images"][1]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         #self.assertIn(json.loads(listimagesresponse.content)["images"][2]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         print(" ")
@@ -282,7 +283,8 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:8774/v2.1/id_bla/images/detail"
         listimagesdetailsresponse = requests.get(url, headers=headers)
         self.assertEqual(listimagesdetailsresponse.status_code, 200)
-        self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
+        # deactivated: highly depends on the environment in which the tests are executed. one cannot make such an assumption.
+        #self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         #self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][1]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         #self.assertIn(json.loads(listimagesdetailsresponse.content)["images"][2]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         self.assertEqual(json.loads(listimagesdetailsresponse.content)["images"][0]["metadata"]["architecture"],"x86_64")

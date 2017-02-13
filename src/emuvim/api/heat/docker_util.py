@@ -1,4 +1,4 @@
-from docker import Client
+from docker import DockerClient, APIClient
 import time
 import re
 
@@ -12,7 +12,7 @@ def docker_container_id(container_name):
     :return: Returns the container ID or None if the container is not running or could not be found.
     :rtype: ``dict``
     """
-    c = Client()
+    c = APIClient()
     detail = c.inspect_container(container_name)
     if bool(detail["State"]["Running"]):
         return detail['Id']
@@ -106,7 +106,7 @@ def docker_abs_net_io(container_id):
         system time.
     :rtype: ``dict``
     """
-    c = Client()
+    c = APIClient()
     command = c.exec_create(container_id, 'ifconfig')
     ifconfig = c.exec_start(command['Id'])
     sys_time = int(time.time() * 1000000000)

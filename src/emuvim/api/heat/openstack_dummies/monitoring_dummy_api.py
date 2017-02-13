@@ -28,6 +28,9 @@ class MonitorDummyApi(BaseOpenstackDummy):
 
 
 class Shutdown(Resource):
+    """
+    A get request to /shutdown will shut down this endpoint.
+    """
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -41,6 +44,7 @@ class MonitorVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
+
     def get(self):
         """
         List API versions.
@@ -48,6 +52,8 @@ class MonitorVersionsList(Resource):
         :return: Returns the api versions.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
         # at least let it look like an open stack function
         try:
             resp = dict()
@@ -87,6 +93,7 @@ class MonitorVnf(Resource):
             access, the number of running processes and the current system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -133,6 +140,7 @@ class MonitorVnfAbs(Resource):
             system time.
         :rtype: :class:`flask.response`
         """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         if len(vnf_name) < 3 or 'mn.' != vnf_name[:3]:
             vnf_name = 'mn.' + vnf_name
 
@@ -170,6 +178,22 @@ class MonitorVnfDcStack(Resource):
         self.api = api
 
     def get(self, dc, stack, vnf_name):
+        """
+        Calculates the workload for the specified docker container, at this point in time.
+        This api call is for the translator to monitor a vnfs of a specific datacenter and stack.
+
+        :param dc: Target datacenter.
+        :type dc: ``str``
+        :param stack: Target stack
+        :type stack: ``str``
+        :param vnf_name: Specifies the docker container via name.
+        :type vnf_name: ``str``
+        :return: Returns a json response with network, cpu, memory usage and storage access, as absolute values from
+            startup till this point of time. It also contains the number of running processes and the current
+            system time.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
 
         # search for real name
         vnf_name = self._findName(dc, stack, vnf_name)
@@ -230,3 +254,4 @@ class MonitorVnfDcStack(Resource):
             return Response(u"VNF %s does not exist\n" % (vnf), status=500, mimetype="application/json")
         container_real = 'mn.' + server_real.name
         return container_real
+

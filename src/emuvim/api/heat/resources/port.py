@@ -12,6 +12,9 @@ class Port:
         self.__create_intf_name()
         self.id = None
         self.template_name = name
+        """
+        ip_address is structured like 10.0.0.1/24
+        """
         self.ip_address = ip_address
         self.mac_address = mac_address  # not set
         self.floating_ip = floating_ip
@@ -146,6 +149,21 @@ class Port:
         port_dict["status"] = "ACTIVE"  # TODO do we support inactive port?
         port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
         return port_dict
+
+    def compare_attributes(self, other):
+        """
+        Does NOT compare ip_address because this function only exists to check if we can
+        update the IP address without any changes
+        :param other:
+        :return:
+        """
+        if other is None:
+            return False
+
+        if self.name == other.name and self.floating_ip == other.floating_ip and \
+                                       self.net_name == other.net_name:
+            return True
+        return False
 
     def __eq__(self, other):
         if other is None:
