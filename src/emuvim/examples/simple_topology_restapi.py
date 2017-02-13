@@ -54,11 +54,11 @@ def create_topology1():
        (each data center is one "bigswitch" in our simplified
         first prototype)
     """
-    dc1 = net.addDatacenter("datacenter1")
-    dc2 = net.addDatacenter("datacenter2")
+    dc1 = net.addDatacenter("dc1")
+    dc2 = net.addDatacenter("dc2")
     dc3 = net.addDatacenter("long_data_center_name3")
     dc4 = net.addDatacenter(
-        "datacenter4",
+        "dc4",
         metadata={"mydata": "we can also add arbitrary metadata to each DC"})
 
     """
@@ -73,9 +73,9 @@ def create_topology1():
        These links can use Mininet's features to limit bw, add delay or jitter.
     """
     net.addLink(dc1, dc2)
-    net.addLink("datacenter1", s1)
+    net.addLink("dc1", s1)
     net.addLink(s1, dc3)
-    net.addLink(s1, "datacenter4")
+    net.addLink(s1, "dc4")
 
     """
     5. We want to access and control our data centers from the outside,

@@ -1,6 +1,6 @@
 from mininet.link import Link
 from resources import *
-from docker import Client
+from docker import DockerClient
 import logging
 import threading
 import uuid
@@ -8,6 +8,9 @@ import time
 
 
 class HeatApiStackInvalidException(Exception):
+    """
+    Exception thrown when a submitted stack is invalid.
+    """
     def __init__(self, value):
         self.value = value
 
@@ -33,7 +36,7 @@ class OpenstackCompute(object):
         self.nets = dict()
         self.ports = dict()
         self.compute_nets = dict()
-        self.dcli = Client(base_url='unix://var/run/docker.sock')
+        self.dcli = DockerClient(base_url='unix://var/run/docker.sock')
 
     @property
     def images(self):
@@ -44,22 +47,21 @@ class OpenstackCompute(object):
         :return: Returns the new image dictionary.
         :rtype: ``dict``
         """
-        for image in self.dcli.images():
-            if 'RepoTags' in image:
-                found = False
-                imageName = image['RepoTags']
-                if imageName == None:
-                    continue
-                imageName = imageName[0]
-                for i in self._images.values():
-                    if i.name == imageName:
-                        found = True
-                        break
-                if not found:
-                    self._images[imageName] = Image(imageName)
+        for image in self.dcli.images.list():
+            if len(image.tags) > 0:
+                for t in image.tags:
+                    t = t.replace(":latest", "")  # only use short tag names for OSM compatibility
+                    if t not in self._images:
+                        self._images[t] = Image(t)
         return self._images
 
     def add_stack(self, stack):
+        """
+        Adds a new stack to the compute node.
+
+        :param stack: Stack dictionary.
+        :type stack: ``dict``
+        """
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
@@ -130,6 +132,7 @@ class OpenstackCompute(object):
         """
         flavor = InstanceFlavor(name, cpu, memory, memory_unit, storage, storage_unit)
         self.flavors[flavor.name] = flavor
+        return flavor
 
     def deploy_stack(self, stackid):
         """
@@ -396,11 +399,12 @@ class OpenstackCompute(object):
                 port = self.find_port_by_name_or_id(port_name)
                 if port is not None:
                     if intf.name == port.intf_name:
+                        # wait up to one second for the intf to come up
+                        self.timeout_sleep(intf.isUp, 1)
                         if port.mac_address is not None:
-                            c.setMAC(port.mac_address)
+                            intf.setMAC(port.mac_address)
                         else:
-                            port.mac_address = intf.mac
-                            # TODO: mac addresses in neutron_dummy_api!
+                            port.mac_address = intf.MAC()
 
         # Start the real emulator command now as specified in the dockerfile
         # ENV SON_EMU_CMD
@@ -661,6 +665,15 @@ class OpenstackCompute(object):
 
     @staticmethod
     def timeout_sleep(function, max_sleep):
+        """
+        This function will execute a function all 0.1 seconds until it successfully returns.
+        Will return after `max_sleep` seconds if not successful.
+
+        :param function: The function to execute. Should return true if done.
+        :type function: ``function``
+        :param max_sleep: Max seconds to sleep. 1 equals 1 second.
+        :type max_sleep: ``float``
+        """
         current_time = time.time()
         stop_time = current_time + max_sleep
         while not function() and current_time < stop_time:

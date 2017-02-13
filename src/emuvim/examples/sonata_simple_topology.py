@@ -25,36 +25,47 @@ the Horizon 2020 and 5G-PPP programmes. The authors would like to
 acknowledge the contributions of their colleagues of the SONATA
 partner consortium (www.sonata-nfv.eu).
 """
+"""
+A simple topology with two PoPs for the y1 demo story board.
+
+        (dc1) <<-->> s1 <<-->> (dc2)
+
+- SAP deployment enabled
+- learning switch enabled
+"""
+
 import logging
 from mininet.log import setLogLevel
 from emuvim.dcemulator.net import DCNetwork
 from emuvim.api.rest.rest_api_endpoint import RestApiEndpoint
-
-from emuvim.api.zerorpc.compute import ZeroRpcApiEndpoint
-from emuvim.api.heat.resources import *
-from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
-from emuvim.api.zerorpc.network import ZeroRpcApiEndpointDCNetwork
+from emuvim.api.sonata import SonataDummyGatekeeperEndpoint
+from mininet.node import RemoteController
 
 logging.basicConfig(level=logging.INFO)
 
 
 def create_topology1():
-    net = DCNetwork(monitor=True, enable_learning=True)
+    # create topology
+    net = DCNetwork(controller=RemoteController, monitor=True, enable_learning=True)
     dc1 = net.addDatacenter("dc1")
 
-    heatapi1 = OpenstackApiEndpoint("131.234.31.45", 5001)
 
-    # connect data center to this endpoint
-    heatapi1.connect_datacenter(dc1)
+    # add the command line interface endpoint to each DC (REST API)
+    rapi1 = RestApiEndpoint("0.0.0.0", 5001)
+    rapi1.connectDCNetwork(net)
+    rapi1.connectDatacenter(dc1)
+    # run API endpoint server (in another thread, don't block)
+    rapi1.start()
 
-    # heatapirun API endpoint server (in another thread, don't block)
-    heatapi1.start()
+    # add the SONATA dummy gatekeeper to each DC
+    sdkg1 = SonataDummyGatekeeperEndpoint("0.0.0.0", 5000, deploy_sap=True)
+    sdkg1.connectDatacenter(dc1)
+    # run the dummy gatekeeper (in another thread, don't block)
+    sdkg1.start()
 
-    heatapi1.connect_dc_network(net)
-
+    # start the emulation platform
     net.start()
     net.CLI()
-    # when the user types exit in the CLI, we stop the emulator
     net.stop()
 
 
