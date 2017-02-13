@@ -44,6 +44,10 @@ def docker_mem_used(container_id):
     """
     Bytes of memory used from the docker container.
 
+    Note: If you have problems with this command you have to enable memory control group.
+    For this you have to add the following kernel parameters: `cgroup_enable=memory swapaccount=1`.
+    See: https://docs.docker.com/engine/admin/runmetrics/
+
     :param container_id: The full ID of the docker container.
     :type container_id: ``str``
     :return: Returns the memory utilization in bytes.
