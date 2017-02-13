@@ -13,8 +13,7 @@ env:
 
 before_install:
   - sudo apt-get update
-  - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
-  - sudo apt-get install -y ansible git aptitude python-heatclient curl python-dev python-zmq libzmq-dev libffi-dev libssl-dev python-pip 
+  - sudo apt-get install -y git aptitude python-heatclient curl python-dev python-zmq libzmq-dev libffi-dev libssl-dev python-pip 
   - sudo pip install --upgrade pip
   - sudo curl -fsSL https://get.docker.com/gpg | apt-key add -
   - sudo curl -fsSL https://get.docker.com/ | sh
