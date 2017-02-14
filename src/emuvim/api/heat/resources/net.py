@@ -4,7 +4,7 @@ import re
 class Net:
     def __init__(self, name):
         self.name = name
-        self.id = id
+        self.id = None
         self.subnet_name = None
         self.subnet_id = None
         self.subnet_creation_time = None
@@ -139,13 +139,13 @@ class Net:
         """
         if cidr is None:
             self._cidr = None
+            self.reset_issued_ip_addresses()
             return True
-        if not self.check_cidr_format(cidr):
+        if not Net.check_cidr_format(cidr):
             return False
 
-        if len(self._issued_ip_addresses) > 0:
-            self.reset_issued_ip_addresses()
-        self.start_end_dict = self.calculate_start_and_end_dict(cidr)
+        self.reset_issued_ip_addresses()
+        self.start_end_dict = Net.calculate_start_and_end_dict(cidr)
         self._cidr = cidr
         return True
 
@@ -163,7 +163,8 @@ class Net:
         self.start_end_dict = dict()
         self.reset_issued_ip_addresses()
 
-    def calculate_start_and_end_dict(self, cidr):
+    @staticmethod
+    def calculate_start_and_end_dict(cidr):
         """
         Calculates the start and end IP address for the subnet.
 
@@ -222,7 +223,8 @@ class Net:
         o4 = int(int_ip) % 256
         return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
 
-    def check_cidr_format(self, cidr):
+    @staticmethod
+    def check_cidr_format(cidr):
         """
         Checks the CIDR format. An valid example is: 192.168.0.0/29
 

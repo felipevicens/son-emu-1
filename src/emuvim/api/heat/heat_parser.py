@@ -5,6 +5,7 @@ import re
 import sys
 import uuid
 import logging
+import ip_handler as IP
 
 
 class HeatParser:
@@ -20,7 +21,6 @@ class HeatParser:
         self.outputs = None
         self.compute = compute
         self.bufferResource = list()
-        self.subnet_counter = Net.ip_2_int('10.0.0.1')
 
     def parse_input(self, input_dict, stack, dc_label, stack_update=False):
         """
@@ -110,8 +110,10 @@ class HeatParser:
                     net.gateway_ip = resource['properties']['gateway_ip']
                 net.subnet_id = resource['properties'].get('id', str(uuid.uuid4()))
                 net.subnet_creation_time = str(datetime.now())
-                net.set_cidr(Net.int_2_ip(self.subnet_counter) + '/24')
-                self.subnet_counter += 256
+                if stack_update:
+                    net.set_cidr('10.10.0.1/24') # Only dummy IPs - not really used
+                else:
+                    net.set_cidr(IP.get_new_cidr(net.subnet_id))
             except Exception as e:
                 logging.warning('Could not create Subnet: ' + e.message)
             return

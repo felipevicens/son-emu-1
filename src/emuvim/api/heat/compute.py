@@ -5,6 +5,7 @@ import logging
 import threading
 import uuid
 import time
+import ip_handler as IP
 
 
 class HeatApiStackInvalidException(Exception):
@@ -62,7 +63,7 @@ class OpenstackCompute(object):
         Adds a new stack to the compute node.
 
         :param stack: Stack dictionary.
-        :type stack: ``dict``
+        :type stack: :class:`heat.resources.stack`
         """
         if not self.check_stack(stack):
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
@@ -210,8 +211,6 @@ class OpenstackCompute(object):
                     if subnet.subnet_name == net.subnet_name:
                         subnet.subnet_id = net.subnet_id
                         break
-            else:
-                self.delete_network(net.id)
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
@@ -227,6 +226,11 @@ class OpenstackCompute(object):
         # Update all interface names - after each port has the correct UUID!!
         for port in new_stack.ports.values():
             port.create_intf_name()
+
+        # Remove unnecessary networks
+        for net in old_stack.nets.values():
+            if not net.name in new_stack.nets:
+                self.delete_network(net.id)
 
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
@@ -330,25 +334,21 @@ class OpenstackCompute(object):
         :param new_stack: The new created stack
         :type new_stack: :class:`heat.resources.stack`
         """
-        subnet_counter = Net.ip_2_int('10.0.0.1')
-        issued_ip_addresses = list()
+        for old_subnet in old_stack.nets.values():
+            IP.free_cidr(old_subnet.get_cidr(), old_subnet.subnet_id)
+
         for subnet in new_stack.nets.values():
             subnet.clear_cidr()
             for old_subnet in old_stack.nets.values():
                 if subnet.subnet_name == old_subnet.subnet_name:
-                    subnet.set_cidr(old_subnet.get_cidr())
-                    issued_ip_addresses.append(old_subnet.get_cidr())
+                    if IP.assign_cidr(old_subnet.get_cidr(), subnet.subnet_id):
+                        subnet.set_cidr(old_subnet.get_cidr())
 
         for subnet in new_stack.nets.values():
-            if subnet.get_cidr() in issued_ip_addresses:
+            if IP.is_cidr_issued(subnet.get_cidr()):
                 continue
 
-            cird = Net.int_2_ip(subnet_counter) + '/24'
-            subnet_counter += 256
-            while cird in issued_ip_addresses:
-                cird = Net.int_2_ip(subnet_counter) + '/24'
-                subnet_counter += 256
-
+            cird = IP.get_new_cidr(subnet.subnet_id)
             subnet.set_cidr(cird)
         return
 
