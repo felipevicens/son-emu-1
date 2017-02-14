@@ -96,9 +96,6 @@ class OpenstackCompute(object):
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
                                 (port.name, stack.stack_name, port.net_name))
                 everything_ok = False
-            if port.intf_name is None:
-                logging.warning("Port %s has no interface name." % (port.name))
-                everything_ok = False
             if port.ip_address is None:
                 logging.warning("Port %s has no IP address." % (port.name))
                 everything_ok = False
@@ -227,6 +224,10 @@ class OpenstackCompute(object):
 
         self.update_ip_addresses(old_stack, new_stack)
 
+        # Update all interface names - after each port has the correct UUID!!
+        for port in new_stack.ports.values():
+            port.create_intf_name()
+
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -244,9 +245,6 @@ class OpenstackCompute(object):
                                                     old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
-                                        new_stack.ports[port_name].update_intf_name(
-                                            old_stack.ports[port_name].intf_name)
-
                                         # Add changed link
                                         self._add_link(server.name,
                                                        new_stack.ports[port_name].ip_address,
@@ -257,8 +255,7 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
-                                            0]:
+                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -584,9 +581,9 @@ class OpenstackCompute(object):
             raise Exception("Port with name %s already exists." % name)
         logging.debug("Creating port with name %s" % name)
         port = Port(name)
-        port.id = str(uuid.uuid4())
         if not stack_operation:
             self.ports[port.id] = port
+            port.create_intf_name()
         return port
 
     def find_port_by_name_or_id(self, name_or_id):

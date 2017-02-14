@@ -259,7 +259,7 @@ class HeatUpdateStack(Resource):
             reader = HeatParser(self.api.compute)
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label, stack_update=True):
                 return 'Could not create stack.', 400
 
             if not self.api.compute.update_stack(old_stack.id, stack):
