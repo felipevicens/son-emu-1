@@ -41,6 +41,11 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(QueryTopology, "/v1/topo",
                               resource_class_kwargs={'api': self})
+         
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))

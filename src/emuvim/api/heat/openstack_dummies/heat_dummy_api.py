@@ -28,6 +28,12 @@ class HeatDummyApi(BaseOpenstackDummy):
                               "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
                               resource_class_kwargs={'api': self})
 
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
