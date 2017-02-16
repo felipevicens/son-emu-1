@@ -28,6 +28,12 @@ class HeatDummyApi(BaseOpenstackDummy):
                               "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
                               resource_class_kwargs={'api': self})
 
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
@@ -259,7 +265,7 @@ class HeatUpdateStack(Resource):
             reader = HeatParser(self.api.compute)
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label, stack_update=True):
                 return 'Could not create stack.', 400
 
             if not self.api.compute.update_stack(old_stack.id, stack):
