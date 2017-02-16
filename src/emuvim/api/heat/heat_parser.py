@@ -5,6 +5,7 @@ import re
 import sys
 import uuid
 import logging
+import ip_handler as IP
 
 
 class HeatParser:
@@ -20,9 +21,8 @@ class HeatParser:
         self.outputs = None
         self.compute = compute
         self.bufferResource = list()
-        self.subnet_counter = Net.ip_2_int('10.0.0.1')
 
-    def parse_input(self, input_dict, stack, dc_label):
+    def parse_input(self, input_dict, stack, dc_label, stack_update=False):
         """
         It will parse the input dictionary into the corresponding classes, which are then stored within the stack.
 
@@ -32,6 +32,8 @@ class HeatParser:
         :type stack: :class:`heat.resources.stack`
         :param dc_label: String that contains the label of the used data center.
         :type dc_label: ``str``
+        :param stack_update: Specifies if a new stack will be created or a older one will be updated
+        :type stack_update: ``bool``
         :return: * *True*: If the template version is supported and all resources could be created.
                  * *False*: Else
         :rtype: ``bool``
@@ -49,7 +51,7 @@ class HeatParser:
         self.bufferResource = list()
 
         for resource in self.resources.values():
-            self.handle_resource(resource, stack, dc_label)
+            self.handle_resource(resource, stack, dc_label, stack_update=stack_update)
 
         # This loop tries to create all classes which had unresolved dependencies.
         unresolved_resources_last_round = len(self.bufferResource) + 1
@@ -57,7 +59,7 @@ class HeatParser:
             unresolved_resources_last_round = len(self.bufferResource)
             number_of_items = len(self.bufferResource)
             while number_of_items > 0:
-                self.handle_resource(self.bufferResource.pop(0), stack, dc_label)
+                self.handle_resource(self.bufferResource.pop(0), stack, dc_label, stack_update=stack_update)
                 number_of_items -= 1
 
         if len(self.bufferResource) > 0:
@@ -66,7 +68,7 @@ class HeatParser:
             return False
         return True
 
-    def handle_resource(self, resource, stack, dc_label):
+    def handle_resource(self, resource, stack, dc_label, stack_update=False):
         """
         This function will take a resource (from a heat template) and determines which type it is and creates
         the corresponding class, with its required parameters, for further calculations (like deploying the stack).
@@ -79,6 +81,8 @@ class HeatParser:
         :type stack: :class:`heat.resources.stack`
         :param dc_label: String that contains the label of the used data center
         :type dc_label: ``str``
+        :param stack_update: Specifies if a new stack will be created or a older one will be updated
+        :type stack_update: ``bool``
         :return: void
         :rtype: ``None``
         """
@@ -96,7 +100,7 @@ class HeatParser:
             try:
                 net_name = resource['properties']['network']['get_resource']
                 if net_name not in stack.nets:
-                    net = self.compute.create_network(net_name, True)
+                    net = self.compute.create_network(net_name, stack_update)
                     stack.nets[net_name] = net
                 else:
                     net = stack.nets[net_name]
@@ -106,9 +110,8 @@ class HeatParser:
                     net.gateway_ip = resource['properties']['gateway_ip']
                 net.subnet_id = resource['properties'].get('id', str(uuid.uuid4()))
                 net.subnet_creation_time = str(datetime.now())
-                # net.set_cidr(resource['properties']['cidr'])
-                net.set_cidr(Net.int_2_ip(self.subnet_counter) + '/24')
-                self.subnet_counter += 256
+                if not stack_update:
+                    net.set_cidr(IP.get_new_cidr(net.subnet_id))
             except Exception as e:
                 logging.warning('Could not create Subnet: ' + e.message)
             return
@@ -117,7 +120,7 @@ class HeatParser:
             try:
                 port_name = resource['properties']['name']
                 if port_name not in stack.ports:
-                    port = self.compute.create_port(port_name, True)
+                    port = self.compute.create_port(port_name, stack_update)
                     stack.ports[port_name] = port
                 else:
                     port = stack.ports[port_name]
@@ -141,7 +144,7 @@ class HeatParser:
                 nw_list = resource['properties']['networks']
 
                 if shortened_name not in stack.servers:
-                    server = self.compute.create_server(shortened_name, True)
+                    server = self.compute.create_server(shortened_name, stack_update)
                     stack.servers[shortened_name] = server
                 else:
                     server = stack.servers[shortened_name]
@@ -158,7 +161,7 @@ class HeatParser:
                     # we don't know which network it belongs to yet, but the resource will appear later in a valid
                     # template
                     if port_name not in stack.ports:
-                        stack.ports[port_name] = self.compute.create_port(port_name, True)
+                        stack.ports[port_name] = self.compute.create_port(port_name, stack_update)
                     server.port_names.append(port_name)
                 return
             except Exception as e:

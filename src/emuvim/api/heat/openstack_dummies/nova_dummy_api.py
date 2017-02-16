@@ -19,6 +19,8 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListServersApi, "/v2.1/<id>/servers",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(NovaListServersAndPortsApi, "/v2.1/<id>/servers/andPorts",
+                              resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListServersDetailed, "/v2.1/<id>/servers/detail",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaShowServerDetails, "/v2.1/<id>/servers/<serverid>",
@@ -241,6 +243,53 @@ class NovaListServersApi(Resource):
 
         except Exception as ex:
             logging.exception(u"%s: Could not create the server." % __name__)
+            return ex.message, 500
+
+
+class NovaListServersAndPortsApi(Resource):
+    def __init__(self, api):
+        self.api = api
+
+    def get(self, id):
+        """
+        Creates a list with all running servers and their detailed information. This function also presents all
+        port information of each server.
+
+        :param id: Used to create a individual link to quarry further information.
+        :type id: ``str``
+        :return: Returns a json response with a dictionary that contains the server information.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
+        try:
+            resp = dict()
+            resp['servers'] = list()
+            for server in self.api.compute.computeUnits.values():
+                s = server.create_server_dict(self.api.compute)
+                s['links'] = [{'href': "http://%s:%d/v2.1/%s/servers/%s" % (self.api.ip,
+                                                                            self.api.port,
+                                                                            id,
+                                                                            server.id)}]
+
+                s['ports'] = list()
+                for port_name in server.port_names:
+                    port = self.api.compute.find_port_by_name_or_id(port_name)
+                    if port is None:
+                        continue
+
+                    tmp = port.create_port_dict(self.api.compute)
+                    tmp['intf_name'] = port.intf_name
+                    s['ports'].append(tmp)
+
+                resp['servers'].append(s)
+
+            response = Response(json.dumps(resp), status=200, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not retrieve the list of servers." % __name__)
             return ex.message, 500
 
 
