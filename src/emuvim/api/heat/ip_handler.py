@@ -38,9 +38,6 @@ def free_cidr(cidr, uuid):
     global lock
     lock.acquire()
 
-    print (str(__issued_ips.has_key(int_ip)) + '  uuid: ' + Net.int_2_ip(int_ip))
-
-
     if __issued_ips.has_key(int_ip) and __issued_ips[int_ip] == uuid:
         del __issued_ips[int_ip]
         if int_ip < __current_ip:

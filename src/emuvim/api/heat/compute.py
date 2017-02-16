@@ -197,9 +197,6 @@ class OpenstackCompute(object):
             return False
         old_stack = self.stacks[old_stack_id]
 
-        if not self.check_stack(new_stack):
-            return False
-
         # Update Stack IDs
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -226,6 +223,9 @@ class OpenstackCompute(object):
         # Update all interface names - after each port has the correct UUID!!
         for port in new_stack.ports.values():
             port.create_intf_name()
+
+        if not self.check_stack(new_stack):
+            return False
 
         # Remove unnecessary networks
         for net in old_stack.nets.values():

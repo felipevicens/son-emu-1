@@ -110,9 +110,7 @@ class HeatParser:
                     net.gateway_ip = resource['properties']['gateway_ip']
                 net.subnet_id = resource['properties'].get('id', str(uuid.uuid4()))
                 net.subnet_creation_time = str(datetime.now())
-                if stack_update:
-                    net.set_cidr('10.10.0.1/24') # Only dummy IPs - not really used
-                else:
+                if not stack_update:
                     net.set_cidr(IP.get_new_cidr(net.subnet_id))
             except Exception as e:
                 logging.warning('Could not create Subnet: ' + e.message)
