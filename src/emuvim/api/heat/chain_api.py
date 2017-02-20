@@ -96,7 +96,7 @@ class ChainVersionsList(Resource):
                         }
                     ]
                 }
-            ]""" % (self.api.ip, self.api.port)
+            """ % (self.api.ip, self.api.port)
 
             return Response(resp, status=200, mimetype="application/json")
 
