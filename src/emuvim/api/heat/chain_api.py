@@ -43,6 +43,13 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(Shutdown, "/shutdown")
 
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+
+
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
         if self.app is not None:
@@ -89,7 +96,7 @@ class ChainVersionsList(Resource):
                         }
                     ]
                 }
-            """ % (self.api.ip, self.api.port)
+            ]""" % (self.api.ip, self.api.port)
 
             return Response(resp, status=200, mimetype="application/json")
 
@@ -806,6 +813,9 @@ class QueryTopology(Resource):
                             for edge in link:
                                 # the translator wants everything as a string!
                                 for key, value in link[edge].items():
+                                    # do not add any links to the floating switch to the topology!
+                                    if key == "name" and value == "fs1":
+                                        continue
                                     link[edge][key] = str(value)
                                 # name of the destination
                                 link[edge]["name"] = graph_node
