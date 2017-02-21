@@ -66,8 +66,20 @@ class OpenstackCompute(object):
         :type stack: :class:`heat.resources.stack`
         """
         if not self.check_stack(stack):
+            self.clean_broken_stack(stack)
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
+
+    def clean_broken_stack(self, stack):
+        for port in stack.ports.values():
+            if self.ports.has_key(port.id):
+                del self.ports[port.id]
+        for server in stack.servers.values():
+            if self.computeUnits.has_key(server.id):
+                del self.computeUnits[server.id]
+        for net in stack.nets.values():
+            if self.nets.has_key(net.id):
+                del self.nets[net.id]
 
     def check_stack(self, stack):
         """
@@ -96,6 +108,9 @@ class OpenstackCompute(object):
             if port.net_name not in stack.nets:
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
                                 (port.name, stack.stack_name, port.net_name))
+                everything_ok = False
+            if port.intf_name is None:
+                logging.warning("Port %s has no interface name." % (port.name))
                 everything_ok = False
             if port.ip_address is None:
                 logging.warning("Port %s has no IP address." % (port.name))
@@ -394,7 +409,6 @@ class OpenstackCompute(object):
                 network_dict[network_dict['id']] = self.find_network_by_name_or_id(port.net_name).name
                 network.append(network_dict)
         self.compute_nets[server.name] = network
-
         c = self.dc.startCompute(server.name, image=server.image, command=server.command,
                                  network=network, flavor_name=server.flavor)
         server.emulator_compute = c

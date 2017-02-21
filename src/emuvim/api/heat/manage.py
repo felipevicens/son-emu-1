@@ -107,7 +107,7 @@ class OpenstackManage(object):
 
             # create a port for the host
             port = Port("root-port")
-            port.id = str(uuid.uuid4())
+            #port.id = str(uuid.uuid4())
             port.net_name = fn.name
 
             # get next free ip
