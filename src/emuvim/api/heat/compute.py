@@ -72,13 +72,13 @@ class OpenstackCompute(object):
 
     def clean_broken_stack(self, stack):
         for port in stack.ports.values():
-            if self.ports.has_key(port.id):
+            if port.id in self.ports:
                 del self.ports[port.id]
         for server in stack.servers.values():
-            if self.computeUnits.has_key(server.id):
+            if server.id in self.computeUnits:
                 del self.computeUnits[server.id]
         for net in stack.nets.values():
-            if self.nets.has_key(net.id):
+            if net.id in self.nets:
                 del self.nets[net.id]
 
     def check_stack(self, stack):
