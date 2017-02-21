@@ -104,6 +104,7 @@ class HeatCreateStack(Resource):
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
             if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+                self.api.compute.clean_broken_stack(stack)
                 return 'Could not create stack.', 400
 
             stack.creation_time = str(datetime.now())

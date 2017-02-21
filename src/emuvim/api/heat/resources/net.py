@@ -39,7 +39,7 @@ class Net:
         int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2  # First address as network address not usable
         # Second one is for gateways only
         int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
-        while self._issued_ip_addresses.has_key(int_start_ip) and int_start_ip <= int_end_ip:
+        while int_start_ip in self._issued_ip_addresses and int_start_ip <= int_end_ip:
             int_start_ip += 1
 
         if int_start_ip > int_end_ip:
@@ -60,7 +60,7 @@ class Net:
             * *True*: Else
         """
         int_ip = Net.cidr_2_int(cidr)
-        if self._issued_ip_addresses.has_key(int_ip):
+        if int_ip in self._issued_ip_addresses:
             return False
 
         int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 1  # First address as network address not usable
@@ -83,7 +83,7 @@ class Net:
         """
         int_ip = Net.cidr_2_int(cidr)
 
-        if not self._issued_ip_addresses.has_key(int_ip):
+        if not int_ip in self._issued_ip_addresses:
             return False
 
         if self._issued_ip_addresses[int_ip] == port_name:
