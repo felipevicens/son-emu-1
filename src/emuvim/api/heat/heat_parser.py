@@ -192,13 +192,12 @@ class HeatParser:
 
         if 'OS::Neutron::FloatingIP' in resource['type']:
             try:
-                port_id = resource['properties']['port_id']['get_resource']
+                port_name = resource['properties']['port_id']['get_resource']
                 floating_network_id = resource['properties']['floating_network_id']
-                if port_id not in stack.ports:
-                    stack.ports[port_id] = Port(port_id)
-                    stack.ports[port_id].id = str(uuid.uuid4())
+                if port_name not in stack.ports:
+                    stack.ports[port_name] = self.compute.create_port(port_name, stack_update)
 
-                stack.ports[port_id].floating_ip = floating_network_id
+                stack.ports[port_name].floating_ip = floating_network_id
             except Exception as e:
                 logging.warning('Could not create FloatingIP: ' + e.message)
             return

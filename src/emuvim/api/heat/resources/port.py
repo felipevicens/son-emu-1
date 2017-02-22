@@ -81,6 +81,7 @@ class Port:
         updated = False
         if self.intf_name in intf_names and intf_names[self.intf_name][0] == self.id:
             updated = True
+
         intf_names[self.intf_name] = [self.id, updated]
         lock.release()
 

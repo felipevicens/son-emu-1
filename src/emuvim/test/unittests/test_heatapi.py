@@ -45,7 +45,7 @@ class testRestApi(ApiBaseHeat):
 
     def setUp(self):
         # create network
-        self.createNet(nswitches=0, ndatacenter=2, nhosts=2, ndockers=0)
+        self.createNet(nswitches=3, ndatacenter=2, nhosts=2, ndockers=0, autolinkswitches=True)
 
         # setup links
         self.net.addLink(self.dc[0], self.h[0])
@@ -57,6 +57,275 @@ class testRestApi(ApiBaseHeat):
 
         # start Mininet network
         self.startNet()
+
+    def testChainingDummy(self):
+        headers = {'Content-type': 'application/json'}
+        test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_chaining.json")).read()
+        url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
+        requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
+        print(" ")
+
+
+        print('->>>>>>> testChainingVersions ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/"
+        listapiversionstackresponse = requests.get(url, headers=headers)
+        self.assertEqual(listapiversionstackresponse.status_code, 200)
+        self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v1")
+        print(" ")
+
+        print('->>>>>>> testChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"], [])
+        print(" ")
+
+        print('->>>>>>> testLoadbalancingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/list"
+        lblistresponse = requests.get(url, headers=headers)
+        self.assertEqual(lblistresponse.status_code, 200)
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"], [])
+        print(" ")
+
+        testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/iper-in-0"
+        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" %(testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(chainvnfresponse.content)["cookie"], 0)
+        print(" ")
+
+        print('->>>>>>> testChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["dst_vnf"], "dc0_s1_firewall1")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["dst_intf"], "fire-out-0")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["src_vnf"], "dc0_s1_iperf1")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["src_intf"], "iper-in-0")
+        print(" ")
+
+        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        deletechainvnfresponse = requests.delete(url)
+        self.assertEqual(deletechainvnfresponse.status_code, 200)
+        self.assertEqual(deletechainvnfresponse.content, "true")
+        print(" ")
+
+        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"], [])
+        print(" ")
+
+        testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/iper-in-0"
+        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        stackchainvnfresponse = requests.post(url, data=json.dumps(json.loads('{"path":["dc1.s1", "s1","s2","s3","s1","dc1.s1"]}')), headers=headers)
+        self.assertEqual(stackchainvnfresponse.status_code, 200)
+        print (stackchainvnfresponse.content)
+        self.assertGreaterEqual(json.loads(stackchainvnfresponse.content)["cookie"], 0)
+        print(" ")
+
+
+        print('->>>>>>> testStackChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        print (chainlistresponse.content)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["dst_vnf"], "dc0_s1_firewall1")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["dst_intf"], "fire-out-0")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["src_vnf"], "dc0_s1_iperf1")
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["src_intf"], "iper-in-0")
+        self.assertItemsEqual(json.loads(chainlistresponse.content)["chains"][0]["path"],['dc1.s1', 's1', 's2', 's3', 's1', 'dc1.s1'])
+        print(" ")
+
+        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        deletechainvnfresponse = requests.delete(url)
+        self.assertEqual(deletechainvnfresponse.status_code, 200)
+        self.assertEqual(deletechainvnfresponse.content, "true")
+        print(" ")
+
+        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"], [])
+        print(" ")
+
+
+        testchain = "dc0_s1_firewall1/non-existing-interface/dc0_s1_iperf1/iper-in-0"
+        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 501)
+        print(" ")
+
+        testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/non-existing-interface"
+        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 501)
+        print(" ")
+
+        testchain = "dc0_s1_firewall1/non-existing-interface/dc0_s1_iperf1/iper-in-0"
+        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        deletechainvnfresponse = requests.delete(url)
+        self.assertEqual(deletechainvnfresponse.status_code, 501)
+        print(" ")
+
+        testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/non-existing-interface"
+        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        deletechainvnfresponse = requests.delete(url)
+        self.assertEqual(deletechainvnfresponse.status_code, 501)
+        print(" ")
+
+        testchain = "non-existent-dc/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
+        print('->>>>>>> testChainVNFNon-ExistingDC ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 500)
+        print(" ")
+
+
+        testchain = "dc0/s1/firewall1/non-existent:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
+        print('->>>>>>> testChainVNFNon-ExistingInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 500)
+        print(" ")
+
+        testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/non-existent:cp02:input"
+        print('->>>>>>> testChainVNFNon-ExistingInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        self.assertEqual(chainvnfresponse.status_code, 500)
+        print(" ")
+
+        testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
+        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        chainvnfresponse = requests.put(url)
+        print (chainvnfresponse.content)
+        self.assertEqual(chainvnfresponse.status_code, 200)
+        self.assertGreaterEqual(json.loads(chainvnfresponse.content)["cookie"], 0)
+        print(" ")
+
+        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        deletechainvnfresponse = requests.delete(url)
+        self.assertEqual(deletechainvnfresponse.status_code, 200)
+        self.assertEqual(deletechainvnfresponse.content, "true")
+        print(" ")
+
+        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/list"
+        chainlistresponse = requests.get(url, headers=headers)
+        self.assertEqual(chainlistresponse.status_code, 200)
+        self.assertEqual(json.loads(chainlistresponse.content)["chains"], [])
+        print(" ")
+
+        testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
+        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        stackchainvnfresponse = requests.post(url, data=json.dumps(
+            json.loads('{"path":["dc1.s1", "s1","s2","s3","s1","dc1.s1"]}')), headers=headers)
+        self.assertEqual(stackchainvnfresponse.status_code, 200)
+        print (stackchainvnfresponse.content)
+        self.assertGreaterEqual(json.loads(stackchainvnfresponse.content)["cookie"], 0)
+        print(" ")
+
+        testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
+        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
+        stackchainvnfresponse = requests.delete(url, headers=headers)
+        self.assertEqual(stackchainvnfresponse.status_code, 200)
+        print(" ")
+
+
+        print('->>>>>>> testLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0/s1/firewall1/firewall1:cp03:output"
+        lblistresponse = requests.post(url,  data=json.dumps(
+            json.loads('{"dst_vnf_interfaces":[{"pop":"dc0","stack":"s1","server":"iperf1","port":"iperf1:cp02:input","path":["dc1.s1","s1","s2","s3","s1","dc1.s1"]}]}')), headers=headers)
+        print (lblistresponse.content)
+        self.assertEqual(lblistresponse.status_code, 200)
+        self.assertIn("dc0_s1_firewall1:fire-out-0", lblistresponse.content)
+        print(" ")
+
+        print('->>>>>>> testLoadbalancingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/list"
+        lblistresponse = requests.get(url, headers=headers)
+        self.assertEqual(lblistresponse.status_code, 200)
+        print (lblistresponse.content )
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["paths"][0]["dst_vnf"], "dc0_s1_iperf1")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["paths"][0]["dst_intf"], "iper-in-0")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["src_vnf"], "dc0_s1_firewall1")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["src_intf"],"fire-out-0")
+        print(" ")
+
+        print('->>>>>>> deleteLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0/s1/firewall1/firewall1:cp03:output"
+        lbdeleteresponse = requests.delete(url, headers=headers)
+        print (lbdeleteresponse.content)
+        self.assertEqual(lbdeleteresponse.status_code, 200)
+        print(" ")
+
+        """print('->>>>>>> testLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0_s1_firewall1/fire-out-0"
+        lblistresponse = requests.post(url, data=json.dumps(json.loads('{"dst_vnf_interfaces":["dc0_s1_iperf1"]}')),headers=headers)
+        print (lblistresponse.content)
+        self.assertEqual(lblistresponse.status_code, 200)
+        self.assertIn("dc0_s1_firewall1:fire-out-0", lblistresponse.content)
+        print(" ")
+        """
+
+        print('->>>>>>> testDeleteLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0_s1_firewall1/fire-out-0"
+        lblistresponse = requests.delete(url, headers=headers)
+        self.assertEqual(lblistresponse.status_code, 200)
+        print(" ")
+
+        print('->>>>>>> testQueryTopology ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/topo"
+        topolistresponse = requests.get(url, headers=headers)
+        print topolistresponse.content
+        self.assertEqual(topolistresponse.status_code, 200)
+        print(" ")
+
+
 
     def testMonitoringDummy(self):
         headers = {'Content-type': 'application/json'}
@@ -104,10 +373,9 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listmonitoringvnfabsnonexistingresponse.status_code, 500)
         print(" ")
 
-        """
         print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1"
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
         listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
         print(listmonitoringvnfdcstackresponse.content)
         self.assertEqual(listmonitoringvnfdcstackresponse.status_code, 200)
@@ -116,12 +384,11 @@ class testRestApi(ApiBaseHeat):
 
         print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/mn.firewall1"
+        url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
         listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
         self.assertEqual(listmonitoringvnfdcstackresponse.status_code, 200)
         self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
         print(" ")
-        """
 
         print('->>>>>>> testMonitorVnfDcStackWithNonexistingName ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -878,6 +1145,7 @@ class testRestApi(ApiBaseHeat):
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
         print(" ")
+
 
 if __name__ == '__main__':
     unittest.main()
