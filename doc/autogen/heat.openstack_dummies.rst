@@ -12,6 +12,14 @@ heat.openstack_dummies.base_openstack_dummy module
     :undoc-members:
     :show-inheritance:
 
+heat.openstack_dummies.glance_dummy_api module
+----------------------------------------------
+
+.. automodule:: heat.openstack_dummies.glance_dummy_api
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 heat.openstack_dummies.heat_dummy_api module
 --------------------------------------------
 

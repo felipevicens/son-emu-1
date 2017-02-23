@@ -151,12 +151,12 @@ class KeystoneGetToken(Resource):
         List API entrypoints.
 
         This is hardcoded. For a working "authentication" use these ENVVARS:
-        `OS_AUTH_URL`=http://<ip>:<port>/v2.0
-        `OS_IDENTITY_API_VERSION`=2.0
-        `OS_TENANT_ID`=fc394f2ab2df4114bde39905f800dc57
-        `OS_REGION_NAME`=RegionOne
-        `OS_USERNAME`=bla
-        `OS_PASSWORD`=bla
+         * \`OS_AUTH_URL\`=http://<ip>:<port>/v2.0
+         * \`OS_IDENTITY_API_VERSION\`=2.0
+         * \`OS_TENANT_ID\`=fc394f2ab2df4114bde39905f800dc57
+         * \`OS_REGION_NAME\`=RegionOne
+         * \`OS_USERNAME\`=bla
+         * \`OS_PASSWORD\`=bla
 
         :return: Returns an openstack style response for all entrypoints.
         :rtype: :class:`flask.response`

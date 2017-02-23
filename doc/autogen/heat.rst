@@ -44,6 +44,14 @@ heat.heat_parser module
     :undoc-members:
     :show-inheritance:
 
+heat.ip_handler module
+----------------------
+
+.. automodule:: heat.ip_handler
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 heat.manage module
 ------------------
 
