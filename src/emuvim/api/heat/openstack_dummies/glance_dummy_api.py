@@ -3,7 +3,6 @@ from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
 import json
-import uuid
 
 
 class GlanceDummyApi(BaseOpenstackDummy):
