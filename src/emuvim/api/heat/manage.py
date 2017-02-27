@@ -258,7 +258,7 @@ class OpenstackManage(object):
                 src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(), vnf_src_interface)
 
             try:
-                son_emu_data = json.loads(self.get_son_emu_data(vnf_src_name))
+                son_emu_data = json.loads(self.get_son_emu_chain_data(vnf_src_name))
             except:
                 son_emu_data = dict()
             if "son_emu_data" not in son_emu_data:
@@ -269,7 +269,7 @@ class OpenstackManage(object):
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
 
-            self.set_son_emu_data(vnf_src_name, json.dumps(son_emu_data))
+            self.set_son_emu_chain_data(vnf_src_name, son_emu_data)
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -320,27 +320,32 @@ class OpenstackManage(object):
             logging.exception("RPC error.")
             return ex.message
 
-    def set_son_emu_data(self, vnf_name, data):
+    def set_son_emu_chain_data(self, vnf_name, data):
         """
-        Set son-emu data for this node.
+        Set son-emu chain data for this node.
 
         :param vnf_name: The name of the vnf where the data is stored.
         :type vnf_name: ``str``
         :param data: Raw data to store on the node.
         :type data: ``str``
         """
-        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % data)
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data.json" % json.dumps(data))
+        ip_list = []
+        for intf in data['son_emu_data']['interfaces'].values():
+            ip_list.extend(intf)
 
-    def get_son_emu_data(self, vnf_name):
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % "\n".join(ip_list))
+
+    def get_son_emu_chain_data(self, vnf_name):
         """
-        Get the current son-emu data set for this node.
+        Get the current son-emu chain data set for this node.
 
         :param vnf_name: The name of the vnf where the data is stored.
         :type vnf_name: ``str``
         :return: raw data stored on the node
         :rtype: ``str``
         """
-        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data")
+        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data.json")
 
     def _get_connected_switch_data(self, vnf_name, vnf_interface):
         """
