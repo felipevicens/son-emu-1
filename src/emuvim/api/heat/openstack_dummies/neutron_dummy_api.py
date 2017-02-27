@@ -799,11 +799,11 @@ class NeutronDeletePort(Resource):
 
     def delete(self, port_id):
         """
-        Deletes the specified network and all its subnets.
+        Deletes the specified port.
 
-        :param port_id: The indicator string, which specifies the requested network.
+        :param port_id: The indicator string, which specifies the requested port.
         :type port_id: ``str``
-        :return: * 404, if the network or the subnet could not be removed.
+        :return: * 404, if the port could not be found.
             * 500, if any exception occurred while deletion.
             * 204, if everything worked out.
         :rtype: :class:`flask.response`

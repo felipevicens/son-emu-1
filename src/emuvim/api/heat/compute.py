@@ -5,6 +5,7 @@ import logging
 import threading
 import uuid
 import time
+import ip_handler as IP
 
 
 class HeatApiStackInvalidException(Exception):
@@ -62,11 +63,23 @@ class OpenstackCompute(object):
         Adds a new stack to the compute node.
 
         :param stack: Stack dictionary.
-        :type stack: ``dict``
+        :type stack: :class:`heat.resources.stack`
         """
         if not self.check_stack(stack):
+            self.clean_broken_stack(stack)
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
+
+    def clean_broken_stack(self, stack):
+        for port in stack.ports.values():
+            if port.id in self.ports:
+                del self.ports[port.id]
+        for server in stack.servers.values():
+            if server.id in self.computeUnits:
+                del self.computeUnits[server.id]
+        for net in stack.nets.values():
+            if net.id in self.nets:
+                del self.nets[net.id]
 
     def check_stack(self, stack):
         """
@@ -199,9 +212,6 @@ class OpenstackCompute(object):
             return False
         old_stack = self.stacks[old_stack_id]
 
-        if not self.check_stack(new_stack):
-            return False
-
         # Update Stack IDs
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
@@ -213,8 +223,6 @@ class OpenstackCompute(object):
                     if subnet.subnet_name == net.subnet_name:
                         subnet.subnet_id = net.subnet_id
                         break
-            else:
-                self.delete_network(net.id)
         for port in old_stack.ports.values():
             if port.name in new_stack.ports:
                 new_stack.ports[port.name].id = port.id
@@ -226,6 +234,18 @@ class OpenstackCompute(object):
         self.update_compute_dicts(new_stack)
 
         self.update_ip_addresses(old_stack, new_stack)
+
+        # Update all interface names - after each port has the correct UUID!!
+        for port in new_stack.ports.values():
+            port.create_intf_name()
+
+        if not self.check_stack(new_stack):
+            return False
+
+        # Remove unnecessary networks
+        for net in old_stack.nets.values():
+            if not net.name in new_stack.nets:
+                self.delete_network(net.id)
 
         # Remove all unnecessary servers
         for server in old_stack.servers.values():
@@ -244,9 +264,6 @@ class OpenstackCompute(object):
                                                     old_stack.ports[port_name].ip_address.split('/')[0]:
                                         self._remove_link(server.name, link)
 
-                                        new_stack.ports[port_name].update_intf_name(
-                                            old_stack.ports[port_name].intf_name)
-
                                         # Add changed link
                                         self._add_link(server.name,
                                                        new_stack.ports[port_name].ip_address,
@@ -257,8 +274,7 @@ class OpenstackCompute(object):
                             my_links = self.dc.net.links
                             for link in my_links:
                                 if str(link.intf1) == old_stack.ports[port_name].intf_name and \
-                                                str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[
-                                            0]:
+                                   str(link.intf1.ip) == old_stack.ports[port_name].ip_address.split('/')[0]:
                                     self._remove_link(server.name, link)
                                     break
 
@@ -282,10 +298,28 @@ class OpenstackCompute(object):
         return True
 
     def update_ip_addresses(self, old_stack, new_stack):
+        """
+        Updates the subnet and the port IP addresses - which should always be in this order!
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
         self.update_subnet_cidr(old_stack, new_stack)
         self.update_port_addresses(old_stack, new_stack)
 
     def update_port_addresses(self, old_stack, new_stack):
+        """
+        Updates the port IP addresses. First resets all issued addresses. Then get all IP addresses from the old
+        stack and sets them to the same ports in the new stack. Finally all new or changed instances will get new
+        IP addresses.
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
         for net in new_stack.nets.values():
             net.reset_issued_ip_addresses()
 
@@ -306,25 +340,30 @@ class OpenstackCompute(object):
                     port.ip_address = net.get_new_ip_address(port.name)
 
     def update_subnet_cidr(self, old_stack, new_stack):
-        subnet_counter = Net.ip_2_int('10.0.0.1')
-        issued_ip_addresses = list()
+        """
+        Updates the subnet IP addresses. If the new stack contains subnets from the old stack it will take those
+        IP addresses. Otherwise it will create new IP addresses for the subnet.
+
+        :param old_stack: The currently running stack
+        :type old_stack: :class:`heat.resources.stack`
+        :param new_stack: The new created stack
+        :type new_stack: :class:`heat.resources.stack`
+        """
+        for old_subnet in old_stack.nets.values():
+            IP.free_cidr(old_subnet.get_cidr(), old_subnet.subnet_id)
+
         for subnet in new_stack.nets.values():
             subnet.clear_cidr()
             for old_subnet in old_stack.nets.values():
                 if subnet.subnet_name == old_subnet.subnet_name:
-                    subnet.set_cidr(old_subnet.get_cidr())
-                    issued_ip_addresses.append(old_subnet.get_cidr())
+                    if IP.assign_cidr(old_subnet.get_cidr(), subnet.subnet_id):
+                        subnet.set_cidr(old_subnet.get_cidr())
 
         for subnet in new_stack.nets.values():
-            if subnet.get_cidr() in issued_ip_addresses:
+            if IP.is_cidr_issued(subnet.get_cidr()):
                 continue
 
-            cird = Net.int_2_ip(subnet_counter) + '/24'
-            subnet_counter += 256
-            while cird in issued_ip_addresses:
-                cird = Net.int_2_ip(subnet_counter) + '/24'
-                subnet_counter += 256
-
+            cird = IP.get_new_cidr(subnet.subnet_id)
             subnet.set_cidr(cird)
         return
 
@@ -370,7 +409,6 @@ class OpenstackCompute(object):
                 network_dict[network_dict['id']] = self.find_network_by_name_or_id(port.net_name).name
                 network.append(network_dict)
         self.compute_nets[server.name] = network
-
         c = self.dc.startCompute(server.name, image=server.image, command=server.command,
                                  network=network, flavor_name=server.flavor)
         server.emulator_compute = c
@@ -557,9 +595,9 @@ class OpenstackCompute(object):
             raise Exception("Port with name %s already exists." % name)
         logging.debug("Creating port with name %s" % name)
         port = Port(name)
-        port.id = str(uuid.uuid4())
         if not stack_operation:
             self.ports[port.id] = port
+            port.create_intf_name()
         return port
 
     def find_port_by_name_or_id(self, name_or_id):

@@ -41,11 +41,27 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(QueryTopology, "/v1/topo",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(Shutdown, "/shutdown")
+
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
         if self.app is not None:
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+class Shutdown(Resource):
+    def get(self):
+        logging.debug(("%s is beeing shut down") % (__name__))
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 
 class ChainVersionsList(Resource):
@@ -56,14 +72,13 @@ class ChainVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         '''
-        :param id: tenantid, will not be parsed
         :return: flask.Response containing the openstack like description of the chain api
         '''
         # at least let it look like an open stack function
         try:
-            resp = """[
+            resp = """
                 {
                     "versions": [
                         {
@@ -198,12 +213,14 @@ class ChainVnfInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
+
         if request.is_json:
             path = request.json.get('path')
             layer2 = request.json.get('layer2', True)
         else:
             path = None
             layer2 = True
+
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
