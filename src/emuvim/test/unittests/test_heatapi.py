@@ -1106,6 +1106,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
 
+
     def test_CombinedTesting(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__),
@@ -1174,6 +1175,45 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 14)
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
+        print(" ")
+
+
+        # workflow create floating ip and assign it to a server
+
+        print('->>>>>>> CombinedNeutronCreateFloatingIP ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/floatingips"
+        createflip = requests.post(url, headers=headers,
+                                            data='{"floatingip":{"floating_network_id":"default"}}')
+        self.assertEqual(createflip.status_code, 200)
+        self.assertIsNotNone(json.loads(createflip.content)["floatingip"].get("port_id"))
+        port_id = json.loads(createflip.content)["floatingip"].get("port_id")
+        print(" ")
+
+        print('->>>>>>> CombinedNovaGetServer ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/detail"
+        listserverapisdetailedresponse = requests.get(url, headers=headers)
+        self.assertEqual(listserverapisdetailedresponse.status_code, 200)
+        self.assertEqual(json.loads(listserverapisdetailedresponse.content)["servers"][0]["status"], "ACTIVE")
+        server_id = json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"]
+        print(" ")
+
+        print('->>>>>>> CombinedNovaAssignInterface ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s/os-interface" % server_id
+        assign = requests.post(url, headers=headers,
+                                            data='{"interfaceAttachment":{"net_id": "default"}}')
+        self.assertEqual(assign.status_code, 202)
+        self.assertIsNotNone(json.loads(assign.content)["interfaceAttachment"].get("port_id"))
+        port_id = json.loads(assign.content)["interfaceAttachment"].get("port_id")
+        print(" ")
+
+        print('->>>>>>> CombinedNovaDeleteInterface ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s/os-interface/%s" % (server_id, port_id)
+        getintfs = requests.delete(url, headers=headers)
+        self.assertEqual(getintfs.status_code, 202)
         print(" ")
 
 
