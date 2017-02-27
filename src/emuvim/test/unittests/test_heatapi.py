@@ -1057,13 +1057,6 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>> testUpdateNonExistingStack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/non_existing_id_1234"
-        updatenonexistingstackresponse = requests.put(url, data={"non":"sense"}, headers=headers)
-        self.assertEqual(updatenonexistingstackresponse.status_code, 404)
-        print(" ")
-
-        print('->>>>>>> testUpdateNonExistingStack ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/non_existing_id_1234"
         updatenonexistingstackresponse = requests.put(url, data={"non": "sense"}, headers=headers)
         self.assertEqual(updatenonexistingstackresponse.status_code, 404)
         print(" ")
