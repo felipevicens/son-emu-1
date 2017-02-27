@@ -9,13 +9,12 @@
 import logging
 import threading
 import uuid
-import re
 import networkx as nx
 import chain_api
 import json
 from emuvim.api.heat.resources import Net, Port
 from mininet.node import OVSSwitch, RemoteController, Node
-from openstack_dummies import MonitorDummyApi
+from emuvim.api.heat.monitor_api import MonitorDummyApi
 
 
 class OpenstackManage(object):

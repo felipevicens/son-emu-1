@@ -60,6 +60,14 @@ heat.manage module
     :undoc-members:
     :show-inheritance:
 
+heat.monitor_api module
+-----------------------
+
+.. automodule:: heat.monitor_api
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 heat.openstack_api_endpoint module
 ----------------------------------
 

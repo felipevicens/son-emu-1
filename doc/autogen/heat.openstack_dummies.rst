@@ -36,14 +36,6 @@ heat.openstack_dummies.keystone_dummy_api module
     :undoc-members:
     :show-inheritance:
 
-heat.openstack_dummies.monitoring_dummy_api module
---------------------------------------------------
-
-.. automodule:: heat.openstack_dummies.monitoring_dummy_api
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 heat.openstack_dummies.neutron_dummy_api module
 -----------------------------------------------
 
