@@ -312,6 +312,15 @@ class testRestApi(ApiBaseHeat):
         resp = json.loads(lblistresponse.content)
         self.assertIsNotNone(resp.get('cookie'))
         self.assertIsNotNone(resp.get('floating_ip'))
+        cookie = resp.get('cookie')
+        print(" ")
+
+        print('->>>>>>> testDeleteFloatingLoadbalancer ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0/floating/%s/blubb" % cookie
+        lblistresponse = requests.delete(url, headers=headers)
+        print (lblistresponse.content)
+        self.assertEqual(lblistresponse.status_code, 200)
         print(" ")
 
         print('->>>>>>> testLoadbalancingCustomPath ->>>>>>>>>>>>>>>')
