@@ -118,7 +118,7 @@ class OpenstackManage(object):
             # set a dpid for the switch. for this we have to get the id of the next possible dc
             self.floating_switch = self.net.addSwitch("fs1", dpid=hex(first_dc._get_next_dc_dpid())[2:])
             # this is the interface appearing on the physical host
-            self.floating_root = Node('root', inNamespace=False)
+            self.floating_root = Node('root')
             self.net.hosts.append(self.floating_root)
             self.net.nameToNode['root'] = self.floating_root
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
@@ -542,6 +542,7 @@ class OpenstackManage(object):
             # also add the arp reply for ip+1 to the interface
             self.setup_arp_reply_at(src_sw, src_sw_inport_nr, plus_one, target_mac, cookie=cookie)
             self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
+            net.getNodeByName(src_vnf_name).setHostRoute(target_ip, src_vnf_interface)
 
             # choose free vlan if path contains more than 1 switch
             if len(path) > 1:
