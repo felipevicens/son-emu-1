@@ -292,6 +292,8 @@ class OpenstackCompute(object):
         for server in new_stack.servers.values():
             if server.name not in self.dc.containers:
                 self._start_compute(server)
+            else:
+                server.emulator_compute = self.dc.containers.get(server.name)
 
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
