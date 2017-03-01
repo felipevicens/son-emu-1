@@ -118,12 +118,17 @@ class OpenstackManage(object):
             # set a dpid for the switch. for this we have to get the id of the next possible dc
             self.floating_switch = self.net.addSwitch("fs1", dpid=hex(first_dc._get_next_dc_dpid())[2:])
             # this is the interface appearing on the physical host
-            self.floating_root = Node('root')
+            self.floating_root = Node('root', inNamespace=False)
             self.net.hosts.append(self.floating_root)
             self.net.nameToNode['root'] = self.floating_root
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
             self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
+
+
+    def stop_floating_network(self):
+        self._net = None
+        self.floating_switch = None
 
     def add_endpoint(self, ep):
         """

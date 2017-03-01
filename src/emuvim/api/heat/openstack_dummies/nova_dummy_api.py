@@ -710,6 +710,10 @@ class NovaInterfaceToServer(Resource):
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
+
+            if server.emulator_compute is None:
+                logging.error("The targeted container does not exist.")
+                return Response("The targeted container of %s does not exist." % serverid, status=404)
             data = json.loads(request.data).get("interfaceAttachment")
             resp = dict()
             port = data.get("port_id", None)
@@ -746,7 +750,6 @@ class NovaInterfaceToServer(Resource):
                 raise Exception("You can only attach interfaces by port or network at the moment")
 
             if network == self.api.manage.floating_network:
-                self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
                 dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
             else:
