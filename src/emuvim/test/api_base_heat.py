@@ -106,6 +106,7 @@ class ApiBaseHeat(unittest.TestCase):
 
     def stopApi(self):
         for i in self.api:
+            i.manage.stop_floating_network()
             i.stop()
 
     def startNet(self):

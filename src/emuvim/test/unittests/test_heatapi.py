@@ -273,8 +273,9 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>> testLoadbalancing ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/dc0/s1/firewall1/firewall1:cp03:output"
-        lblistresponse = requests.post(url,  data=json.dumps(
-            json.loads('{"dst_vnf_interfaces":[{"pop":"dc0","stack":"s1","server":"iperf1","port":"iperf1:cp02:input","path":["dc1.s1","s1","s2","s3","s1","dc1.s1"]}]}')), headers=headers)
+        lblistresponse = requests.post(url, data=json.dumps(
+            {"dst_vnf_interfaces":[{"pop":"dc0","stack":"s1","server":"iperf1","port":"iperf1:cp02:input"}]})
+            , headers=headers)
         print (lblistresponse.content)
         self.assertEqual(lblistresponse.status_code, 200)
         self.assertIn("dc0_s1_firewall1:fire-out-0", lblistresponse.content)
@@ -300,15 +301,53 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(lbdeleteresponse.status_code, 200)
         print(" ")
 
-        """print('->>>>>>> testLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>> testFloatingLoadbalancer ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0/floating/bla/blubb"
+        lblistresponse = requests.post(url, data=json.dumps(
+            {"dst_vnf_interfaces":[{"pop":"dc0","stack":"s1","server":"iperf1","port":"iperf1:cp02:input"}]})
+            , headers=headers)
+        print (lblistresponse.content)
+        self.assertEqual(lblistresponse.status_code, 200)
+        resp = json.loads(lblistresponse.content)
+        self.assertIsNotNone(resp.get('cookie'))
+        self.assertIsNotNone(resp.get('floating_ip'))
+        cookie = resp.get('cookie')
+        print(" ")
+
+        print('->>>>>>> testDeleteFloatingLoadbalancer ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/dc0/floating/%s/blubb" % cookie
+        lblistresponse = requests.delete(url, headers=headers)
+        print (lblistresponse.content)
+        self.assertEqual(lblistresponse.status_code, 200)
+        print(" ")
+
+        print('->>>>>>> testLoadbalancingCustomPath ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/dc0_s1_firewall1/fire-out-0"
-        lblistresponse = requests.post(url, data=json.dumps(json.loads('{"dst_vnf_interfaces":["dc0_s1_iperf1"]}')),headers=headers)
+        lblistresponse = requests.post(url, data=json.dumps(
+            {"dst_vnf_interfaces":{"dc0_s1_iperf1":"iper-in-0"},
+             "path": {"dc0_s1_iperf1": {"iper-in-0": ["dc1.s1", "s1","s2","s3","s1","dc1.s1"]}}}), headers=headers)
         print (lblistresponse.content)
         self.assertEqual(lblistresponse.status_code, 200)
         self.assertIn("dc0_s1_firewall1:fire-out-0", lblistresponse.content)
         print(" ")
-        """
+
+        print('->>>>>>> testLoadbalancingListCustomPath ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:4000/v1/lb/list"
+        lblistresponse = requests.get(url, headers=headers)
+        self.assertEqual(lblistresponse.status_code, 200)
+        print (lblistresponse.content )
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["paths"][0]["dst_vnf"], "dc0_s1_iperf1")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["paths"][0]["dst_intf"], "iper-in-0")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["paths"][0]["path"],
+                         ["dc1.s1", "s1","s2","s3","s1","dc1.s1"] )
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["src_vnf"], "dc0_s1_firewall1")
+        self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["src_intf"],"fire-out-0")
+        print(" ")
+
 
         print('->>>>>>> testDeleteLoadbalancing ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -1076,6 +1115,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletestackdetailsresponse.status_code, 204)
         print(" ")
 
+
     def test_CombinedTesting(self):
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__),
@@ -1144,6 +1184,45 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(len(json.loads(listnetworksesponse.content)["networks"]), 14)
         for net in json.loads(listnetworksesponse.content)["networks"]:
             self.assertEqual(len(str(net['subnets'][0])), 36)
+        print(" ")
+
+
+        # workflow create floating ip and assign it to a server
+
+        print('->>>>>>> CombinedNeutronCreateFloatingIP ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:9696/v2.0/floatingips"
+        createflip = requests.post(url, headers=headers,
+                                            data='{"floatingip":{"floating_network_id":"default"}}')
+        self.assertEqual(createflip.status_code, 200)
+        self.assertIsNotNone(json.loads(createflip.content)["floatingip"].get("port_id"))
+        port_id = json.loads(createflip.content)["floatingip"].get("port_id")
+        print(" ")
+
+        print('->>>>>>> CombinedNovaGetServer ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/detail"
+        listserverapisdetailedresponse = requests.get(url, headers=headers)
+        self.assertEqual(listserverapisdetailedresponse.status_code, 200)
+        self.assertEqual(json.loads(listserverapisdetailedresponse.content)["servers"][0]["status"], "ACTIVE")
+        server_id = json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"]
+        print(" ")
+
+        print('->>>>>>> CombinedNovaAssignInterface ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s/os-interface" % server_id
+        assign = requests.post(url, headers=headers,
+                                            data='{"interfaceAttachment":{"net_id": "default"}}')
+        self.assertEqual(assign.status_code, 202)
+        self.assertIsNotNone(json.loads(assign.content)["interfaceAttachment"].get("port_id"))
+        port_id = json.loads(assign.content)["interfaceAttachment"].get("port_id")
+        print(" ")
+
+        print('->>>>>>> CombinedNovaDeleteInterface ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s/os-interface/%s" % (server_id, port_id)
+        getintfs = requests.delete(url, headers=headers)
+        self.assertEqual(getintfs.status_code, 202)
         print(" ")
 
 
