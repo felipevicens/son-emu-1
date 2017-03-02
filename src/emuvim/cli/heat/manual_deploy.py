@@ -129,12 +129,12 @@ def add_floatingip_to_server(server, datacenter):
     return resp
 
 def create_floating_ip(datacenter):
-    data = '{"floatingip":{"floating_network_id":"floating-network"}}'
+    data = '{"floatingip":{"floating_network_id":"default"}}'
     resp = run_request("/floatingips", data=data, neutron=True, req="POST", dc=datacenter)
     return json.loads(resp.content)["floatingip"]["port_id"]
 
 def assign_floating_ip_to_server(server_id, datacenter):
-    data = '{"interfaceAttachment":{"net_id":"floating-network"}}'
+    data = '{"interfaceAttachment":{"net_id":"default"}}'
     resp = run_request("/servers/%s/os-interface" % str(server_id), data=data, nova=True, req="POST", dc=datacenter)
     return json.loads(resp.content)
 
@@ -201,7 +201,7 @@ def lb_webservice_topo():
     netid2, portid2 = create_network_and_port(net_name="net4", cidr="192.168.4.0/24",
                                               datacenter=dc, port_name="port-out")
     db_in_port = create_port(netid2, datacenter=dc)
-    server = create_server("db", "m1.tiny", "xschlef/database", db_in_port, datacenter=dc)
+    server = create_server("db", "m1.tiny", "xschlef/webserver", db_in_port, datacenter=dc)
     server = create_server("web", "m1.tiny", "xschlef/webserver",[portid, portid2], datacenter=dc)
 
     # web in datacenter 3

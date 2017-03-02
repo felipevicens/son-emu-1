@@ -27,7 +27,7 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaInterfaceToServer, "/v2.1/<id>/servers/<serverid>/os-interface",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaShowAndDeleteInterfaceAtServer, "/v2.1/<id>/servers/<serverid>/os-interface/<portid>",
+        self.api.add_resource(NovaShowAndDeleteInterfaceAtServer, "/v2.1/<id>/servers/<serverid>/os-interface/<port_id>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors",
                               resource_class_kwargs={'api': self})
@@ -710,6 +710,10 @@ class NovaInterfaceToServer(Resource):
             server = self.api.compute.find_server_by_name_or_id(serverid)
             if server is None:
                 return Response("Server with id or name %s does not exists." % serverid, status=404)
+
+            if server.emulator_compute is None:
+                logging.error("The targeted container does not exist.")
+                return Response("The targeted container of %s does not exist." % serverid, status=404)
             data = json.loads(request.data).get("interfaceAttachment")
             resp = dict()
             port = data.get("port_id", None)
@@ -719,6 +723,8 @@ class NovaInterfaceToServer(Resource):
             network = None
 
             if net is not None and port is not None:
+                port = self.api.compute.find_port_by_name_or_id(port)
+                network = self.api.compute.find_network_by_name_or_id(net)
                 network_dict['id'] = port.intf_name
                 network_dict['ip'] = port.ip_address
                 network_dict[network_dict['id']] = network.name
@@ -744,7 +750,6 @@ class NovaInterfaceToServer(Resource):
                 raise Exception("You can only attach interfaces by port or network at the moment")
 
             if network == self.api.manage.floating_network:
-                self.api.manage.floating_switch.dpctl("add-flow", 'cookie=1,actions=NORMAL')
                 dc.net.addLink(server.emulator_compute, self.api.manage.floating_switch,
                                params1=network_dict, cls=Link, intfName1=port.intf_name)
             else:
@@ -798,16 +803,13 @@ class NovaShowAndDeleteInterfaceAtServer(Resource):
             for link in self.api.compute.dc.net.links:
                 if str(link.intf1) == port.intf_name and \
                                 str(link.intf1.ip) == port.ip_address.split('/')[0]:
-                    self.api.compute.dc._remove_link(link.intf1.node.name, link)
+                    self.api.compute.dc.net.removeLink(link)
                     break
-
-            if self.api.manage.get_flow_group(server.name, port.intf_name) is not None:
-                self.api.manage.delete_loadbalancer(server.name, port.intf_name)
 
             response = Response("", status=202, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
 
         except Exception as ex:
-            logging.exception(u"%s: Could not detach interface to the server." % __name__)
+            logging.exception(u"%s: Could not detach interface from the server." % __name__)
             return ex.message, 500

@@ -125,6 +125,11 @@ class OpenstackManage(object):
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
             self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
 
+
+    def stop_floating_network(self):
+        self._net = None
+        self.floating_switch = None
+
     def add_endpoint(self, ep):
         """
         Registers an openstack endpoint with manage
@@ -542,6 +547,7 @@ class OpenstackManage(object):
             # also add the arp reply for ip+1 to the interface
             self.setup_arp_reply_at(src_sw, src_sw_inport_nr, plus_one, target_mac, cookie=cookie)
             self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
+            net.getNodeByName(src_vnf_name).setHostRoute(target_ip, src_vnf_interface)
 
             # choose free vlan if path contains more than 1 switch
             if len(path) > 1:
