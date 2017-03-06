@@ -225,7 +225,7 @@ class NovaListServersApi(Resource):
                 if flavor.id == server_dict.get('flavorRef', ''):
                     server.flavor = flavor.name
             for image in self.api.compute.images.values():
-                if image.id == server_dict['imageRef']:
+                if image.id in server_dict['imageRef']:
                     server.image = image.name
 
             if networks is not None:
@@ -688,6 +688,37 @@ class NovaShowServerDetails(Resource):
 
         except Exception as ex:
             logging.exception(u"%s: Could not retrieve the server details." % __name__)
+            return ex.message, 500
+
+    def delete(self, id, serverid):
+        """
+        Delete a server instance.
+
+        :param id: tenant id, we ignore this most of the time
+        :type id: ``str``
+        :param serverid: The UUID of the server
+        :type serverid: ``str``
+        :return: Returns 200 if everything is fine.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
+        try:
+            server = self.api.compute.find_server_by_name_or_id(serverid)
+            if server is None:
+                return Response('Could not find server.', status=404, mimetype="application/json")
+
+            for port_name in server.port_names:
+                self.api.compute.delete_port(port_name)
+
+            if not self.api.compute.delete_server(server):
+                return Response('Could not find server.', status=409, mimetype="application/json")
+
+            response = Response('Server deleted.', status=204, mimetype="application/json")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+        except Exception as ex:
+            logging.exception(u"%s: Could not create the server." % __name__)
             return ex.message, 500
 
 

@@ -66,7 +66,12 @@ class GlanceListApiVersions(Resource):
 class GlanceSchema(Resource):
     def get(self):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        return {}
+        resp = dict()
+        resp['name'] = 'someImageName'
+        resp['properties'] = dict()
+        # just an ugly hack to allow the openstack client to work
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
 
 class GlanceListImagesApi(Resource):
     def __init__(self, api):

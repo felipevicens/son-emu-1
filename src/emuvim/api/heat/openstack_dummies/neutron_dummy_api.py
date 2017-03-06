@@ -709,8 +709,6 @@ class NeutronCreatePort(Resource):
                 pass
             if "fixed_ips" in port_dict["port"]:
                 pass
-            if "id" in port_dict["port"]:
-                port.id = port_dict["port"]["id"]
             if "mac_address" in port_dict["port"]:
                 port.mac_address = port_dict["port"]["mac_address"]
             if "status" in port_dict["port"]:
