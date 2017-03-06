@@ -59,14 +59,17 @@ class testRestApi(ApiBaseHeat):
         self.startNet()
 
     def testChainingDummy(self):
+        print('->>>>>>> test Chaining Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_chaining.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
-        print(" ")
 
 
-        print('->>>>>>> testChainingVersions ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining Versions ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/"
         listapiversionstackresponse = requests.get(url, headers=headers)
@@ -74,7 +77,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v1")
         print(" ")
 
-        print('->>>>>>> testChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining List ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -82,7 +85,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(chainlistresponse.content)["chains"], [])
         print(" ")
 
-        print('->>>>>>> testLoadbalancingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Loadbalancing List ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/list"
         lblistresponse = requests.get(url, headers=headers)
@@ -91,7 +94,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/iper-in-0"
-        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" %(testchain)
         chainvnfresponse = requests.put(url)
@@ -99,7 +102,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(chainvnfresponse.content)["cookie"], 0)
         print(" ")
 
-        print('->>>>>>> testChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining List ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -110,7 +113,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(chainlistresponse.content)["chains"][0]["src_intf"], "iper-in-0")
         print(" ")
 
-        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Delete Chain ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         deletechainvnfresponse = requests.delete(url)
@@ -118,7 +121,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletechainvnfresponse.content, "true")
         print(" ")
 
-        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining List If Empty Again ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -127,7 +130,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/iper-in-0"
-        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Stack Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         stackchainvnfresponse = requests.post(url, data=json.dumps(json.loads('{"path":["dc1.s1", "s1","s2","s3","s1","dc1.s1"]}')), headers=headers)
@@ -137,7 +140,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testStackChainingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Stack Chaining List ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -150,7 +153,7 @@ class testRestApi(ApiBaseHeat):
         self.assertItemsEqual(json.loads(chainlistresponse.content)["chains"][0]["path"],['dc1.s1', 's1', 's2', 's3', 's1', 'dc1.s1'])
         print(" ")
 
-        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Delete Chain ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         deletechainvnfresponse = requests.delete(url)
@@ -158,7 +161,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletechainvnfresponse.content, "true")
         print(" ")
 
-        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining List If Empty Again ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -168,7 +171,7 @@ class testRestApi(ApiBaseHeat):
 
 
         testchain = "dc0_s1_firewall1/non-existing-interface/dc0_s1_iperf1/iper-in-0"
-        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -176,7 +179,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/non-existing-interface"
-        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -184,7 +187,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0_s1_firewall1/non-existing-interface/dc0_s1_iperf1/iper-in-0"
-        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Delete Chain ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         deletechainvnfresponse = requests.delete(url)
@@ -192,7 +195,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0_s1_firewall1/fire-out-0/dc0_s1_iperf1/non-existing-interface"
-        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Delete Chain ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         deletechainvnfresponse = requests.delete(url)
@@ -200,7 +203,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "non-existent-dc/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
-        print('->>>>>>> testChainVNFNon-ExistingDC ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Non-Existing DC ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -209,7 +212,7 @@ class testRestApi(ApiBaseHeat):
 
 
         testchain = "dc0/s1/firewall1/non-existent:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
-        print('->>>>>>> testChainVNFNon-ExistingInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Non-Existing Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -217,7 +220,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/non-existent:cp02:input"
-        print('->>>>>>> testChainVNFNon-ExistingInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Non-Existing Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -225,7 +228,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
-        print('->>>>>>> testChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         chainvnfresponse = requests.put(url)
@@ -234,7 +237,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(chainvnfresponse.content)["cookie"], 0)
         print(" ")
 
-        print('->>>>>>> testChainVNFDeleteChain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chain VNF Delete Chain ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         deletechainvnfresponse = requests.delete(url)
@@ -242,7 +245,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deletechainvnfresponse.content, "true")
         print(" ")
 
-        print('->>>>>>> testChainingListIfEmptyAgain ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Chaining List If Empty Again ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/list"
         chainlistresponse = requests.get(url, headers=headers)
@@ -251,7 +254,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
-        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Stack Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         stackchainvnfresponse = requests.post(url, data=json.dumps(
@@ -262,7 +265,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
         testchain = "dc0/s1/firewall1/firewall1:cp03:output/dc0/s1/iperf1/iperf1:cp02:input"
-        print('->>>>>>> testStackChainVNFInterfaces ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Stack Chain VNF Interfaces ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/chain/%s" % (testchain)
         stackchainvnfresponse = requests.delete(url, headers=headers)
@@ -270,7 +273,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Loadbalancing ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/dc0/s1/firewall1/firewall1:cp03:output"
         lblistresponse = requests.post(url, data=json.dumps(
@@ -281,7 +284,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("dc0_s1_firewall1:fire-out-0", lblistresponse.content)
         print(" ")
 
-        print('->>>>>>> testLoadbalancingList ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Loadbalancing List ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/list"
         lblistresponse = requests.get(url, headers=headers)
@@ -293,7 +296,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(lblistresponse.content)["loadbalancers"][0]["src_intf"],"fire-out-0")
         print(" ")
 
-        print('->>>>>>> deleteLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test delete Loadbalancing ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/dc0/s1/firewall1/firewall1:cp03:output"
         lbdeleteresponse = requests.delete(url, headers=headers)
@@ -349,14 +352,14 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testDeleteLoadbalancing ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Delete Loadbalancing ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/lb/dc0_s1_firewall1/fire-out-0"
         lblistresponse = requests.delete(url, headers=headers)
         self.assertEqual(lblistresponse.status_code, 200)
         print(" ")
 
-        print('->>>>>>> testQueryTopology ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Query Topology ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/topo"
         topolistresponse = requests.get(url, headers=headers)
@@ -367,13 +370,17 @@ class testRestApi(ApiBaseHeat):
 
 
     def testMonitoringDummy(self):
+        print('->>>>>>> test Monitoring Dummy Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),headers=headers)
-        print(" ")
 
-        print('->>>>>>> testMonitoringListVersions ->>>>>>>>>>>>>>>')
+
+        print('->>>>>>> test Monitoring List Versions ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/"
         listapiversionstackresponse = requests.get(url, headers=headers)
@@ -381,7 +388,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v1")
         print(" ")
 
-        print('->>>>>>> testMonitorVnf ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0_s1_firewall1"
         listmonitoringvnfresponse = requests.get(url, headers=headers)
@@ -389,7 +396,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(listmonitoringvnfresponse.content)["MEM_%"], 0)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfAbsWithoutMininetName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF Abs Without Mininet Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/abs/dc0_s1_firewall1"
         listmonitoringvnfabsresponse = requests.get(url, headers=headers)
@@ -397,7 +404,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(listmonitoringvnfabsresponse.content)["MEM_%"], 0)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfAbsWithoutMininetName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF Abs Without Mininet Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/abs/mn.dc0_s1_firewall1"
         listmonitoringvnfabsmnresponse = requests.get(url, headers=headers)
@@ -405,14 +412,14 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(listmonitoringvnfabsmnresponse.content)["MEM_%"], 0)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfAbsWithNonExistingVnf ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF Abs With Non-Existing VNF ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/abs/mn.dc0_s1_non_existing"
         listmonitoringvnfabsnonexistingresponse = requests.get(url, headers=headers)
         self.assertEqual(listmonitoringvnfabsnonexistingresponse.status_code, 500)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF DC Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
         listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
@@ -421,7 +428,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfDcStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF DC Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/firewall1:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
         listmonitoringvnfdcstackresponse = requests.get(url, headers=headers)
@@ -429,7 +436,7 @@ class testRestApi(ApiBaseHeat):
         self.assertGreaterEqual(json.loads(listmonitoringvnfdcstackresponse.content)["MEM_%"], 0)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfDcStackWithNonexistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF DC Stack With Non-Existing Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0/s1/non_existing"
         listmonitoringvnfdcstackwithnonexistingnameresponse = requests.get(url, headers=headers)
@@ -437,14 +444,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(listmonitoringvnfdcstackwithnonexistingnameresponse.status_code, 500)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfDcStackWithNonexistingDC ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF DC Stack With Non-Existing DC ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/non_exisintg0/s1/firewall1"
         listmonitoringvnfdcstackwithnonexistingdcresponse = requests.get(url, headers=headers)
         self.assertEqual(listmonitoringvnfdcstackwithnonexistingdcresponse.status_code, 500)
         print(" ")
 
-        print('->>>>>>> testMonitorVnfDcStackWithNonexistingStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Monitor VNF DC Stack With Non-Existing Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:3000/v1/monitor/dc0/non_existing_stack/firewall1"
         listmonitoringvnfdcstackwithnonexistingstackresponse = requests.get(url, headers=headers)
@@ -456,13 +463,17 @@ class testRestApi(ApiBaseHeat):
 
 
     def testNovaDummy(self):
+        print('->>>>>>> test Nova Dummy Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)),
                       headers=headers)
 
-        print('->>>>>>> testNovaListVersions ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Versions ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/"
         listapiversionnovaresponse = requests.get(url, headers=headers)
@@ -474,7 +485,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionnovaresponse.content)["versions"][0]["updated"], "2013-07-23T11:33:21Z")
         print(" ")
 
-        print('->>>>>>> testNovaVersionShow ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Version Show ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla"
         listapiversion21novaresponse = requests.get(url, headers=headers)
@@ -486,13 +497,28 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversion21novaresponse.content)["version"]["updated"], "2013-07-23T11:33:21Z")
         print(" ")
 
-        print('->>>>>>> testNovaVersionListServerAPIs ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Version List Server APIs ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers"
         listserverapisnovaresponse = requests.get(url, headers=headers)
         self.assertEqual(listserverapisnovaresponse.status_code, 200)
         self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
         print(" ")
+
+        print('->>>>>>> test Nova Delete Server APIs ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisnovaresponse.content)["servers"][0]["id"])
+        deleteserverapisnovaresponse = requests.delete(url, headers=headers)
+        self.assertEqual(deleteserverapisnovaresponse.status_code, 204)
+        print(" ")
+
+        print('->>>>>>> test Nova Delete Non-Existing Server APIs ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/non-existing-ix"
+        deleteserverapisnovaresponse = requests.delete(url, headers=headers)
+        self.assertEqual(deleteserverapisnovaresponse.status_code, 404)
+        print(" ")
+
 
         print('->>>>>>> testNovaVersionListServerAPIs_withPortInformation ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -502,7 +528,7 @@ class testRestApi(ApiBaseHeat):
         self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
         print(" ")
 
-        print('->>>>>>> testNovaListFlavors ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Flavors ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors"
         listflavorsresponse = requests.get(url, headers=headers)
@@ -523,7 +549,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["links"][0]['href'])
         print(" ")
 
-        print('->>>>>>> testNovaListFlavorsDetail ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Flavors Detail ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/detail"
         listflavorsdetailresponse = requests.get(url, headers=headers)
@@ -544,7 +570,8 @@ class testRestApi(ApiBaseHeat):
         self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["links"][0]['href'])
         print(" ")
 
-        print('->>>>>>> testNovaListFlavorById ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Flavor By Id ->>>>>>>>>>>>>>>')
+
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/%s" % (json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"])
         listflavorsbyidresponse = requests.get(url, headers=headers)
@@ -552,7 +579,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listflavorsbyidresponse.content)["flavor"]["id"], json.loads(listflavorsdetailresponse.content)["flavors"][0]["id"])
         print(" ")
 
-        print('->>>>>>> testNovaListImages ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Images ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/images"
         listimagesresponse = requests.get(url, headers=headers)
@@ -564,7 +591,7 @@ class testRestApi(ApiBaseHeat):
         #self.assertIn(json.loads(listimagesresponse.content)["images"][2]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         print(" ")
 
-        print('->>>>>>> testNovaListImagesDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Images Details ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/images/detail"
         listimagesdetailsresponse = requests.get(url, headers=headers)
@@ -576,7 +603,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listimagesdetailsresponse.content)["images"][0]["metadata"]["architecture"],"x86_64")
         print(" ")
 
-        print('->>>>>>> testNovaListImageById ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Image By Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/images/%s" % (json.loads(listimagesdetailsresponse.content)["images"][0]["id"])
         listimagebyidresponse = requests.get(url, headers=headers)
@@ -584,7 +611,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listimagebyidresponse.content)["image"]["id"],json.loads(listimagesdetailsresponse.content)["images"][0]["id"])
         print(" ")
 
-        print('->>>>>>> testNovaListImageByNonExistendId ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova List Image By Non-Existend Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/images/non_existing_id"
         listimagebynonexistingidresponse = requests.get(url, headers=headers)
@@ -598,7 +625,7 @@ class testRestApi(ApiBaseHeat):
 
 
 
-        print('->>>>>>> testNovacreateServerInstance ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Create Server Instance ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers"
         data = '{"server": {"name": "X", "flavorRef": "%s", "imageRef":"%s"}}' % (json.loads(listflavorsresponse.content)["flavors"][0]["id"], ubuntu_image_id)
@@ -607,7 +634,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(createserverinstance.content)["server"]["image"]["id"], ubuntu_image_id)
         print(" ")
 
-        print('->>>>>>> testNovacreateServerInstanceWithExistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Create Server Instance With Already Existing Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers"
         data = '{"server": {"name": "X", "flavorRef": "%s", "imageRef":"%s"}}' % (json.loads(listflavorsresponse.content)["flavors"][0]["id"], ubuntu_image_id)
@@ -615,7 +642,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(createserverinstance.status_code, 409)
         print(" ")
 
-        print('->>>>>>> testNovaVersionListServerAPIsDetailed ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Version List Server APIs Detailed ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers/detail"
         listserverapisdetailedresponse = requests.get(url, headers=headers)
@@ -623,16 +650,15 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listserverapisdetailedresponse.content)["servers"][0]["status"], "ACTIVE")
         print(" ")
 
-        print('->>>>>>> testNovaShowServerDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Show Server Details ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"])
         listserverdetailsresponse = requests.get(url, headers=headers)
         self.assertEqual(listserverdetailsresponse.status_code, 200)
-        print (listserverdetailsresponse.content)
         self.assertEqual(json.loads(listserverdetailsresponse.content)["server"]["flavor"]["links"][0]["rel"], "bookmark")
         print(" ")
 
-        print('->>>>>>> testNovaShowNonExistingServerDetails ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Nova Show Non-Existing Server Details ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers/non_existing_server_id"
         listnonexistingserverdetailsresponse = requests.get(url, headers=headers)
@@ -642,14 +668,17 @@ class testRestApi(ApiBaseHeat):
 
 
     def testNeutronDummy(self):
+        print('->>>>>>> test Neutron Dummy Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
         # test_heatapi_keystone_get_token = open("test_heatapi_keystone_get_token.json").read()
-        print(" ")
 
-        print('->>>>>>> testNeutronListVersions ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Versions ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/"
         listapiversionstackresponse = requests.get(url, headers=headers)
@@ -657,7 +686,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v2.0")
         print(" ")
 
-        print('->>>>>>> testNeutronShowAPIv2.0 ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show API v2.0 ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0"
         listapiversionv20response = requests.get(url, headers=headers)
@@ -667,7 +696,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionv20response.content)["resources"][2]["name"], "ports")
         print(" ")
 
-        print('->>>>>>> testNeutronListNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Networks ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse1 = requests.get(url, headers=headers)
@@ -678,14 +707,14 @@ class testRestApi(ApiBaseHeat):
         listNetworksId2 = json.loads(listnetworksesponse1.content)["networks"][1]["id"]
         print(" ")
 
-        print('->>>>>>> testNeutronListNonExistingNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Non-Existing Networks ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks?name=non_existent_network_name"
         listnetworksesponse2 = requests.get(url,headers=headers)
         self.assertEqual(listnetworksesponse2.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronListNetworksByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Networks By Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks?name=" + listNetworksName #tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
         listnetworksesponse3 = requests.get(url, headers=headers)
@@ -693,7 +722,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listnetworksesponse3.content)["networks"][0]["name"], listNetworksName)
         print(" ")
 
-        print('->>>>>>> testNeutronListNetworksById ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Networks By Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks?id=" + listNetworksId  # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
         listnetworksesponse4 = requests.get(url, headers=headers)
@@ -701,7 +730,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listnetworksesponse4.content)["networks"][0]["id"], listNetworksId)
         print(" ")
 
-        print('->>>>>>> testNeutronListNetworksByMultipleIds ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Networks By Multiple Ids ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks?id=" + listNetworksId + "&id="+ listNetworksId2 # tcpdump-vnf:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest
         listnetworksesponse5 = requests.get(url, headers=headers)
@@ -710,7 +739,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listnetworksesponse5.content)["networks"][1]["id"], listNetworksId2)
         print(" ")
 
-        print('->>>>>>> testNeutronShowNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks/"+listNetworksId
         shownetworksesponse = requests.get(url, headers=headers)
@@ -718,14 +747,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(shownetworksesponse.content)["network"]["status"], "ACTIVE")
         print(" ")
 
-        print('->>>>>>> testNeutronShowNetworkNonExistendNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Network Non-ExistendNetwork ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks/non_existent_network_id"
         shownetworksesponse2 = requests.get(url, headers=headers)
         self.assertEqual(shownetworksesponse2.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronCreateNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
         createnetworkresponse = requests.post(url, data='{"network": {"name": "sample_network","admin_state_up": true}}', headers=headers)
@@ -733,14 +762,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(createnetworkresponse.content)["network"]["status"], "ACTIVE")
         print(" ")
 
-        print('->>>>>>> testNeutronCreateNetworkWithExistingName 400->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Network With Existing Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
         createnetworkresponsefailure = requests.post(url,data='{"network": {"name": "sample_network","admin_state_up": true}}',headers=headers)
         self.assertEqual(createnetworkresponsefailure.status_code, 400)
         print(" ")
 
-        print('->>>>>>> testNeutronUpdateNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks/%s" % (json.loads(createnetworkresponse.content)["network"]["id"])
         updatenetworkresponse = requests.put(url, data='{"network": {"status": "ACTIVE", "admin_state_up":true, "tenant_id":"abcd123", "name": "sample_network_new_name", "shared":false}}' , headers=headers)
@@ -749,14 +778,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(updatenetworkresponse.content)["network"]["tenant_id"], "abcd123")
         print(" ")
 
-        print('->>>>>>> testNeutronUpdateNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Non-Existing Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks/non-existing-name123"
         updatenetworkresponse = requests.put(url, data='{"network": {"name": "sample_network_new_name"}}', headers=headers)
         self.assertEqual(updatenetworkresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronListSubnets ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Subnets ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
         listsubnetsresponse = requests.get(url, headers=headers)
@@ -767,7 +796,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("subnet", listSubnetName)
         print(" ")
 
-        print('->>>>>>> testNeutronListSubnetsByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Subnets By Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets?name="+listSubnetName
         listsubnetByNameresponse = requests.get(url, headers=headers)
@@ -775,7 +804,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("subnet", json.loads(listsubnetByNameresponse.content)["subnets"][0]["name"])
         print(" ")
 
-        print('->>>>>>> testNeutronListSubnetsById ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Subnets By Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId
         listsubnetsbyidresponse = requests.get(url, headers=headers)
@@ -783,7 +812,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("subnet", json.loads(listsubnetsbyidresponse.content)["subnets"][0]["name"])
         print(" ")
 
-        print('->>>>>>> testNeutronListSubnetsByMultipleId ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Subnets By Multiple Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId +"&id="+listSubnetId2
         listsubnetsbymultipleidsresponse = requests.get(url, headers=headers)
@@ -793,7 +822,7 @@ class testRestApi(ApiBaseHeat):
 
 
 
-        print('->>>>>>> testNeutronShowSubnet->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Subnet->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(listsubnetsresponse.content)["subnets"][0]["id"])
         showsubnetsresponse = requests.get(url, headers=headers)
@@ -801,14 +830,15 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("subnet", json.loads(showsubnetsresponse.content)["subnet"]["name"])
         print(" ")
 
-        print('->>>>>>> testNeutronShowNonExistingSubnet->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Non-Existing Subnet->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets/non-existing-id123"
         showsubnetsresponse = requests.get(url, headers=headers)
         self.assertEqual(showsubnetsresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronCreateSubnet ->>>>>>>>>>>>>>>')
+
+        print('->>>>>>> test Neutron Create Subnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
         createsubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.1/24"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
@@ -817,7 +847,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(createsubnetresponse.content)["subnet"]["name"], "new_subnet")
         print(" ")
 
-        print('->>>>>>> testNeutronCreateSecondSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Second Subnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
         createsubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.1/24"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
@@ -825,7 +855,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(createsubnetfailureresponse.status_code, 409)
         print(" ")
 
-        print('->>>>>>> testNeutronUpdateSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Subnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(createsubnetresponse.content)["subnet"]["id"])
         updatesubnetdata = '{"subnet": {"name": "new_subnet_new_name", "network_id":"some_id", "tenant_id":"new_tenant_id", "allocation_pools":"change_me", "gateway_ip":"192.168.1.120", "ip_version":4, "cidr":"10.0.0.1/24", "id":"some_new_id", "enable_dhcp":true} }'
@@ -834,7 +864,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(updatesubnetresponse.content)["subnet"]["name"], "new_subnet_new_name")
         print(" ")
 
-        print('->>>>>>> testNeutronUpdateNonExistingSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Non-Existing Subnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets/non-existing-subnet-12345"
         updatenonexistingsubnetdata = '{"subnet": {"name": "new_subnet_new_name"} }'
@@ -844,7 +874,7 @@ class testRestApi(ApiBaseHeat):
 
 
 
-        print('->>>>>>> testNeutronListPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Ports ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         listportsesponse = requests.get(url, headers=headers)
@@ -855,7 +885,7 @@ class testRestApi(ApiBaseHeat):
         listPortsId2 = json.loads(listportsesponse.content)["ports"][1]["id"]
         print(" ")
 
-        print('->>>>>>> testNeutronListPortsByName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Ports By Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports?name=" + listPortsName
         listportsbynameesponse = requests.get(url, headers=headers)
@@ -863,7 +893,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listportsbynameesponse.content)["ports"][0]["name"], listPortsName)
         print(" ")
 
-        print('->>>>>>> testNeutronListPortsById ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Ports By Id ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports?id=" + listPortsId1
         listportsbyidesponse = requests.get(url, headers=headers)
@@ -871,7 +901,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listportsbyidesponse.content)["ports"][0]["id"], listPortsId1)
         print(" ")
 
-        print('->>>>>>> testNeutronListPortsByMultipleIds ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Ports By Multiple Ids ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports?id=" + listPortsId1 +"&id="+listPortsId2
         listportsbymultipleidsesponse = requests.get(url, headers=headers)
@@ -879,14 +909,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listportsbymultipleidsesponse.content)["ports"][0]["id"], listPortsId1)
         print(" ")
 
-        print('->>>>>>> testNeutronListNonExistingPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron List Non-Existing Ports ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports?id=non-existing-port-id"
         listportsbynonexistingidsesponse = requests.get(url, headers=headers)
         self.assertEqual(listportsbynonexistingidsesponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronShowPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(listportsesponse.content)["ports"][0]["id"])
         showportresponse = requests.get(url, headers=headers)
@@ -894,14 +924,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(showportresponse.content)["port"]["status"], "ACTIVE")
         print(" ")
 
-        print('->>>>>>> testNeutronShowNonexistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Show Non-Existing Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports/non-existing-portid123"
         shownonexistingportresponse = requests.get(url, headers=headers)
         self.assertEqual(shownonexistingportresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronCreatePortInNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Port In Non-Existing Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         createnonexistingportdata = '{"port": {"name": "new_port", "network_id": "non-existing-id"} }'
@@ -909,19 +939,17 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(createnonexistingnetworkportresponse.status_code, 404)
         print(" ")
 
-        #TODO seems as something wents wrong if i set the id in the data field: "id":"new_id1234"
-        # then other parts do not find the port by the id...
-        print('->>>>>>> testNeutronCreatePort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
-        createportdata = '{"port": {"name": "new_port", "network_id": "%s", "admin_state_up":true, "device_id":"device_id123", "device_owner":"device_owner123", "fixed_ips":"change_me","mac_address":"12:34:56:78:90", "status":"change_me", "tenant_id":"tenant_id123"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
+        createportdata = '{"port": {"name": "new_port", "network_id": "%s", "admin_state_up":true, "device_id":"device_id123", "device_owner":"device_owner123", "fixed_ips":"change_me","id":"new_id1234", "mac_address":"12:34:56:78:90", "status":"change_me", "tenant_id":"tenant_id123"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
         createportresponse = requests.post(url, data=createportdata, headers=headers)
         self.assertEqual(createportresponse.status_code, 201)
         print (createportresponse.content)
         self.assertEqual(json.loads(createportresponse.content)["port"]["name"], "new_port")
         print(" ")
 
-        print('->>>>>>> testNeutronCreatePortWithExistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Port With Existing Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         createportwithexistingnamedata = '{"port": {"name": "new_port", "network_id": "%s"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
@@ -929,7 +957,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(createportwithexistingnameresponse.status_code, 500)
         print(" ")
 
-        print('->>>>>>> testNeutronCreatePortWithoutName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Create Port Without Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         createportdatawithoutname = '{"port": {"network_id": "%s"} }' % (json.loads(createnetworkresponse.content)["network"]["id"])
@@ -938,7 +966,7 @@ class testRestApi(ApiBaseHeat):
         self.assertIn("port:cp", json.loads(createportwithoutnameresponse.content)["port"]["name"])
         print(" ")
 
-        print('->>>>>>> testNeutronUpdatePort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print(json.loads(createportresponse.content)["port"]["name"])
         url = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["name"])
@@ -948,7 +976,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(updateportresponse.content)["port"]["name"], "new_port_new_name")
         print(" ")
 
-        print('->>>>>>> testNeutronUpdateNonExistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Update Non-Existing Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports/non-existing-port-ip"
         updatenonexistingportdata = '{"port": {"name": "new_port_new_name"} }'
@@ -956,7 +984,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(updatenonexistingportresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronDeletePort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Delete Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         righturl = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["id"])
         deleterightportresponse = requests.delete(righturl, headers=headers)
@@ -964,14 +992,14 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testNeutronDeleteNonExistingPort ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Delete Non-Existing Port ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         wrongurl = "http://0.0.0.0:9696/v2.0/ports/unknownid"
         deletewrongportresponse = requests.delete(wrongurl, headers=headers)
         self.assertEqual(deletewrongportresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronDeleteSubnet ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Delete Subnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         wrongurl = "http://0.0.0.0:9696/v2.0/subnets/unknownid"
         righturl = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(updatesubnetresponse.content)["subnet"]["id"])
@@ -981,14 +1009,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(deleterightsubnetresponse.status_code, 204)
         print(" ")
 
-        print('->>>>>>> testNeutronDeleteNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Delete Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         righturl = "http://0.0.0.0:9696/v2.0/networks/%s" % (json.loads(createnetworkresponse.content)["network"]["id"])
         deleterightnetworkresponse = requests.delete(righturl, headers=headers)
         self.assertEqual(deleterightnetworkresponse.status_code, 204)
         print(" ")
 
-        print('->>>>>>> testNeutronDeleteNonExistingNetwork ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Neutron Delete Non-Existing Network ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         wrongurl = "http://0.0.0.0:9696/v2.0/networks/unknownid"
         deletewrongnetworkresponse = requests.delete(wrongurl, headers=headers)
@@ -996,11 +1024,14 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
     def testKeystomeDummy(self):
-        headers = {'Content-type': 'application/json'}
-        test_heatapi_keystone_get_token = open(os.path.join(os.path.dirname(__file__), "test_heatapi_keystone_get_token.json")).read()
+        print('->>>>>>> test Keystone Dummy Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print(" ")
 
-        print('->>>>>>> testKeystoneListVersions ->>>>>>>>>>>>>>>')
+        headers = {'Content-type': 'application/json'}
+        test_heatapi_keystone_get_token = open(os.path.join(os.path.dirname(__file__), "test_heatapi_keystone_get_token.json")).read()
+
+        print('->>>>>>> test Keystone List Versions ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:5000/"
         listapiversionstackresponse = requests.get(url, headers=headers)
@@ -1008,7 +1039,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"]["values"][0]["id"], "v2.0")
         print(" ")
 
-        print('->>>>>>> testKeystoneShowApiV2 ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Keystone Show ApiV2 ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:5000/v2.0"
         showapiversionstackresponse = requests.get(url, headers=headers)
@@ -1016,7 +1047,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(showapiversionstackresponse.content)["version"]["id"], "v2.0")
         print(" ")
 
-        print('->>>>>>> testKeystoneGetToken ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Keystone Get Token ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:5000/v2.0/tokens"
         gettokenstackresponse = requests.post(url, data=json.dumps(json.loads(test_heatapi_keystone_get_token)), headers=headers)
@@ -1026,12 +1057,15 @@ class testRestApi(ApiBaseHeat):
 
 
     def testHeatDummy(self):
+        print('->>>>>>> test Heat Dummy Class->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_create_stack.json")).read()
         test_heatapi_template_update_stack = open(os.path.join(os.path.dirname(__file__), "test_heatapi_template_update_stack.json")).read()
-        print(" ")
 
-        print('->>>>>>> testHeatListAPIVersionsStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Heat List API Versions Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/"
         listapiversionstackresponse = requests.get(url, headers=headers)
@@ -1039,7 +1073,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listapiversionstackresponse.content)["versions"][0]["id"], "v1.0")
         print(" ")
 
-        print('->>>>>>> testCreateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Create Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackresponse = requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
@@ -1047,14 +1081,14 @@ class testRestApi(ApiBaseHeat):
         self.assertNotEqual(json.loads(createstackresponse.content)["stack"]["id"], "")
         print(" ")
 
-        print('->>>>>>> testCreateStackWithExistingName ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Create Stack With Existing Name ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackwithexistingnameresponse = requests.post(url, data='{"stack_name" : "s1"}', headers=headers)
         self.assertEqual(createstackwithexistingnameresponse.status_code, 409)
         print(" ")
 
-        print('->>>>>>> testCreateStackWithUnsupportedVersion ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Create Stack With Unsupported Version ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackwitheunsupportedversionresponse = requests.post(url, data='{"stack_name" : "stackname123", "template" : {"heat_template_version": "2015-04-29"}}', headers=headers)
@@ -1062,7 +1096,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testListStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test List Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         liststackresponse = requests.get(url, headers=headers)
@@ -1071,7 +1105,7 @@ class testRestApi(ApiBaseHeat):
         print(" ")
 
 
-        print('->>>>>>> testShowStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Show Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/%s"% json.loads(createstackresponse.content)['stack']['id']
         liststackdetailsresponse = requests.get(url, headers=headers)
@@ -1079,14 +1113,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"], "CREATE_COMPLETE")
         print(" ")
 
-        print('->>>>>>> testShowNonExisitngStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Show Non-Exisitng Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/non_exisitng_id123"
         listnonexistingstackdetailsresponse = requests.get(url, headers=headers)
         self.assertEqual(listnonexistingstackdetailsresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testUpdateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Update Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/%s"% json.loads(createstackresponse.content)['stack']['id']
         updatestackresponse = requests.put(url, data=json.dumps(json.loads(test_heatapi_template_update_stack)),
@@ -1096,14 +1130,14 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"], "UPDATE_COMPLETE")
         print(" ")
 
-        print('->>>>>>> testUpdateNonExistingStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Update Non-Existing Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/non_existing_id_1234"
         updatenonexistingstackresponse = requests.put(url, data={"non": "sense"}, headers=headers)
         self.assertEqual(updatenonexistingstackresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testDeleteStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Delete Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123showStack/stacks/%s" % \
               json.loads(createstackresponse.content)['stack']['id']
@@ -1113,14 +1147,17 @@ class testRestApi(ApiBaseHeat):
 
 
     def test_CombinedTesting(self):
+        print('->>>>>>> test Combinded tests->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(" ")
+
         headers = {'Content-type': 'application/json'}
         test_heatapi_template_create_stack = open(os.path.join(os.path.dirname(__file__),
                                                                "test_heatapi_template_create_stack.json")).read()
         test_heatapi_template_update_stack = open(os.path.join(os.path.dirname(__file__),
                                                                "test_heatapi_template_update_stack.json")).read()
-        print(" ")
 
-        print('->>>>>>> CombinedCreateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Create Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackresponse = requests.post(url,
@@ -1130,7 +1167,7 @@ class testRestApi(ApiBaseHeat):
         self.assertNotEqual(json.loads(createstackresponse.content)["stack"]["id"], "")
         print(" ")
 
-        print('->>>>>>> CombinedNeutronListPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Neutron List Ports ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         listportsesponse = requests.get(url, headers=headers)
@@ -1140,7 +1177,7 @@ class testRestApi(ApiBaseHeat):
             self.assertEqual(len(str(port['fixed_ips'][0]['subnet_id'])), 36)
         print(" ")
 
-        print('->>>>>>> CombinedNeutronListNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Neutron List Networks ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse = requests.get(url, headers=headers)
@@ -1150,7 +1187,7 @@ class testRestApi(ApiBaseHeat):
             self.assertEqual(len(str(net['subnets'][0])), 36)
         print(" ")
 
-        print('->>>>>>> CombinedUpdateStack ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Update Stack ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/%s"% \
               json.loads(createstackresponse.content)['stack']['id']
@@ -1162,7 +1199,7 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"], "UPDATE_COMPLETE")
         print(" ")
 
-        print('->>>>>>> CombinedNeutronListPorts ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Neutron List Ports ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/ports"
         listportsesponse = requests.get(url, headers=headers)
@@ -1172,7 +1209,7 @@ class testRestApi(ApiBaseHeat):
             self.assertEqual(len(str(port['fixed_ips'][0]['subnet_id'])), 36)
         print(" ")
 
-        print('->>>>>>> CombinedNeutronListNetworks ->>>>>>>>>>>>>>>')
+        print('->>>>>>> test Combined Neutron List Networks ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/networks"
         listnetworksesponse = requests.get(url, headers=headers)
