@@ -12,6 +12,7 @@ import uuid
 import networkx as nx
 import chain_api
 import json
+import random
 from emuvim.api.heat.resources import Net, Port
 from mininet.node import OVSSwitch, RemoteController, Node
 from emuvim.api.heat.monitor_api import MonitorDummyApi
@@ -106,7 +107,7 @@ class OpenstackManage(object):
 
             # create a port for the host
             port = Port("root-port")
-            port.id = str(uuid.uuid4())
+            #port.id = str(uuid.uuid4())
             port.net_name = fn.name
 
             # get next free ip
@@ -124,6 +125,11 @@ class OpenstackManage(object):
             self.floating_intf = self.net.addLink(self.floating_root, self.floating_switch).intf1
             self.floating_root.setIP(root_ip, intf=self.floating_intf)
             self.floating_nodes[(self.floating_root.name, root_ip)] = self.floating_root
+
+
+    def stop_floating_network(self):
+        self._net = None
+        self.floating_switch = None
 
     def add_endpoint(self, ep):
         """
@@ -258,7 +264,7 @@ class OpenstackManage(object):
                 src_node.setHostRoute(dst_node.intf(vnf_dst_interface).IP(), vnf_src_interface)
 
             try:
-                son_emu_data = json.loads(self.get_son_emu_data(vnf_src_name))
+                son_emu_data = json.loads(self.get_son_emu_chain_data(vnf_src_name))
             except:
                 son_emu_data = dict()
             if "son_emu_data" not in son_emu_data:
@@ -269,7 +275,7 @@ class OpenstackManage(object):
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface] = list()
                 son_emu_data["son_emu_data"]["interfaces"][vnf_src_interface].append(dst_intf.IP())
 
-            self.set_son_emu_data(vnf_src_name, json.dumps(son_emu_data))
+            self.set_son_emu_chain_data(vnf_src_name, son_emu_data)
 
             if kwargs.get('bidirectional', False):
                 # call the reverse direction
@@ -320,27 +326,32 @@ class OpenstackManage(object):
             logging.exception("RPC error.")
             return ex.message
 
-    def set_son_emu_data(self, vnf_name, data):
+    def set_son_emu_chain_data(self, vnf_name, data):
         """
-        Set son-emu data for this node.
+        Set son-emu chain data for this node.
 
         :param vnf_name: The name of the vnf where the data is stored.
         :type vnf_name: ``str``
         :param data: Raw data to store on the node.
         :type data: ``str``
         """
-        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % data)
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data.json" % json.dumps(data))
+        ip_list = []
+        for intf in data['son_emu_data']['interfaces'].values():
+            ip_list.extend(intf)
 
-    def get_son_emu_data(self, vnf_name):
+        self.net.getNodeByName(vnf_name).cmd("echo \'%s\' > /tmp/son_emu_data" % "\n".join(ip_list))
+
+    def get_son_emu_chain_data(self, vnf_name):
         """
-        Get the current son-emu data set for this node.
+        Get the current son-emu chain data set for this node.
 
         :param vnf_name: The name of the vnf where the data is stored.
         :type vnf_name: ``str``
         :return: raw data stored on the node
         :rtype: ``str``
         """
-        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data")
+        return self.net.getNodeByName(vnf_name).cmd("cat /tmp/son_emu_data.json")
 
     def _get_connected_switch_data(self, vnf_name, vnf_interface):
         """
@@ -502,6 +513,19 @@ class OpenstackManage(object):
         data["src_intf"] = src_vnf_interface
         data["paths"] = list()
         data["cookie"] = cookie
+
+        # lb mac for src -> target connections
+        lb_mac = "31:33:70:%02x:%02x:%02x" % (random.randint(0, 255),random.randint(0, 255),random.randint(0, 255))
+
+        # calculate lb ip as src_intf.ip +1
+        octets = src_ip.split('.')
+        octets[3] = str(int(octets[3]) + 1)
+        plus_one = '.'.join(octets)
+
+        # set up arp reply as well as add the route to the interface
+        self.setup_arp_reply_at(src_sw, src_sw_inport_nr, plus_one, lb_mac, cookie=cookie)
+        net.getNodeByName(src_vnf_name).setHostRoute(plus_one, src_vnf_interface)
+
         for dst_vnf_name, dst_vnf_interface in dest_intfs_mapping.items():
             path, src_sw, dst_sw = self._get_path(src_vnf_name, dst_vnf_name,
                                                   src_vnf_interface, dst_vnf_interface)
@@ -530,13 +554,8 @@ class OpenstackManage(object):
             current_hop = src_sw
             switch_inport_nr = src_sw_inport_nr
 
-            octets = src_ip.split('.')
-            octets[3] = str(int(octets[3]) + 1)
-            plus_one = '.'.join(octets)
-
-            # also add the arp reply for ip+1 to the interface
-            self.setup_arp_reply_at(src_sw, src_sw_inport_nr, plus_one, target_mac, cookie=cookie)
-            self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
+            #self.setup_arp_reply_at(src_sw, src_sw_inport_nr, target_ip, target_mac, cookie=cookie)
+            net.getNodeByName(dst_vnf_name).setHostRoute(src_ip, dst_vnf_interface)
 
             # choose free vlan if path contains more than 1 switch
             if len(path) > 1:
@@ -613,10 +632,9 @@ class OpenstackManage(object):
                         cmd_back += 'push_vlan:0x8100'
                         masked_vlan = vlan | 0x1000
                         cmd_back += ',set_field:%s->vlan_vid' % masked_vlan
-                        cmd_back += ',set_field:%s->eth_src' % target_mac
+                        cmd_back += ',set_field:%s->eth_src' % lb_mac
                         cmd_back += ',set_field:%s->ip_src' % plus_one
                         cmd_back += ',output:%s' % switch_inport_nr
-                        net.getNodeByName(dst_vnf_name).setHostRoute(src_ip, dst_vnf_interface)
                     else:  # middle nodes
                         # if we have a circle in the path we need to specify this, as openflow will ignore the packet
                         # if we just output it on the same port as it came in
@@ -628,16 +646,26 @@ class OpenstackManage(object):
                             cmd_back += ',dl_vlan=%s,actions=output:%s' % (vlan, switch_inport_nr)
                 # output the packet at the correct outport
                 else:
-                    cmd += ',actions=output:%s' % switch_outport_nr
+                    cmd = 'in_port=%s' % src_sw_inport_nr
+                    cmd += ',cookie=%s' % cookie
+                    cmd += ',table=%s' % cookie
+                    cmd += ',ip'
+                    cmd += ',reg1=%s' % index
+                    cmd += ',actions='
+                    cmd += ',set_field:%s->eth_dst' % target_mac
+                    cmd += ',set_field:%s->ip_dst' % target_ip
+                    cmd += ',output:%s' % switch_outport_nr
 
                     # reverse route
                     cmd_back = 'in_port=%s' % switch_outport_nr
                     cmd_back += ',cookie=%s' % cookie
                     cmd_back += ',ip'
                     cmd_back += ',actions='
-                    cmd_back += ',set_field:%s->eth_src' % target_mac
+                    cmd_back += ',set_field:%s->eth_src' % lb_mac
                     cmd_back += ',set_field:%s->ip_src' % plus_one
                     cmd_back += ',output:%s' % src_sw_inport_nr
+
+                    self.setup_arp_reply_at(current_hop, switch_outport_nr, src_ip, src_mac, cookie=cookie)
 
                 # excecute the command on the target switch
                 logging.debug(cmd)

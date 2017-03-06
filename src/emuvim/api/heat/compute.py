@@ -66,8 +66,20 @@ class OpenstackCompute(object):
         :type stack: :class:`heat.resources.stack`
         """
         if not self.check_stack(stack):
+            self.clean_broken_stack(stack)
             raise HeatApiStackInvalidException("Stack did not pass validity checks")
         self.stacks[stack.id] = stack
+
+    def clean_broken_stack(self, stack):
+        for port in stack.ports.values():
+            if port.id in self.ports:
+                del self.ports[port.id]
+        for server in stack.servers.values():
+            if server.id in self.computeUnits:
+                del self.computeUnits[server.id]
+        for net in stack.nets.values():
+            if net.id in self.nets:
+                del self.nets[net.id]
 
     def check_stack(self, stack):
         """
@@ -96,6 +108,9 @@ class OpenstackCompute(object):
             if port.net_name not in stack.nets:
                 logging.warning("Port %s of stack %s has a network named %s that is not known." %
                                 (port.name, stack.stack_name, port.net_name))
+                everything_ok = False
+            if port.intf_name is None:
+                logging.warning("Port %s has no interface name." % (port.name))
                 everything_ok = False
             if port.ip_address is None:
                 logging.warning("Port %s has no IP address." % (port.name))
@@ -277,6 +292,8 @@ class OpenstackCompute(object):
         for server in new_stack.servers.values():
             if server.name not in self.dc.containers:
                 self._start_compute(server)
+            else:
+                server.emulator_compute = self.dc.containers.get(server.name)
 
         del self.stacks[old_stack_id]
         self.stacks[new_stack.id] = new_stack
@@ -394,7 +411,6 @@ class OpenstackCompute(object):
                 network_dict[network_dict['id']] = self.find_network_by_name_or_id(port.net_name).name
                 network.append(network_dict)
         self.compute_nets[server.name] = network
-
         c = self.dc.startCompute(server.name, image=server.image, command=server.command,
                                  network=network, flavor_name=server.flavor)
         server.emulator_compute = c
@@ -505,9 +521,9 @@ class OpenstackCompute(object):
         for stack in self.stacks.values():
             if stack.stack_name == name_parts[1]:
                 stack.servers.pop(server.id, None)
-                self.computeUnits.pop(server.id, None)
-                return True
-        return False
+        if self.computeUnits.pop(server.id, None) is None:
+            return False
+        return True
 
     def find_network_by_name_or_id(self, name_or_id):
         """

@@ -37,6 +37,7 @@ class HeatDummyApi(BaseOpenstackDummy):
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
@@ -104,6 +105,7 @@ class HeatCreateStack(Resource):
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
             if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+                self.api.compute.clean_broken_stack(stack)
                 return 'Could not create stack.', 400
 
             stack.creation_time = str(datetime.now())
