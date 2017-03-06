@@ -32,7 +32,7 @@ class BaseOpenstackDummy(Resource):
             with open(self.playbook_file, 'a') as logfile:
                 if len(request.data) > 0:
                     data = "# %s API\n" % str(self.__class__).split('.')[-1].rstrip('\'>')
-                    data += "curl -X {type} -H \"application/json\" -d {data} {url}".format(type=request.method,
+                    data += "curl -X {type} -H \"Content-type: application/json\" -d '{data}' {url}".format(type=request.method,
                                                                                             data=request.data,
                                                                                             url=request.url)
                     logfile.write(data + "\n")

@@ -60,7 +60,7 @@ class ChainApi(Resource):
             with open(self.playbook_file, 'a') as logfile:
                 if len(request.data) > 0:
                     data = "# CHAIN API\n"
-                    data += "curl -X {type} -H \"application/json\" -d {data} {url}".format(type=request.method,
+                    data += "curl -X {type} -H \"Content-type: application/json\" -d '{data}' {url}".format(type=request.method,
                                                                                             data=request.data,
                                                                                             url=request.url)
                     logfile.write(data + "\n")
