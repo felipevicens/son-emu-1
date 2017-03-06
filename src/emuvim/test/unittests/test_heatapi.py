@@ -808,32 +808,6 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(showsubnetsresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronCreateSubnetInNonExistingNetwork ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createnosubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "non-existing-networkid123","ip_version": 4,"cidr": "10.0.0.1/24"} }'
-        createsubnetresponse = requests.post(url, data=createnosubnetdata, headers=headers)
-        self.assertEqual(createsubnetresponse.status_code, 404)
-        print(" ")
-
-        print('->>>>>>> testNeutronCreateSubnetWithWrongCIDR ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createsubnetdatawithwrongcidr = '{"subnet": {"name": "new_subnet_with_wrong_cidr", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.124"} }' % (
-        json.loads(createnetworkresponse.content)["network"]["id"])
-        createsubnetwrongcirdresponse = requests.post(url, data=createsubnetdatawithwrongcidr, headers=headers)
-        self.assertEqual(createsubnetwrongcirdresponse.status_code, 400)
-        print(" ")
-
-        print('->>>>>>> testNeutronCreateSubnetWithoutCIDR ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createsubnetdatawithoutcidr = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4, "allocation_pools":"change_me", "gateway_ip":"10.0.0.1", "id":"new_id123", "enable_dhcp":true} }' % (
-        json.loads(createnetworkresponse.content)["network"]["id"])
-        createsubnetwithoutcirdresponse = requests.post(url, data=createsubnetdatawithoutcidr, headers=headers)
-        self.assertEqual(createsubnetwithoutcirdresponse.status_code, 400)
-        print(" ")
-
         print('->>>>>>> testNeutronCreateSubnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
