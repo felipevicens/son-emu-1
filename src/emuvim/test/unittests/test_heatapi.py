@@ -505,6 +505,20 @@ class testRestApi(ApiBaseHeat):
         self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
         print(" ")
 
+        print('->>>>>>> test Nova Delete Server APIs ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisnovaresponse.content)["servers"][0]["id"])
+        deleteserverapisnovaresponse = requests.delete(url, headers=headers)
+        self.assertEqual(deleteserverapisnovaresponse.status_code, 204)
+        print(" ")
+
+        print('->>>>>>> test Nova Delete Non-Existing Server APIs ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/non-existing-ix"
+        deleteserverapisnovaresponse = requests.delete(url, headers=headers)
+        self.assertEqual(deleteserverapisnovaresponse.status_code, 404)
+        print(" ")
+
 
         print('->>>>>>> testNovaVersionListServerAPIs_withPortInformation ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -641,7 +655,6 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:8774/v2.1/id_bla/servers/%s" % (json.loads(listserverapisdetailedresponse.content)["servers"][0]["id"])
         listserverdetailsresponse = requests.get(url, headers=headers)
         self.assertEqual(listserverdetailsresponse.status_code, 200)
-        print (listserverdetailsresponse.content)
         self.assertEqual(json.loads(listserverdetailsresponse.content)["server"]["flavor"]["links"][0]["rel"], "bookmark")
         print(" ")
 
