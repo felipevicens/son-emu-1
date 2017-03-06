@@ -360,7 +360,7 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:4000/v1/topo"
         topolistresponse = requests.get(url, headers=headers)
-        print topolistresponse.content
+        print(topolistresponse.content)
         self.assertEqual(topolistresponse.status_code, 200)
         print(" ")
 
@@ -494,6 +494,14 @@ class testRestApi(ApiBaseHeat):
         self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
         print(" ")
 
+        print('->>>>>>> testNovaVersionListServerAPIs_withPortInformation ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/servers/andPorts"
+        listserverapisnovaresponse = requests.get(url, headers=headers)
+        self.assertEqual(listserverapisnovaresponse.status_code, 200)
+        self.assertNotEqual(json.loads(listserverapisnovaresponse.content)["servers"][0]["name"], "")
+        print(" ")
+
         print('->>>>>>> testNovaListFlavors ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors"
@@ -502,6 +510,17 @@ class testRestApi(ApiBaseHeat):
         self.assertIn(json.loads(listflavorsresponse.content)["flavors"][0]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         self.assertIn(json.loads(listflavorsresponse.content)["flavors"][1]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         self.assertIn(json.loads(listflavorsresponse.content)["flavors"][2]["name"], ["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
+        print(" ")
+
+        print('->>>>>>> testNovaAddFlavors ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/flavors"
+        addflavorsresponse = requests.post(url,
+                                           data='{"flavor":{"name": "testFlavor", "vcpus": "test_vcpus", "ram": 1024, "disk": 10}}',
+                                           headers=headers)
+        self.assertEqual(addflavorsresponse.status_code, 200)
+        self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["id"])
+        self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["links"][0]['href'])
         print(" ")
 
         print('->>>>>>> testNovaListFlavorsDetail ->>>>>>>>>>>>>>>')
@@ -514,6 +533,17 @@ class testRestApi(ApiBaseHeat):
         self.assertIn(json.loads(listflavorsdetailresponse.content)["flavors"][2]["name"],["m1.nano", "m1.tiny", "m1.micro", "m1.small"])
         print(" ")
 
+        print('->>>>>>> testNovaAddFlavors ->>>>>>>>>>>>>>>')
+        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/detail"
+        addflavorsresponse = requests.post(url,
+                                           data='{"flavor":{"name": "testFlavor", "vcpus": "test_vcpus", "ram": 1024, "disk": 10}}',
+                                           headers=headers)
+        self.assertEqual(addflavorsresponse.status_code, 200)
+        self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["id"])
+        self.assertIsNotNone(json.loads(addflavorsresponse.content)["flavor"]["links"][0]['href'])
+        print(" ")
+
         print('->>>>>>> testNovaListFlavorById ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/flavors/%s" % (json.loads(listflavorsdetailresponse.content)["flavors"][0]["name"])
@@ -522,13 +552,12 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(json.loads(listflavorsbyidresponse.content)["flavor"]["id"], json.loads(listflavorsdetailresponse.content)["flavors"][0]["id"])
         print(" ")
 
-
         print('->>>>>>> testNovaListImages ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8774/v2.1/id_bla/images"
         listimagesresponse = requests.get(url, headers=headers)
         self.assertEqual(listimagesresponse.status_code, 200)
-        print listimagesresponse.content
+        print(listimagesresponse.content)
         # deactivated: highly depends on the environment in which the tests are executed. one cannot make such an assumption.
         #self.assertIn(json.loads(listimagesresponse.content)["images"][0]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
         #self.assertIn(json.loads(listimagesresponse.content)["images"][1]["name"],["google/cadvisor:latest", "ubuntu:trusty", "prom/pushgateway:latest"])
@@ -779,32 +808,6 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(showsubnetsresponse.status_code, 404)
         print(" ")
 
-        print('->>>>>>> testNeutronCreateSubnetInNonExistingNetwork ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createnosubnetdata = '{"subnet": {"name": "new_subnet", "network_id": "non-existing-networkid123","ip_version": 4,"cidr": "10.0.0.1/24"} }'
-        createsubnetresponse = requests.post(url, data=createnosubnetdata, headers=headers)
-        self.assertEqual(createsubnetresponse.status_code, 404)
-        print(" ")
-
-        print('->>>>>>> testNeutronCreateSubnetWithWrongCIDR ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createsubnetdatawithwrongcidr = '{"subnet": {"name": "new_subnet_with_wrong_cidr", "network_id": "%s","ip_version": 4,"cidr": "10.0.0.124"} }' % (
-        json.loads(createnetworkresponse.content)["network"]["id"])
-        createsubnetwrongcirdresponse = requests.post(url, data=createsubnetdatawithwrongcidr, headers=headers)
-        self.assertEqual(createsubnetwrongcirdresponse.status_code, 400)
-        print(" ")
-
-        print('->>>>>>> testNeutronCreateSubnetWithoutCIDR ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:9696/v2.0/subnets"
-        createsubnetdatawithoutcidr = '{"subnet": {"name": "new_subnet", "network_id": "%s","ip_version": 4, "allocation_pools":"change_me", "gateway_ip":"10.0.0.1", "id":"new_id123", "enable_dhcp":true} }' % (
-        json.loads(createnetworkresponse.content)["network"]["id"])
-        createsubnetwithoutcirdresponse = requests.post(url, data=createsubnetdatawithoutcidr, headers=headers)
-        self.assertEqual(createsubnetwithoutcirdresponse.status_code, 400)
-        print(" ")
-
         print('->>>>>>> testNeutronCreateSubnet ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:9696/v2.0/subnets"
@@ -937,7 +940,7 @@ class testRestApi(ApiBaseHeat):
 
         print('->>>>>>> testNeutronUpdatePort ->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print json.loads(createportresponse.content)["port"]["name"]
+        print(json.loads(createportresponse.content)["port"]["name"])
         url = "http://0.0.0.0:9696/v2.0/ports/%s" % (json.loads(createportresponse.content)["port"]["name"])
         updateportdata = '{"port": {"name": "new_port_new_name", "admin_state_up":true, "device_id":"device_id123", "device_owner":"device_owner123", "fixed_ips":"change_me","mac_address":"12:34:56:78:90", "status":"change_me", "tenant_id":"tenant_id123", "network_id":"network_id123"} }'
         updateportresponse = requests.put(url, data=updateportdata, headers=headers)
@@ -1091,13 +1094,6 @@ class testRestApi(ApiBaseHeat):
         self.assertEqual(updatestackresponse.status_code, 202)
         liststackdetailsresponse = requests.get(url, headers=headers)
         self.assertEqual(json.loads(liststackdetailsresponse.content)["stack"]["stack_status"], "UPDATE_COMPLETE")
-        print(" ")
-
-        print('->>>>>>> testUpdateNonExistingStack ->>>>>>>>>>>>>>>')
-        print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        url = "http://0.0.0.0:8004/v1/tenantabc123updateStack/stacks/non_existing_id_1234"
-        updatenonexistingstackresponse = requests.put(url, data={"non":"sense"}, headers=headers)
-        self.assertEqual(updatenonexistingstackresponse.status_code, 404)
         print(" ")
 
         print('->>>>>>> testUpdateNonExistingStack ->>>>>>>>>>>>>>>')

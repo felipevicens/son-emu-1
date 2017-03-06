@@ -521,9 +521,9 @@ class OpenstackCompute(object):
         for stack in self.stacks.values():
             if stack.stack_name == name_parts[1]:
                 stack.servers.pop(server.id, None)
-                self.computeUnits.pop(server.id, None)
-                return True
-        return False
+        if self.computeUnits.pop(server.id, None) is None:
+            return False
+        return True
 
     def find_network_by_name_or_id(self, name_or_id):
         """

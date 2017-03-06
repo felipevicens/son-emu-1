@@ -457,11 +457,13 @@ class NeutronCreateSubnet(Resource):
             if net.subnet_id is not None:
                 return Response('Only one subnet per network is supported\n', status=409, mimetype='application/json')
 
-            if "cidr" in subnet_dict["subnet"]:
-                if not net.set_cidr(subnet_dict["subnet"]["cidr"]):
-                    return Response('Wrong CIDR format.\n', status=400, mimetype='application/json')
+            if "id" in subnet_dict["subnet"]:
+                net.subnet_id = subnet_dict["subnet"]["id"]
             else:
-                return Response('No CIDR found.\n', status=400, mimetype='application/json')
+                net.subnet_id = str(uuid.uuid4())
+            import emuvim.api.heat.ip_handler as IP
+            net.set_cidr(IP.get_new_cidr(net.subnet_id))
+
             if "tenant_id" in subnet_dict["subnet"]:
                 pass
             if "allocation_pools" in subnet_dict["subnet"]:
@@ -470,10 +472,6 @@ class NeutronCreateSubnet(Resource):
                 net.gateway_ip = subnet_dict["subnet"]["gateway_ip"]
             if "ip_version" in subnet_dict["subnet"]:
                 pass
-            if "id" in subnet_dict["subnet"]:
-                net.subnet_id = subnet_dict["subnet"]["id"]
-            else:
-                net.subnet_id = str(uuid.uuid4())
             if "enable_dhcp" in subnet_dict["subnet"]:
                 pass
 
@@ -711,8 +709,6 @@ class NeutronCreatePort(Resource):
                 pass
             if "fixed_ips" in port_dict["port"]:
                 pass
-            if "id" in port_dict["port"]:
-                port.id = port_dict["port"]["id"]
             if "mac_address" in port_dict["port"]:
                 port.mac_address = port_dict["port"]["mac_address"]
             if "status" in port_dict["port"]:
