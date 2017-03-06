@@ -52,6 +52,7 @@ class NeutronDummyApi(BaseOpenstackDummy):
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 

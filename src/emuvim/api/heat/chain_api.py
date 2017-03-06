@@ -24,6 +24,7 @@ class ChainApi(Resource):
         self.ip = inc_ip
         self.port = inc_port
         self.manage = manage
+        self.playbook_file = '/tmp/son-emu-requests.log'
         self.api.add_resource(ChainVersionsList, "/",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainList, "/v1/chain/list",
@@ -48,12 +49,22 @@ class ChainApi(Resource):
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
 
-
-
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+    def dump_playbook(self):
+        with self.manage.lock:
+            with open(self.playbook_file, 'a') as logfile:
+                if len(request.data) > 0:
+                    data = "# CHAIN API\n"
+                    data += "curl -X {type} -H \"Content-type: application/json\" -d '{data}' {url}".format(type=request.method,
+                                                                                            data=request.data,
+                                                                                            url=request.url)
+                    logfile.write(data + "\n")
+
 
 class Shutdown(Resource):
     def get(self):
@@ -220,7 +231,6 @@ class ChainVnfInterfaces(Resource):
         else:
             path = None
             layer2 = True
-
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):

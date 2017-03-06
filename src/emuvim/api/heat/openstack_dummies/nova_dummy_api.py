@@ -50,6 +50,7 @@ class NovaDummyApi(BaseOpenstackDummy):
         self.compute.add_flavor('m1.micro', 1, 128, "MB", 0, "GB")
         self.compute.add_flavor('m1.small', 1, 1024, "MB", 2, "GB")
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
