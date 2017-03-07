@@ -138,6 +138,9 @@ class Net:
         :rtype: ``bool``
         """
         if cidr is None:
+            if self._cidr is not None:
+                import emuvim.api.heat.ip_handler as IP
+                IP.free_cidr(self._cidr, self.subnet_id)
             self._cidr = None
             self.reset_issued_ip_addresses()
             self.start_end_dict = dict()
