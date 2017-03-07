@@ -793,7 +793,7 @@ class testRestApi(ApiBaseHeat):
         listSubnetId = json.loads(listsubnetsresponse.content)["subnets"][0]["id"]
         listSubnetId2 = json.loads(listsubnetsresponse.content)["subnets"][1]["id"]
         self.assertEqual(listsubnetsresponse.status_code, 200)
-        self.assertIn("subnet", listSubnetName)
+        self.assertNotIn('None', listSubnetName)
         print(" ")
 
         print('->>>>>>> test Neutron List Subnets By Name ->>>>>>>>>>>>>>>')
@@ -801,7 +801,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/subnets?name="+listSubnetName
         listsubnetByNameresponse = requests.get(url, headers=headers)
         self.assertEqual(listsubnetByNameresponse.status_code, 200)
-        self.assertIn("subnet", json.loads(listsubnetByNameresponse.content)["subnets"][0]["name"])
+        self.assertNotIn('None', json.loads(listsubnetByNameresponse.content)["subnets"][0]["name"])
         print(" ")
 
         print('->>>>>>> test Neutron List Subnets By Id ->>>>>>>>>>>>>>>')
@@ -809,7 +809,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId
         listsubnetsbyidresponse = requests.get(url, headers=headers)
         self.assertEqual(listsubnetsbyidresponse.status_code, 200)
-        self.assertIn("subnet", json.loads(listsubnetsbyidresponse.content)["subnets"][0]["name"])
+        self.assertNotIn("None", json.loads(listsubnetsbyidresponse.content)["subnets"][0]["name"])
         print(" ")
 
         print('->>>>>>> test Neutron List Subnets By Multiple Id ->>>>>>>>>>>>>>>')
@@ -817,7 +817,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/subnets?id=" + listSubnetId +"&id="+listSubnetId2
         listsubnetsbymultipleidsresponse = requests.get(url, headers=headers)
         self.assertEqual(listsubnetsbymultipleidsresponse.status_code, 200)
-        self.assertIn("subnet", json.loads(listsubnetsbymultipleidsresponse.content)["subnets"][0]["name"])
+        self.assertNotIn("None", json.loads(listsubnetsbymultipleidsresponse.content)["subnets"][0]["name"])
         print(" ")
 
 
@@ -827,7 +827,7 @@ class testRestApi(ApiBaseHeat):
         url = "http://0.0.0.0:9696/v2.0/subnets/%s" % (json.loads(listsubnetsresponse.content)["subnets"][0]["id"])
         showsubnetsresponse = requests.get(url, headers=headers)
         self.assertEqual(showsubnetsresponse.status_code, 200)
-        self.assertIn("subnet", json.loads(showsubnetsresponse.content)["subnet"]["name"])
+        self.assertNotIn("None", json.loads(showsubnetsresponse.content)["subnet"]["name"])
         print(" ")
 
         print('->>>>>>> test Neutron Show Non-Existing Subnet->>>>>>>>>>>>>>>')
