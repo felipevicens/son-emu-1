@@ -220,6 +220,7 @@ class NovaListServersApi(Resource):
 
             server = self.api.compute.create_server(name)
             server.full_name = str(self.api.compute.dc.label) + "_man_" + server_dict["name"]
+            server.template_name = server_dict["name"]
 
             for flavor in self.api.compute.flavors.values():
                 if flavor.id == server_dict.get('flavorRef', ''):
@@ -707,11 +708,7 @@ class NovaShowServerDetails(Resource):
             if server is None:
                 return Response('Could not find server.', status=404, mimetype="application/json")
 
-            for port_name in server.port_names:
-                self.api.compute.delete_port(port_name)
-
-            if not self.api.compute.delete_server(server):
-                return Response('Could not find server.', status=409, mimetype="application/json")
+            self.api.compute.stop_compute(server)
 
             response = Response('Server deleted.', status=204, mimetype="application/json")
             response.headers['Access-Control-Allow-Origin'] = '*'

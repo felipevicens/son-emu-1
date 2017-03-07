@@ -185,7 +185,7 @@ class OpenstackCompute(object):
 
         # Stop all servers and their links of this stack
         for server in self.stacks[stack_id].servers.values():
-            self._stop_compute(server)
+            self.stop_compute(server)
             self.delete_server(server)
         for net in self.stacks[stack_id].nets.values():
             self.delete_network(net.id)
@@ -251,7 +251,7 @@ class OpenstackCompute(object):
         for server in old_stack.servers.values():
             if server.name in new_stack.servers:
                 if not server.compare_attributes(new_stack.servers[server.name]):
-                    self._stop_compute(server)
+                    self.stop_compute(server)
                 else:
                     # Delete unused and changed links
                     for port_name in server.port_names:
@@ -286,7 +286,7 @@ class OpenstackCompute(object):
                                            new_stack.ports[port_name].intf_name,
                                            new_stack.ports[port_name].net_name)
             else:
-                self._stop_compute(server)
+                self.stop_compute(server)
 
         # Start all new servers
         for server in new_stack.servers.values():
@@ -440,7 +440,7 @@ class OpenstackCompute(object):
                 t.daemon = True
                 t.start()
 
-    def _stop_compute(self, server):
+    def stop_compute(self, server):
         """
         Determines which links should be removed before removing the server itself.
 
