@@ -329,7 +329,7 @@ class NeutronDeleteNetwork(Resource):
             delete_subnet = NeutronDeleteSubnet(self.api)
             resp = delete_subnet.delete(net.subnet_id)
 
-            if resp.status != 204 and resp.status != 404:
+            if not '204' in resp.status and not '404' in resp.status:
                 return resp
 
             self.api.compute.delete_network(network_id)
@@ -563,14 +563,10 @@ class NeutronDeleteSubnet(Resource):
                                     node2=self.api.compute.dc.switch)
                                 port.net_name = None
 
-                            net.subnet_id = None
-                            net.subnet_name = None
-                            net.set_cidr(None)
-                            net.start_end_dict = None
-                            net.reset_issued_ip_addresses()
+                    net.delete_subnet()
 
-                        return Response('Subnet ' + str(subnet_id) + ' deleted.\n',
-                                        status=204, mimetype='application/json')
+                    return Response('Subnet ' + str(subnet_id) + ' deleted.\n',
+                                    status=204, mimetype='application/json')
 
             return Response('Could not find subnet.', status=404, mimetype='application/json')
         except Exception as ex:

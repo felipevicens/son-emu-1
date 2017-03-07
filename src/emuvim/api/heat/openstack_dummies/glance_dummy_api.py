@@ -176,8 +176,9 @@ class GlanceImageByIdApi(Resource):
 
     def get(self, id):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        logging.warning("Endpoint not implemented")
-        return None
+        from emuvim.api.heat.openstack_dummies.nova_dummy_api import NovaListImages
+        nova = NovaListImages(self.api)
+        return nova.get(id)
 
     def put(self, id):
         logging.debug("API CALL: %s " % str(self.__class__.__name__))

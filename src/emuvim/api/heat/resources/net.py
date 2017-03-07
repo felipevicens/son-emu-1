@@ -140,6 +140,7 @@ class Net:
         if cidr is None:
             self._cidr = None
             self.reset_issued_ip_addresses()
+            self.start_end_dict = dict()
             return True
         if not Net.check_cidr_format(cidr):
             return False
@@ -162,6 +163,13 @@ class Net:
         self._cidr = None
         self.start_end_dict = dict()
         self.reset_issued_ip_addresses()
+
+    def delete_subnet(self):
+        self.subnet_id = None
+        self.subnet_name = None
+        self.subnet_creation_time = None
+        self.subnet_update_time = None
+        self.set_cidr(None)
 
     @staticmethod
     def calculate_start_and_end_dict(cidr):
