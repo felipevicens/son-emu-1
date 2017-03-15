@@ -1,6 +1,6 @@
 [![Build Status](http://jenkins.sonata-nfv.eu/buildStatus/icon?job=son-emu)](http://jenkins.sonata-nfv.eu/job/son-emu)
 
-# son-emu
+# son-emu 'container-vim branch'
 This is the repository of [SONATA's](http://sonata-nfv.eu) emulation platform.
 
 This emulation platform was created to support network  service developers to locally prototype and test complete network service chains in realistic end-to-end multi-PoP scenarios. It allows the direct execution of real network functions, packaged as Docker containers, in emulated network topologies running locally on the network service developer's machine.

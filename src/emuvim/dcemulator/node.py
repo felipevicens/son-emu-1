@@ -33,7 +33,7 @@ import time
 import json
 
 LOG = logging.getLogger("dcemulator.node")
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 
 DCDPID_BASE = 1000  # start of switch dpid's used for data center switches

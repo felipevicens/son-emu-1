@@ -31,7 +31,7 @@ Base classes needed for resource models support.
 
 import logging
 LOG = logging.getLogger("resourcemodel")
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.WARNING)
 
 
 class ResourceModelRegistrar(object):

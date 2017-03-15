@@ -97,14 +97,14 @@ class RestApiEndpoint(object):
 
     def connectDatacenter(self, dc):
         compute.dcs[dc.label] = dc
-        logging.info(
+        logging.debug(
             "Connected DC(%s) to API endpoint %s(%s:%d)" % (dc.label, self.__class__.__name__, self.ip, self.port))
 
     def connectDCNetwork(self, DCnetwork):
         network.net = DCnetwork
         monitor.net = DCnetwork
 
-        logging.info("Connected DCNetwork to API endpoint %s(%s:%d)" % (
+        logging.debug("Connected DCNetwork to API endpoint %s(%s:%d)" % (
             self.__class__.__name__, self.ip, self.port))
 
     def start(self):
