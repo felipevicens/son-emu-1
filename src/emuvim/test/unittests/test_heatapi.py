@@ -1077,7 +1077,7 @@ class testRestApi(ApiBaseHeat):
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         url = "http://0.0.0.0:8004/v1/tenantabc123/stacks"
         createstackresponse = requests.post(url, data=json.dumps(json.loads(test_heatapi_template_create_stack)), headers=headers)
-        self.assertEqual(createstackresponse.status_code, 200)
+        self.assertEqual(createstackresponse.status_code, 201)
         self.assertNotEqual(json.loads(createstackresponse.content)["stack"]["id"], "")
         print(" ")
 
@@ -1163,7 +1163,7 @@ class testRestApi(ApiBaseHeat):
         createstackresponse = requests.post(url,
                                             data=json.dumps(json.loads(test_heatapi_template_create_stack)),
                                             headers=headers)
-        self.assertEqual(createstackresponse.status_code, 200)
+        self.assertEqual(createstackresponse.status_code, 201)
         self.assertNotEqual(json.loads(createstackresponse.content)["stack"]["id"], "")
         print(" ")
 
