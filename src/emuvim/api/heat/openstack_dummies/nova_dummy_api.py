@@ -27,11 +27,11 @@ class NovaDummyApi(BaseOpenstackDummy):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaShowAndDeleteInterfaceAtServer, "/v2.1/<id>/servers/<serverid>/os-interface/<portid>",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors",
+        self.api.add_resource(NovaListFlavors, "/v2.1/<id>/flavors", "/v2/<id>/flavors",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaListFlavorsDetails, "/v2.1/<id>/flavors/detail",
+        self.api.add_resource(NovaListFlavorsDetails, "/v2.1/<id>/flavors/detail", "/v2/<id>/flavors/detail",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(NovaListFlavorById, "/v2.1/<id>/flavors/<flavorid>",
+        self.api.add_resource(NovaListFlavorById, "/v2.1/<id>/flavors/<flavorid>", "/v2/<id>/flavors/<flavorid>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(NovaListImages, "/v2.1/<id>/images",
                               resource_class_kwargs={'api': self})
