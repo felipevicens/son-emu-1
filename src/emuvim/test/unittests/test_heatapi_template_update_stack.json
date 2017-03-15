@@ -21,11 +21,6 @@
             },
             {
               "port": {
-                "get_resource": "firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
-              }
-            },
-            {
-              "port": {
                 "get_resource": "firewall1:cp03:output:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
               }
             }
@@ -38,15 +33,6 @@
           "name": "firewall1:cp01:mgmt:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest",
           "network": {
             "get_resource": "sonata-demo:mgmt:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
-          }
-        }
-      },
-      "firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest": {
-        "type": "OS::Neutron::Port",
-        "properties": {
-          "name": "firewall1:cp02:input:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest",
-          "network": {
-            "get_resource": "firewall:input:net:9df6a98f-9e11-4cb7-b3c0-InAdUnitTest"
           }
         }
       },

@@ -31,11 +31,11 @@ from emuvim.dcemulator.net import DCNetwork
 from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
 from emuvim.api.heat.manage import OpenstackManage
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def create_topology1():
-    net = DCNetwork(monitor=True, enable_learning=False)
+    net = DCNetwork(monitor=False, enable_learning=False)
     dc1 = net.addDatacenter("dc1")
     dc2 = net.addDatacenter("dc2")
     dc3 = net.addDatacenter("dc3")
@@ -75,7 +75,7 @@ def create_topology1():
 
 
 def main():
-    setLogLevel('info')  # set Mininet loglevel
+    setLogLevel('debug')  # set Mininet loglevel
     create_topology1()
 
 

@@ -1,19 +1,22 @@
 import logging
 import threading
+import uuid
 
 lock = threading.Lock()
-intf_names = {}
+intf_names = dict()
 
 
 class Port:
     def __init__(self, name, ip_address=None, mac_address=None, floating_ip=None):
         self.name = name
         self.intf_name = None
-        self.__create_intf_name()
-        self.id = None
+        self.id = str(uuid.uuid4())
         self.template_name = name
+        """
+        ip_address is structured like 10.0.0.1/24
+        """
         self.ip_address = ip_address
-        self.mac_address = mac_address  # not set
+        self.mac_address = mac_address
         self.floating_ip = floating_ip
         self.net_name = None
 
@@ -30,15 +33,15 @@ class Port:
         # Delete old interface name
         global lock
         lock.acquire()
-        if intf_names[self.intf_name] == self.name:
+        if intf_names[self.intf_name][0] == self.id and intf_names[self.intf_name][1] is False:
             del intf_names[self.intf_name]
         lock.release()
 
         self.name = name
         # Create new interface name
-        self.__create_intf_name()
+        self.create_intf_name()
 
-    def __create_intf_name(self):
+    def create_intf_name(self):
         """
         Creates the interface name, while using the first 4 letters of the port name, the specification, if it is an
         'in' / 'out' port or something else, and a counter value if the name is already used. The counter starts
@@ -66,7 +69,7 @@ class Port:
         global intf_names
         intf_len = len(self.intf_name)
         self.intf_name = self.intf_name + '-' + str(counter)[:4]
-        while self.intf_name in intf_names and counter < 999:
+        while self.intf_name in intf_names and counter < 999 and not intf_names[self.intf_name][0] == self.id:
             counter += 1
             self.intf_name = self.intf_name[:intf_len] + '-' + str(counter)[:4]
 
@@ -75,40 +78,12 @@ class Port:
             lock.release()
             return
 
-        intf_names[self.intf_name] = self.name
+        updated = False
+        if self.intf_name in intf_names and intf_names[self.intf_name][0] == self.id:
+            updated = True
+
+        intf_names[self.intf_name] = [self.id, updated]
         lock.release()
-
-    def update_intf_name(self, new_intf_name):
-        """
-        The port interface name will be set to the give name, if it is not used yet or if the dictionary entry for
-        the new interface name contains the name of the port (this will occur if a stack will be updated and the
-        old stack also contains the same connection).
-
-        :param new_intf_name: The new interface name.
-        :type new_intf_name: ``str``
-        :return: * *True*: If the interface name is now the new interface name.
-            * *False*: If the new interface name is already used.
-        :rtype: ``bool``
-        """
-        if self.intf_name == new_intf_name:
-            return True
-
-        global lock
-        lock.acquire()
-        global intf_names
-        ok = False
-        if intf_names.get(new_intf_name) == None:
-            ok = True
-        elif intf_names[new_intf_name] == self.name:
-            ok = True
-
-        if ok:
-            intf_names[new_intf_name] = self.name
-            if intf_names[self.intf_name] == self.name:
-                del intf_names[self.intf_name]
-            self.intf_name = new_intf_name
-        lock.release()
-        return ok
 
     def get_short_id(self):
         """
@@ -147,14 +122,32 @@ class Port:
         port_dict["tenant_id"] = "abcdefghijklmnopqrstuvwxyz123456"  # TODO find real tenant_id
         return port_dict
 
+    def compare_attributes(self, other):
+        """
+        Does NOT compare ip_address because this function only exists to check if we can
+        update the IP address without any changes
+
+        :param other: The port to compare with
+        :type other: :class:`heat.resources.port`
+        :return: True if the attributes are the same, else False.
+        :rtype: ``bool``
+        """
+        if other is None:
+            return False
+
+        if self.name == other.name and self.floating_ip == other.floating_ip and \
+                                       self.net_name == other.net_name:
+            return True
+        return False
+
     def __eq__(self, other):
         if other is None:
             return False
 
         if self.name == other.name and self.ip_address == other.ip_address and \
-                                       self.mac_address == other.mac_address and \
-                                       self.floating_ip == other.floating_ip and \
-                                       self.net_name == other.net_name:
+                        self.mac_address == other.mac_address and \
+                        self.floating_ip == other.floating_ip and \
+                        self.net_name == other.net_name:
             return True
         return False
 
@@ -169,6 +162,9 @@ class Port:
         global lock
         lock.acquire()
         global intf_names
-        if self.intf_name in intf_names and intf_names[self.intf_name] == self.name:
-            del intf_names[self.intf_name]
+        if self.intf_name in intf_names and intf_names[self.intf_name][0] == self.id:
+            if intf_names[self.intf_name][1] is False:
+                del intf_names[self.intf_name]
+            else:
+                intf_names[self.intf_name][1] = False
         lock.release()

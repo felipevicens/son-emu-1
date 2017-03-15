@@ -24,6 +24,7 @@ class ChainApi(Resource):
         self.ip = inc_ip
         self.port = inc_port
         self.manage = manage
+        self.playbook_file = '/tmp/son-emu-requests.log'
         self.api.add_resource(ChainVersionsList, "/",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainList, "/v1/chain/list",
@@ -41,11 +42,37 @@ class ChainApi(Resource):
                               resource_class_kwargs={'api': self})
         self.api.add_resource(QueryTopology, "/v1/topo",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(Shutdown, "/shutdown")
+
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+    def dump_playbook(self):
+        with self.manage.lock:
+            with open(self.playbook_file, 'a') as logfile:
+                if len(request.data) > 0:
+                    data = "# CHAIN API\n"
+                    data += "curl -X {type} -H \"Content-type: application/json\" -d '{data}' {url}".format(type=request.method,
+                                                                                            data=request.data,
+                                                                                            url=request.url)
+                    logfile.write(data + "\n")
+
+
+class Shutdown(Resource):
+    def get(self):
+        logging.debug(("%s is beeing shut down") % (__name__))
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 
 class ChainVersionsList(Resource):
@@ -56,14 +83,13 @@ class ChainVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         '''
-        :param id: tenantid, will not be parsed
         :return: flask.Response containing the openstack like description of the chain api
         '''
         # at least let it look like an open stack function
         try:
-            resp = """[
+            resp = """
                 {
                     "versions": [
                         {
@@ -141,6 +167,7 @@ class BalanceHostList(Resource):
             logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
             return ex.message, 500
 
+
 class ChainVnfInterfaces(Resource):
     """
     Handles requests targeted at: "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
@@ -197,8 +224,13 @@ class ChainVnfInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        path = request.json.get('path')
-        layer2 = request.json.get('layer2', True)
+
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
 
         # check if both VNFs exist
         if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
@@ -343,8 +375,12 @@ class ChainVnfDcStackInterfaces(Resource):
         :rtype: :class:`flask.Response`
 
         """
-        path = request.json.get('path')
-        layer2 = request.json.get('layer2', True)
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
 
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
@@ -785,6 +821,9 @@ class QueryTopology(Resource):
                             # with their unique keys
                             link = copy.copy(data)
                             for edge in link:
+                                # do not add any links to the floating switch to the topology!
+                                if graph_node == "fs1":
+                                    continue
                                 # the translator wants everything as a string!
                                 for key, value in link[edge].items():
                                     link[edge][key] = str(value)

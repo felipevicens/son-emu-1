@@ -3,7 +3,6 @@ from flask import Response, request
 from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstackDummy
 import logging
 import json
-import uuid
 
 
 class GlanceDummyApi(BaseOpenstackDummy):
@@ -32,6 +31,7 @@ class GlanceDummyApi(BaseOpenstackDummy):
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("GlanceDummyApi", self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
@@ -66,7 +66,12 @@ class GlanceListApiVersions(Resource):
 class GlanceSchema(Resource):
     def get(self):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        return {}
+        resp = dict()
+        resp['name'] = 'someImageName'
+        resp['properties'] = dict()
+        # just an ugly hack to allow the openstack client to work
+        return Response(json.dumps(resp), status=200, mimetype='application/json')
+
 
 class GlanceListImagesApi(Resource):
     def __init__(self, api):
@@ -171,8 +176,9 @@ class GlanceImageByIdApi(Resource):
 
     def get(self, id):
         logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
-        logging.warning("Endpoint not implemented")
-        return None
+        from emuvim.api.heat.openstack_dummies.nova_dummy_api import NovaListImages
+        nova = NovaListImages(self.api)
+        return nova.get(id)
 
     def put(self, id):
         logging.debug("API CALL: %s " % str(self.__class__.__name__))

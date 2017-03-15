@@ -4,6 +4,7 @@ from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstack
 import logging
 import json
 
+
 class KeystoneDummyApi(BaseOpenstackDummy):
     def __init__(self, in_ip, in_port):
         super(KeystoneDummyApi, self).__init__(in_ip, in_port)
@@ -16,12 +17,15 @@ class KeystoneDummyApi(BaseOpenstackDummy):
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
 
 class Shutdown(Resource):
     """
     A get request to /shutdown will shut down this endpoint.
     """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -51,22 +55,22 @@ class KeystoneListVersions(Resource):
         resp['versions'] = dict()
 
         version = [{
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    }
-                ],
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "status": "stable",
-                "updated": "2014-04-17T00:00:00Z"
-            }]
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "status": "stable",
+            "updated": "2014-04-17T00:00:00Z"
+        }]
         resp['versions']['values'] = version
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
@@ -95,41 +99,41 @@ class KeystoneShowAPIv2(Resource):
 
         resp = dict()
         resp['version'] = {
-                "status": "stable",
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
-                        "rel": "self"
-                    }
-                ]
-            }
+            "status": "stable",
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
+                    "rel": "self"
+                }
+            ]
+        }
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
@@ -148,12 +152,13 @@ class KeystoneGetToken(Resource):
         List API entrypoints.
 
         This is hardcoded. For a working "authentication" use these ENVVARS:
-        `OS_AUTH_URL`=http://<ip>:<port>/v2.0
-        `OS_IDENTITY_API_VERSION`=2.0
-        `OS_TENANT_ID`=fc394f2ab2df4114bde39905f800dc57
-        `OS_REGION_NAME`=RegionOne
-        `OS_USERNAME`=bla
-        `OS_PASSWORD`=bla
+
+        * OS_AUTH_URL=http://<ip>:<port>/v2.0
+        * OS_IDENTITY_API_VERSION=2.0
+        * OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
+        * OS_REGION_NAME=RegionOne
+        * OS_USERNAME=bla
+        * OS_PASSWORD=bla
 
         :return: Returns an openstack style response for all entrypoints.
         :rtype: :class:`flask.response`
@@ -178,10 +183,10 @@ class KeystoneGetToken(Resource):
 
             ret['access']['user'] = dict()
             user = ret['access']['user']
-            user['username'] = "username"
+            user['username'] = req.get('username', "username")
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = token['tenant']['id']
+            user['id'] = token['tenant'].get('id', "fc394f2ab2df4114bde39905f800dc57")
             user['roles'] = [{'name': 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"

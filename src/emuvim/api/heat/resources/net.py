@@ -4,7 +4,7 @@ import re
 class Net:
     def __init__(self, name):
         self.name = name
-        self.id = id
+        self.id = None
         self.subnet_name = None
         self.subnet_id = None
         self.subnet_creation_time = None
@@ -48,31 +48,47 @@ class Net:
         self._issued_ip_addresses[int_start_ip] = port_name
         return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
 
-    def get_in_ip_address(self, port_name):
+    def assign_ip_address(self, cidr, port_name):
         """
-        Returns the first allowed IP address of the subnet, even if someone else uses it already.
+        Assigns the IP address to the port if it is currently NOT used.
 
-        :param port_name: Specifies the port.
+        :param cidr: The cidr used by the port - e.g. 10.0.0.1/24
+        :type cidr: ``str``
+        :param port_name: The port name
         :type port_name: ``str``
-        :return: The first allowed IP address.
-        :rtype: ``str``
+        :return: * *False*: If the IP address is already issued or if it is not within this subnet mask.
+            * *True*: Else
         """
-        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 2
-        self._issued_ip_addresses[int_start_ip] = port_name
-        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        int_ip = Net.cidr_2_int(cidr)
+        if int_ip in self._issued_ip_addresses:
+            return False
 
-    def get_out_ip_address(self, port_name):
+        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 1  # First address as network address not usable
+        int_end_ip = Net.ip_2_int(self.start_end_dict['end']) - 1  # Last address for broadcasts
+        if int_ip < int_start_ip or int_ip > int_end_ip:
+            return False
+
+        self._issued_ip_addresses[int_ip] = port_name
+        return True
+
+    def is_my_ip(self, cidr, port_name):
         """
-        Returns the last allowed IP address of the subnet, even if someone else uses it already.
+        Checks if the IP is registered for this port name.
 
-        :param port_name: Specifies the port.
+        :param cidr: The cidr used by the port - e.g. 10.0.0.1/24
+        :type cidr: ``str``
+        :param port_name: The port name
         :type port_name: ``str``
-        :return: The last allowed IP address.
-        :rtype: ``str``
+        :return: Returns true if the IP address belongs to the port name. Else it returns false.
         """
-        int_start_ip = Net.ip_2_int(self.start_end_dict['start']) + 3
-        self._issued_ip_addresses[int_start_ip] = port_name
-        return Net.int_2_ip(int_start_ip) + '/' + self._cidr.rsplit('/', 1)[1]
+        int_ip = Net.cidr_2_int(cidr)
+
+        if not int_ip in self._issued_ip_addresses:
+            return False
+
+        if self._issued_ip_addresses[int_ip] == port_name:
+            return True
+        return False
 
     def withdraw_ip_address(self, ip_address):
         """
@@ -81,12 +97,16 @@ class Net:
         :param ip_address: The issued IP address.
         :type ip_address: ``str``
         """
+        if ip_address is None:
+            return
+
         if "/" in ip_address:
             address, suffix = ip_address.rsplit('/', 1)
         else:
             address = ip_address
         int_ip_address = Net.ip_2_int(address)
-        del self._issued_ip_addresses[int_ip_address]
+        if int_ip_address in self._issued_ip_addresses.keys():
+            del self._issued_ip_addresses[int_ip_address]
 
     def reset_issued_ip_addresses(self):
         """
@@ -118,14 +138,18 @@ class Net:
         :rtype: ``bool``
         """
         if cidr is None:
+            if self._cidr is not None:
+                import emuvim.api.heat.ip_handler as IP
+                IP.free_cidr(self._cidr, self.subnet_id)
             self._cidr = None
+            self.reset_issued_ip_addresses()
+            self.start_end_dict = dict()
             return True
-        if not self.check_cidr_format(cidr):
+        if not Net.check_cidr_format(cidr):
             return False
 
-        if len(self._issued_ip_addresses) > 0:
-            self.reset_issued_ip_addresses()
-        self.start_end_dict = self.calculate_start_and_end_dict(cidr)
+        self.reset_issued_ip_addresses()
+        self.start_end_dict = Net.calculate_start_and_end_dict(cidr)
         self._cidr = cidr
         return True
 
@@ -138,7 +162,20 @@ class Net:
         """
         return self._cidr
 
-    def calculate_start_and_end_dict(self, cidr):
+    def clear_cidr(self):
+        self._cidr = None
+        self.start_end_dict = dict()
+        self.reset_issued_ip_addresses()
+
+    def delete_subnet(self):
+        self.subnet_id = None
+        self.subnet_name = None
+        self.subnet_creation_time = None
+        self.subnet_update_time = None
+        self.set_cidr(None)
+
+    @staticmethod
+    def calculate_start_and_end_dict(cidr):
         """
         Calculates the start and end IP address for the subnet.
 
@@ -159,6 +196,13 @@ class Net:
         end = start + (2 ** (32 - int_suffix) - 1)
 
         return {'start': Net.int_2_ip(start), 'end': Net.int_2_ip(end)}
+
+    @staticmethod
+    def cidr_2_int(cidr):
+        if cidr is None:
+            return None
+        ip = cidr.rsplit('/', 1)[0]
+        return Net.ip_2_int(ip)
 
     @staticmethod
     def ip_2_int(ip):
@@ -190,7 +234,8 @@ class Net:
         o4 = int(int_ip) % 256
         return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
 
-    def check_cidr_format(self, cidr):
+    @staticmethod
+    def check_cidr_format(cidr):
         """
         Checks the CIDR format. An valid example is: 192.168.0.0/29
 

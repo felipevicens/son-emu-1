@@ -80,12 +80,15 @@ class ApiBaseHeat(unittest.TestCase):
         if autolinkswitches:
             for i in range(0, len(self.s) - 1):
                 self.net.addLink(self.s[i], self.s[i + 1])
+            self.net.addLink(self.s[2], self.s[0]) # link switches s1, s2 and s3
+
         # add some data centers
         for i in range(0, ndatacenter):
             self.dc.append(
                 self.net.addDatacenter(
                     'dc%d' % i,
                     metadata={"unittest_dc": i}))
+        self.net.addLink(self.dc[0].switch, self.s[0])  # link switches dc0.s1 with s1
         # connect data centers to the endpoint
         for i in range(0, ndatacenter):
             self.api[i].connect_datacenter(self.dc[i])
@@ -103,6 +106,7 @@ class ApiBaseHeat(unittest.TestCase):
 
     def stopApi(self):
         for i in self.api:
+            i.manage.stop_floating_network()
             i.stop()
 
     def startNet(self):

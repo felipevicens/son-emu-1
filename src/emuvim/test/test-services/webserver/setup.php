@@ -1,5 +1,5 @@
 <?php
-$contents = file_get_contents("/tmp/son_emu_data");
+$contents = file_get_contents("/tmp/son_emu_data.json");
 $results = json_decode($contents, true);
 $intfs = $results["son_emu_data"]["interfaces"];
 echo "";
