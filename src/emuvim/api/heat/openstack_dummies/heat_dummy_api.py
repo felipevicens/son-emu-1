@@ -89,7 +89,7 @@ class HeatCreateStack(Resource):
         :return: 409, if the stack name was already used.
             400, if the heat template could not be parsed properly.
             500, if any exception occurred while creation.
-            200, if everything worked out.
+            201, if everything worked out.
         """
         logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
 
@@ -121,7 +121,7 @@ class HeatCreateStack(Resource):
 
             self.api.compute.add_stack(stack)
             self.api.compute.deploy_stack(stack.id)
-            return Response(json.dumps(return_dict), status=200, mimetype="application/json")
+            return Response(json.dumps(return_dict), status=201, mimetype="application/json")
 
         except Exception as ex:
             logging.exception("Heat: Create Stack exception.")
