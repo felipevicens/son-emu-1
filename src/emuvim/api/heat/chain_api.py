@@ -1,12 +1,22 @@
-from flask import Flask
-from flask_restful import Api, Resource
-from flask import Response, request
-import logging
 import json
-from mininet.node import OVSSwitch, RemoteController
+import logging
+import copy
+
+from mininet.node import OVSSwitch
+
+from flask import Flask
+from flask import Response, request
+from flask_restful import Api, Resource
+from mininet.link import Link
+import uuid
 
 
 class ChainApi(Resource):
+    """
+    The chain API is a component that is not used in OpenStack.
+    It is a custom built REST API that can be used to create network chains and loadbalancers.
+    """
+
     def __init__(self, inc_ip, inc_port, manage):
         # setup Flask
         self.app = Flask(__name__)
@@ -14,24 +24,55 @@ class ChainApi(Resource):
         self.ip = inc_ip
         self.port = inc_port
         self.manage = manage
+        self.playbook_file = '/tmp/son-emu-requests.log'
         self.api.add_resource(ChainVersionsList, "/",
                               resource_class_kwargs={'api': self})
-        self.api.add_resource(ChainVnf, "/v1/chain/<src_vnf>/<dst_vnf>",
+        self.api.add_resource(ChainList, "/v1/chain/list",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfInterfaces, "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(ChainVnfDcStackInterfaces,
                               "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(BalanceHostList, "/v1/lb/list",
+                              resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHost, "/v1/lb/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
         self.api.add_resource(BalanceHostDcStack, "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>",
                               resource_class_kwargs={'api': self})
+        self.api.add_resource(QueryTopology, "/v1/topo",
+                              resource_class_kwargs={'api': self})
+        self.api.add_resource(Shutdown, "/shutdown")
+
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
 
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % ("ChainDummyApi", self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
+
+    def dump_playbook(self):
+        with self.manage.lock:
+            with open(self.playbook_file, 'a') as logfile:
+                if len(request.data) > 0:
+                    data = "# CHAIN API\n"
+                    data += "curl -X {type} -H \"Content-type: application/json\" -d '{data}' {url}".format(type=request.method,
+                                                                                            data=request.data,
+                                                                                            url=request.url)
+                    logfile.write(data + "\n")
+
+
+class Shutdown(Resource):
+    def get(self):
+        logging.debug(("%s is beeing shut down") % (__name__))
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
 
 
 class ChainVersionsList(Resource):
@@ -42,14 +83,13 @@ class ChainVersionsList(Resource):
     def __init__(self, api):
         self.api = api
 
-    def get(self, id):
+    def get(self):
         '''
-        :param id: tenantid, will not be parsed
         :return: flask.Response containing the openstack like description of the chain api
         '''
         # at least let it look like an open stack function
         try:
-            resp = """[
+            resp = """
                 {
                     "versions": [
                         {
@@ -76,106 +116,133 @@ class ChainVersionsList(Resource):
             return ex.message, 500
 
 
-class ChainVnf(Resource):
+class ChainList(Resource):
     '''
-    Handles setting up a chain between two VNFs at "/v1/chain/<src_vnf>/<dst_vnf>"
-    This Resource tries to guess on which interfaces to chain on
+    Will retrieve all chains including their paths.
     '''
 
     def __init__(self, api):
         self.api = api
 
-    def put(self, src_vnf, dst_vnf):
+    def get(self):
         '''
-        A PUT request to "/v1/chain/<src_vnf>/<dst_vnf>/" will create a chain between the two VNFs.
-        The interfaces will be guessed.
-        :param src_vnf:
-        :param dst_vnf:
-        :return:
+        :return: flask.Response containing all live chains
         '''
-        # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
-
+        # at least let it look like an open stack function
         try:
-            # check if which interface to chain on
-            dst_intfs = None
-            src_intfs = None
+            resp = {"chains": list()}
 
-            for intfs in self.api.manage.net[src_vnf].intfs.values():
-                for dintfs in self.api.manage.net[dst_vnf].intfs.values():
-                    # if both are in the same network they can be chained
-                    # TODO: may chain on the mgmt interface!!
-                    if intfs.params[intfs.name] == dintfs.params[dintfs.name]:
-                        src_intfs = intfs.name
-                        dst_intfs = dintfs.name
+            for chain in self.api.manage.full_chain_data.values():
+                resp["chains"].append(chain)
 
-            cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                          vnf_dst_interface=dst_intfs, bidirectional=True)
-            resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
-        except Exception as e:
-            logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
-            return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
-    def delete(self, src_vnf, dst_vnf):
-        '''
-        A DELETE request at "/v1/chain/<src_vnf>/<dst_vnf>/"
-        Will delete a previously set up chain between two interfaces
-        :param src_vnf:
-        :param dst_vnf:
-        :return:
-        '''
-        # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+        except Exception as ex:
+            logging.exception(u"%s: Could not list all network chains." % __name__)
+            return ex.message, 500
 
+
+class BalanceHostList(Resource):
+    '''
+    Will retrieve all loadbalance rules including their paths.
+    '''
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self):
+        '''
+        :return: flask.Response containing all live loadbalancer rules
+        '''
+        # at least let it look like an open stack function
         try:
-            # check if which interface to chain on
-            dst_intfs = None
-            src_intfs = None
+            resp = {"loadbalancers": list()}
 
-            for intfs in self.api.manage.net[src_vnf].intfs.values():
-                for dintfs in self.api.manage.net[dst_vnf].intfs.values():
-                    # if both are in the same network they can be chained
-                    if intfs.params[intfs.name] == dintfs.params[dintfs.name]:
-                        src_intfs = intfs.name
-                        dst_intfs = dintfs.name
+            for lb in self.api.manage.full_lb_data.values():
+                resp["loadbalancers"].append(lb)
 
-            cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                         vnf_dst_interface=dst_intfs, bidirectional=True)
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
 
-            return Response(json.dumps(cookie), status=200, mimetype="application/json")
-        except Exception as e:
-            logging.exception(u"%s: Error deleting the chain.\n %s" % (__name__, e))
-            return Response(u"Error deleting the chain", status=500, mimetype="application/json")
+        except Exception as ex:
+            logging.exception(u"%s: Could not list all live loadbalancers." % __name__)
+            return ex.message, 500
 
 
 class ChainVnfInterfaces(Resource):
-    '''
+    """
     Handles requests targeted at: "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
-    Handles tearing down or setting up a chain between two vnfs
-    '''
+    Requests are for tearing down or setting up a chain between two vnfs
+    """
 
     def __init__(self, api):
         self.api = api
 
     def put(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
-        '''
-         A put request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
-         will create a chain between two interfaces at the specified vnfs
-        :param src_vnf:
-        :param src_intfs:
-        :param dst_vnf:
-        :param dst_intfs:
-        :return:
-        '''
+        """
+        A put request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+        will create a chain between two interfaces at the specified vnfs.
+
+        Note:
+           Does not allow a custom path. Uses ``.post``
+           Internally just makes a POST request with no POST data!
+
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
+        :rtype: :class:`flask.Response`
+        """
+        return self.post(src_vnf, src_intfs, dst_vnf, dst_intfs)
+
+    def post(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
+        """
+         A post request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
+         will create a chain between two interfaces at the specified vnfs.
+         The POST data contains the path like this.
+         { "path": ["dc1.s1", "s1", "dc4.s1"]}
+         path specifies the destination vnf and interface and contains a list of switches
+         that the path traverses. The path may not contain single hop loops like:
+         [s1, s2, s1].
+         This is a limitation of Ryu, as Ryu does not allow the `INPUT_PORT` action!
+
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
+
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
+
         # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
         try:
             cookie = self.api.manage.network_action_start(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
-                                                          vnf_dst_interface=dst_intfs, bidirectional=True)
+                                                          vnf_dst_interface=dst_intfs, bidirectional=True,
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -184,18 +251,32 @@ class ChainVnfInterfaces(Resource):
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
     def delete(self, src_vnf, src_intfs, dst_vnf, dst_intfs):
-        '''
+        """
         A DELETE request to "/v1/chain/<src_vnf>/<src_intfs>/<dst_vnf>/<dst_intfs>"
         will delete a previously created chain.
-        :param src_vnf:
-        :param src_intfs:
-        :param dst_vnf:
-        :param dst_intfs:
-        :return:
-        '''
+
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500\
+         also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
         # check if both VNFs exist
-        if src_vnf not in self.api.manage.net or dst_vnf not in self.api.manage.net:
-            return Response(u"At least one VNF does not exist", status=500, mimetype="application/json")
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(src_vnf, src_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (src_vnf, src_intfs), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(dst_vnf, dst_intfs):
+            return Response(u"VNF %s or intfs %s does not exist" % (dst_vnf, dst_intfs), status=501,
+                            mimetype="application/json")
         try:
             cookie = self.api.manage.network_action_stop(src_vnf, dst_vnf, vnf_src_interface=src_intfs,
                                                          vnf_dst_interface=dst_intfs, bidirectional=True)
@@ -206,10 +287,100 @@ class ChainVnfInterfaces(Resource):
 
 
 class ChainVnfDcStackInterfaces(Resource):
+    '''
+    Handles requests targeted at: "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+    Handles tearing down or setting up a chain between two vnfs for stacks.
+    '''
+
     def __init__(self, api):
         self.api = api
 
     def put(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+        """
+        A PUT request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+        will set up chain.
+
+        :Note: PUT Requests can not set up custom paths!
+
+        :param src_dc: Name of the source datacenter
+        :type src_dc: `str`
+        :param src_stack: Name of the source stack
+        :type src_stack: `str`
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_dc: Name of the destination datacenter
+        :type dst_dc: ``str``
+        :param dst_stack: Name of the destination stack
+        :type dst_stack: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500\
+         also returns the cookie as dict {'cookie': value}
+         501 if VNF or intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
+        # search for real names
+        real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
+        if type(real_names) is not tuple:
+            # something went wrong
+            return real_names
+
+        container_src, container_dst, interface_src, interface_dst = real_names
+
+        # check if both VNFs exist
+        if not self.api.manage.check_vnf_intf_pair(container_src, interface_src):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_src, interface_src), status=501,
+                            mimetype="application/json")
+        if not self.api.manage.check_vnf_intf_pair(container_dst, interface_dst):
+            return Response(u"VNF %s or intfs %s does not exist" % (container_dst, interface_dst), status=501,
+                            mimetype="application/json")
+
+        try:
+            cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
+                                                          vnf_dst_interface=interface_dst, bidirectional=True,
+                                                          layer2=True)
+            resp = {'cookie': cookie}
+            return Response(json.dumps(resp), status=200, mimetype="application/json")
+
+        except Exception as e:
+            logging.exception(u"%s: Error setting up the chain.\n %s" % (__name__, e))
+            return Response(u"Error setting up the chain", status=500, mimetype="application/json")
+
+    def post(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+        """
+         A post request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+         will create a chain between two interfaces at the specified vnfs.
+         The POST data contains the path like this.
+         { "path": ["dc1.s1", "s1", "dc4.s1"]}
+         path specifies the destination vnf and interface and contains a list of switches
+         that the path traverses. The path may not contain single hop loops like:
+         [s1, s2, s1].
+         This is a limitation of Ryu, as Ryu does not allow the `INPUT_PORT` action!
+
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500 also returns the cookie as dict {'cookie': value}
+         501 if vnf / intfs do not exist
+        :rtype: :class:`flask.Response`
+
+        """
+        if request.is_json:
+            path = request.json.get('path')
+            layer2 = request.json.get('layer2', True)
+        else:
+            path = None
+            layer2 = True
 
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
@@ -221,7 +392,8 @@ class ChainVnfDcStackInterfaces(Resource):
 
         try:
             cookie = self.api.manage.network_action_start(container_src, container_dst, vnf_src_interface=interface_src,
-                                                          vnf_dst_interface=interface_dst, bidirectional=True)
+                                                          vnf_dst_interface=interface_dst, bidirectional=True,
+                                                          path=path, layer2=layer2)
             resp = {'cookie': cookie}
             return Response(json.dumps(resp), status=200, mimetype="application/json")
 
@@ -230,7 +402,32 @@ class ChainVnfDcStackInterfaces(Resource):
             return Response(u"Error setting up the chain", status=500, mimetype="application/json")
 
     def delete(self, src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs):
+        """
+        A DELETE request to "/v1/chain/<src_dc>/<src_stack>/<src_vnf>/<src_intfs>/<dst_dc>/<dst_stack>/<dst_vnf>/<dst_intfs>"
+        will delete a previously created chain.
 
+        :param src_dc: Name of the source datacenter
+        :type src_dc: `str`
+        :param src_stack: Name of the source stack
+        :type src_stack: `str`
+        :param src_vnf: Name of the source VNF
+        :type src_vnf: ``str``
+        :param src_intfs: Name of the source VNF interface to chain on
+        :type src_intfs: ``str``
+        :param dst_dc: Name of the destination datacenter
+        :type dst_dc: ``str``
+        :param dst_stack: Name of the destination stack
+        :type dst_stack: ``str``
+        :param dst_vnf: Name of the destination VNF
+        :type dst_vnf: ``str``
+        :param dst_intfs: Name of the destination VNF interface to chain on
+        :type dst_intfs: ``str``
+        :return: flask.Response 200 if set up correctly else 500\
+         also returns the cookie as dict {'cookie': value}
+         501 if one of the VNF / intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
         # search for real names
         real_names = self._findNames(src_dc, src_stack, src_vnf, src_intfs, dst_dc, dst_stack, dst_vnf, dst_intfs)
         if type(real_names) is not tuple:
@@ -309,27 +506,55 @@ class ChainVnfDcStackInterfaces(Resource):
 
         return container_src, container_dst, interface_src, interface_dst
 
+
 class BalanceHostDcStack(Resource):
+    """
+    Handles requests to "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>"
+    Sets up LoadBalancers for VNFs that are belonging to a certain stack.
+    """
+
     def __init__(self, api):
         self.api = api
 
     def post(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
+        """
+        A POST request to "/v1/lb/<src_dc>/<src_stack>/<vnf_src_name>/<vnf_src_interface>"
+        will set up a loadbalancer. The target VNFs and interfaces are in the post data.
+
+        :Example:
+            See :class:`heat.chain_api.BalanceHost.post`
+
+        :param src_dc: Name of the source VNF
+        :type src_dc: ``str``
+        :param src_stack: Name of the source VNF interface to chain on
+        :type src_stack: ``str``
+         * src_stack == "floating" sets up a new floating node, so only use this name if you know what you are doing.
+        :param vnf_src_name:
+        :type vnf_src_name: ``str``
+        :param vnf_src_interface:
+        :type vnf_src_interface: ``str``
+        :return: flask.Response 200 if set up correctly else 500
+        :rtype: :class:`flask.Response`
+
+        """
         try:
             req = request.json
-            if req is None or len(req) == 0:
+            if req is None or len(req) == 0 or "dst_vnf_interfaces" not in req:
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
+            dst_vnfs = req.get('dst_vnf_interfaces')
+            container_src = None
+            interface_src = None
+
             # check src vnf/port
-            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-            if type(real_src) is not tuple:
-                # something went wrong, real_src is a Response object
-                return real_src
+            if src_stack != "floating":
+                real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+                if type(real_src) is not tuple:
+                    # something went wrong, real_src is a Response object
+                    return real_src
 
-            container_src, interface_src = real_src
-
-            # check dst vnf/ports
-            dst_vnfs = req.get('dst_vnf_interfaces', list())
+                container_src, interface_src = real_src
 
             real_dst_dict = {}
             for dst_vnf in dst_vnfs:
@@ -344,40 +569,66 @@ class BalanceHostDcStack(Resource):
                         return real_dst
                     real_dst_dict[real_dst[0]] = real_dst[1]
 
-            input_object = {"dst_vnf_interfaces":real_dst_dict, "type":req.get("type","all")}
+            input_object = {"dst_vnf_interfaces": real_dst_dict, "path": req.get("path", None)}
 
-            self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
+            if src_stack != "floating":
+                self.api.manage.add_loadbalancer(container_src, interface_src, lb_data=input_object)
+                return Response(u"Loadbalancer set up at %s:%s" % (container_src, interface_src),
+                                status=200, mimetype="application/json")
+            else:
+                cookie, floating_ip = self.api.manage.add_floating_lb(src_dc, lb_data=input_object)
 
-            return Response(u"Loadbalancer of type %s set up at %s:%s" % (req.get("type", "ALL"),
-                                                                          vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
+                                status=200, mimetype="application/json")
 
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
                               (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))
             return Response(u"%s: Error setting up the loadbalancer at %s %s %s:%s.\n %s" %
-                            (__name__, src_dc, src_stack,  vnf_src_name, vnf_src_interface, e), status=500, mimetype="application/json")
-
+                            (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e), status=500,
+                            mimetype="application/json")
 
     def delete(self, src_dc, src_stack, vnf_src_name, vnf_src_interface):
+        """
+        Will delete a load balancer that sits behind a specified interface at a vnf for a specific stack
+
+        :param src_dc: Name of the source VNF
+        :type src_dc: ``str``
+        :param src_stack: Name of the source VNF interface to chain on
+        :type src_stack: ``str``
+        :param vnf_src_name:
+        :type vnf_src_name: ``str``
+        :param vnf_src_interface:
+        :type vnf_src_interface: ``str``
+        :return: flask.Response 200 if set up correctly else 500
+        :rtype: :class:`flask.Response`
+
+        """
         try:
             # check src vnf/port
-            real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
-            if type(real_src) is not tuple:
-                # something went wrong, real_src is a Response object
-                return real_src
+            if src_stack != "floating":
+                real_src = self._findName(src_dc, src_stack, vnf_src_name, vnf_src_interface)
+                if type(real_src) is not tuple:
+                    # something went wrong, real_src is a Response object
+                    return real_src
 
-            container_src, interface_src = real_src
+                container_src, interface_src = real_src
 
-            self.api.manage.delete_loadbalancer(container_src, interface_src)
+                self.api.manage.delete_loadbalancer(container_src, interface_src)
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Floating loadbalancer with cookie %s deleted" % (cookie),
+                                status=200, mimetype="application/json")
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s %s %s%s.\n %s" %
                               (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface, e))
             return Response(u"%s: Error deleting the loadbalancer at %s %s %s%s." %
-                            (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface), status=500, mimetype="application/json")
+                            (__name__, src_dc, src_stack, vnf_src_name, vnf_src_interface), status=500,
+                            mimetype="application/json")
 
     # Tries to find real container and port name according to heat template names
     # Returns a string or a Response object
@@ -425,39 +676,49 @@ class BalanceHostDcStack(Resource):
 
 
 class BalanceHost(Resource):
-    '''
-     Handles requests at "/v1/lb/<vnf_src_name>/<vnf_src_interface>"
-     and will set up or delete Load Balancers.
-    '''
+    """
+    Handles requests at "/v1/lb/<vnf_src_name>/<vnf_src_interface>"
+    to set up or delete Load Balancers.
+    """
 
     def __init__(self, api):
         self.api = api
 
     def post(self, vnf_src_name, vnf_src_interface):
-        '''
+        """
         Will set up a Load balancer behind an interface at a specified vnf
         We need both to avoid naming conflicts as interface names are not unique
-        type: ALL | SELECT | FF, default is ALL
-        Post data is in this format:
-        {"dst_vnf_interfaces": {"dc1_man_serv0": "port-cp0-man",
-        "dc2_man_serv0": "port-cp0-man","dc2_man_serv1": "port-cp1-man"}, "type": "ALL"}
-        and specifies the balanced nodes
-        :param vnf_src_name:
-        :param vnf_src_interface:
-        :return: flask Response
-        '''
+
+        :param vnf_src_name: Name of the source VNF
+        :type vnf_src_name: ``str``
+        :param vnf_src_interface: Name of the source VNF interface to chain on
+        :type vnf_src_interface: ``str``
+        :return: flask.Response 200 if set up correctly else 500
+         501 if VNF or intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
         try:
             req = request.json
-            if req is None or len(req) == 0:
+            if req is None or len(req) == 0 or "dst_vnf_interfaces" not in req:
                 return Response(u"You have to specify destination vnfs via the POST data.",
                                 status=500, mimetype="application/json")
 
-            self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
+            if vnf_src_name != "floating":
+                # check if VNF exist
+                if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+                    return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface),
+                                    status=501,
+                                    mimetype="application/json")
+                self.api.manage.add_loadbalancer(vnf_src_name, vnf_src_interface, lb_data=req)
 
-            return Response(u"Loadbalancer of type %s set up at %s:%s" % (req.get("type", "ALL"),
-                                                                          vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer set up at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie, floating_ip = self.api.manage.add_floating_lb(vnf_src_interface, lb_data=req)
 
+                return Response(json.dumps({"cookie": "%d" % cookie, "floating_ip": "%s" % floating_ip}),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error setting up the loadbalancer at %s:%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
@@ -465,27 +726,117 @@ class BalanceHost(Resource):
                             (__name__, vnf_src_name, vnf_src_interface, e), status=500, mimetype="application/json")
 
     def delete(self, vnf_src_name, vnf_src_interface):
-        '''
+        """
         Will delete a load balancer that sits behind a specified interface at a vnf
-        :param vnf_src_name:  the targeted vnf
-        :param vnf_src_interface:  the interface behind which the load balancer is sitting
-        :return: flask Response
-        '''
+
+        :param vnf_src_name: Name of the source VNF
+        :type vnf_src_name: ``str``
+        :param vnf_src_interface: Name of the source VNF interface to chain on
+        :type vnf_src_interface: ``str``
+        :return: flask.Response 200 if set up correctly else 500
+         501 if VNF or intfs does not exist
+        :rtype: :class:`flask.Response`
+
+        """
+        # check if VNF exist
+        if not self.api.manage.check_vnf_intf_pair(vnf_src_name, vnf_src_interface):
+            return Response(u"VNF %s or intfs %s does not exist" % (vnf_src_name, vnf_src_interface), status=501,
+                            mimetype="application/json")
         try:
             logging.debug("Deleting loadbalancer at %s: interface: %s" % (vnf_src_name, vnf_src_interface))
             net = self.api.manage.net
 
-            # check if VNF exists
-            if vnf_src_name not in net:
-                return Response(u"Source VNF or interface can not be found." % vnf_src_name,
-                                status=404, mimetype="application/json")
+            if vnf_src_name != "floating":
+                # check if VNF exists
+                if vnf_src_name not in net:
+                    return Response(u"Source VNF or interface can not be found." % vnf_src_name,
+                                    status=404, mimetype="application/json")
 
-            self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
+                self.api.manage.delete_loadbalancer(vnf_src_name, vnf_src_interface)
 
-            return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
-                            status=200, mimetype="application/json")
+                return Response(u"Loadbalancer deleted at %s:%s" % (vnf_src_name, vnf_src_interface),
+                                status=200, mimetype="application/json")
+            else:
+                cookie = vnf_src_name
+                self.api.manage.delete_floating_lb(cookie)
+                return Response(u"Floating loadbalancer with cookie %s removed" % (cookie),
+                                status=200, mimetype="application/json")
         except Exception as e:
             logging.exception(u"%s: Error deleting the loadbalancer at %s%s.\n %s" %
                               (__name__, vnf_src_name, vnf_src_interface, e))
             return Response(u"%s: Error deleting the loadbalancer at %s%s." %
                             (__name__, vnf_src_name, vnf_src_interface), status=500, mimetype="application/json")
+
+
+class QueryTopology(Resource):
+    """
+    Handles requests at "/v1/topo/"
+    """
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self):
+        """
+        Answers GET requests for the current network topology at "/v1/topo".
+        This will only return switches and datacenters and ignore currently deployed VNFs.
+
+        :return: 200 if successful with the network graph as json dict, else 500
+
+        """
+        try:
+            logging.debug("Querying topology")
+            graph = self.api.manage.net.DCNetwork_graph
+            net = self.api.manage.net
+            # root node is nodes
+            topology = {"nodes": list()}
+
+            for n in graph:
+                # remove root node as well as the floating switch fs1
+                if n != "root" and n != "fs1":
+                    # we only want to return switches!
+                    if not isinstance(net[n], OVSSwitch):
+                        continue
+                    node = dict()
+
+                    # get real datacenter label
+                    for dc in self.api.manage.net.dcs.values():
+                        if str(dc.switch) == str(n):
+                            node["name"] = str(n)
+                            node["type"] = "Datacenter"
+                            node["label"] = str(dc.label)
+                            break
+
+                    # node is not a datacenter. It has to be a switch
+                    if node.get("type", "") != "Datacenter":
+                        node["name"] = str(n)
+                        node["type"] = "Switch"
+
+                    node["links"] = list()
+                    # add links to the topology
+                    for graph_node, data in graph[n].items():
+                        # only add links to the topology that connect switches
+                        if isinstance(net[graph_node], OVSSwitch):
+                            # we allow multiple edges between switches, so add them all
+                            # with their unique keys
+                            link = copy.copy(data)
+                            for edge in link:
+                                # do not add any links to the floating switch to the topology!
+                                if graph_node == "fs1":
+                                    continue
+                                # the translator wants everything as a string!
+                                for key, value in link[edge].items():
+                                    link[edge][key] = str(value)
+                                # name of the destination
+                                link[edge]["name"] = graph_node
+                                node["links"].append(link)
+
+                    topology["nodes"].append(node)
+
+            return Response(json.dumps(topology),
+                            status=200, mimetype="application/json")
+        except Exception as e:
+            logging.exception(u"%s: Error querying topology.\n %s" %
+                              (__name__, e))
+            return Response(u"%s: Error querying topology.\n %s" %
+                            (__name__, e), status=500, mimetype="application/json")

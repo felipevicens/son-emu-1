@@ -8,30 +8,29 @@ python:
 virtualenv:
   system_site_packages: true
 
-env:
-  - PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/
-
 before_install:
   - sudo apt-get update
-  - sudo dpkg -l | grep postgres
-  - sudo apt-get install --reinstall dpkg
-  - sudo apt-get remove postgresql-9.1 postgresql-9.2 postgresql-9.3 postgresql-9.4 postgresql-9.5 postgresql-common postgresql-9.1-postgis-2.2-scripts postgresql-9.2-postgis-2.2-scripts postgresql-9.3-postgis-2.2-scripts postgresql-9.4-postgis-2.2-scripts postgresql-9.5-postgis-2.2-scripts postgresql-client postgresql-client-9.3 postgresql-client-9.5 postgresql-client-common postgresql-common postgresql-9.1-postgis-2.2 postgresql-9.2-postgis-2.2 postgresql-9.3-postgis-2.2 postgresql-9.4-postgis-2.2 postgresql-9.5-postgis-2.2
-  - sudo aptitude -o Dpkg::Options::=--force-confold -y upgrade
-  - sudo apt-get install ansible git aptitude python-heatclient
+  - sudo apt-get install -y git aptitude python-heatclient curl python-dev python-zmq libzmq-dev libffi-dev libssl-dev python-pip 
+  - sudo pip install --upgrade pip
+  # we need some extra packages that setup.py seems to fail with...
+  - sudo pip install docker==2.0.2 Flask simplejson oslo.config==3.13.0 oslo.i18n==3.8.0 oslo.utils==0.2.0
 install:
-  - sudo git clone https://github.com/mpeuster/containernet.git
-  - cd containernet/ansible/
-  - sudo ansible-playbook -i "localhost," -c local install.yml
-  - cd
-  - sudo git clone https://github.com/CN-UPB/son-emu.git
+  - sudo git clone https://github.com/mpeuster/containernet.git ~/containernet
+  # install mininet
+  - cd ~/
+  - sudo containernet/util/install.sh
+  # install containernet
+  - cd ~/containernet
+  - sudo make install
+  # get and install son-emu
+  - sudo git clone https://github.com/CN-UPB/son-emu.git ~/son-emu
   - cd ~/son-emu/
   - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sudo git pull --no-edit origin pull/$TRAVIS_PULL_REQUEST/head ; fi
-  - cd ~/son-emu/ansible
-  - sudo ansible-playbook -i "localhost," -c local install.yml
+  - sudo python setup.py install
   - cd ~/son-emu
 
 script:
-  - sudo PYTHONPATH=$PYTHONPATH:~/son-emu/src/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/ PYTHONPATH=$PYTHONPATH:~/son-emu/src/emuvim/test/unittests/ python src/emuvim/test/unittests/test_heatapi.py
+  - sudo python src/emuvim/test/unittests/test_heatapi.py
 
 
 

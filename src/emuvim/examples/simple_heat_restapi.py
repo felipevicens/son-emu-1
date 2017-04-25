@@ -31,11 +31,11 @@ from emuvim.dcemulator.net import DCNetwork
 from emuvim.api.heat.openstack_api_endpoint import OpenstackApiEndpoint
 from emuvim.api.heat.manage import OpenstackManage
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def create_topology1():
-    net = DCNetwork(monitor=True, enable_learning=False)
+    net = DCNetwork(monitor=False, enable_learning=False)
     dc1 = net.addDatacenter("dc1")
     dc2 = net.addDatacenter("dc2")
     dc3 = net.addDatacenter("dc3")
@@ -53,10 +53,10 @@ def create_topology1():
     heatapi4.connect_datacenter(dc4)
 
     s1 = net.addSwitch("s1")
-    net.addLink(dc1, s1, delay="10ms")
-    net.addLink(dc2, s1, delay="20ms")
-    net.addLink(dc3, s1, delay="30ms")
-    net.addLink(dc4, s1, delay="40ms")
+    net.addLink(dc1, s1, jitter="10ms", delay="12ms", loss=0, bw=0.5)
+    net.addLink(dc2, s1, bw=0.5, loss=0, delay="20ms", jitter="15ms")
+    net.addLink(dc3, s1, delay="30ms", loss=1, bw=0.5, jitter="10ms")
+    net.addLink(dc4, s1, delay="40ms", loss=2, bw=1, jitter="10ms")
     # heatapirun API endpoint server (in another thread, don't block)
     heatapi1.start()
     heatapi2.start()
@@ -75,7 +75,7 @@ def create_topology1():
 
 
 def main():
-    setLogLevel('info')  # set Mininet loglevel
+    setLogLevel('debug')  # set Mininet loglevel
     create_topology1()
 
 

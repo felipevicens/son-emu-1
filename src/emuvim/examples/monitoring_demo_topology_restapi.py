@@ -61,8 +61,8 @@ def create_topology1():
        (each data center is one "bigswitch" in our simplified
         first prototype)
     """
-    dc1 = net.addDatacenter("datacenter1")
-    dc2 = net.addDatacenter("datacenter2")
+    dc1 = net.addDatacenter("dc1")
+    dc2 = net.addDatacenter("dc2")
 
     """
     3. You can add additional SDN switches for data center

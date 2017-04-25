@@ -4,6 +4,7 @@ from emuvim.api.heat.openstack_dummies.base_openstack_dummy import BaseOpenstack
 import logging
 import json
 
+
 class KeystoneDummyApi(BaseOpenstackDummy):
     def __init__(self, in_ip, in_port):
         super(KeystoneDummyApi, self).__init__(in_ip, in_port)
@@ -16,9 +17,15 @@ class KeystoneDummyApi(BaseOpenstackDummy):
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
+
 class Shutdown(Resource):
+    """
+    A get request to /shutdown will shut down this endpoint.
+    """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -28,106 +35,136 @@ class Shutdown(Resource):
 
 
 class KeystoneListVersions(Resource):
+    """
+    List all known keystone versions.
+    Hardcoded for our version!
+    """
 
     def __init__(self, api):
         self.api = api
 
     def get(self):
-        logging.debug("API CALL: Keystone - List Versions")
+        """
+        List API versions.
+
+        :return: Returns the api versions.
+        :rtype: :class:`flask.response` containing a static json encoded dict.
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
         resp['versions'] = dict()
 
         version = [{
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    }
-                ],
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "status": "stable",
-                "updated": "2014-04-17T00:00:00Z"
-            }]
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "status": "stable",
+            "updated": "2014-04-17T00:00:00Z"
+        }]
         resp['versions']['values'] = version
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 
 class KeystoneShowAPIv2(Resource):
+    """
+    Entrypoint for all openstack clients.
+    This returns all current entrypoints running on son-emu.
+    """
 
     def __init__(self, api):
         self.api = api
 
     def get(self):
-        logging.debug("API CALL: Show API v2.0 details")
+        """
+        List API entrypoints.
 
-        neutrnon_port = self.api.port + 4696
+        :return: Returns an openstack style response for all entrypoints.
+        :rtype: :class:`flask.response`
+        """
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
+
+        neutron_port = self.api.port + 4696
         heat_port = self.api.port + 3004
 
         resp = dict()
         resp['version'] = {
-                "status": "stable",
-                "media-types": [
-                    {
-                        "base": "application/json",
-                        "type": "application/vnd.openstack.identity-v2.0+json"
-                    }
-                ],
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutrnon_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutrnon_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutrnon_port),
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
-                        "rel": "self"
-                    }
-                ]
-            }
-        # TODO add all API calls
+            "status": "stable",
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.identity-v2.0+json"
+                }
+            ],
+            "id": "v2.0",
+            "links": [
+                {
+                    "href": "http://%s:%d/v2.0" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/tokens" % (self.api.ip, self.api.port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/networks" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/subnets" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v2.0/ports" % (self.api.ip, neutron_port),
+                    "rel": "self"
+                },
+                {
+                    "href": "http://%s:%d/v1/<tenant_id>/stacks" % (self.api.ip, heat_port),
+                    "rel": "self"
+                }
+            ]
+        }
 
         return Response(json.dumps(resp), status=200, mimetype='application/json')
 
 
 class KeystoneGetToken(Resource):
+    """
+    Returns a static keystone token.
+    We don't do any validation so we don't care.
+    """
 
     def __init__(self, api):
         self.api = api
 
     def post(self):
-        # everything is hardcoded here
-        # to work with this keystone setup you need the following parameters
-        # OS_AUTH_URL=http://<ip>:<port>/v2.0
-        # OS_IDENTITY_API_VERSION=2.0
-        # OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
-        # OS_REGION_NAME=RegionOne
-        # OS_USERNAME=bla
-        # OS_PASSWORD = bla
+        """
+        List API entrypoints.
 
-        logging.debug("API CALL: Keystone - Get token")
+        This is hardcoded. For a working "authentication" use these ENVVARS:
+
+        * OS_AUTH_URL=http://<ip>:<port>/v2.0
+        * OS_IDENTITY_API_VERSION=2.0
+        * OS_TENANT_ID=fc394f2ab2df4114bde39905f800dc57
+        * OS_REGION_NAME=RegionOne
+        * OS_USERNAME=bla
+        * OS_PASSWORD=bla
+
+        :return: Returns an openstack style response for all entrypoints.
+        :rtype: :class:`flask.response`
+        """
+
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
         try:
             ret = dict()
             req = json.loads(request.data)
@@ -146,10 +183,10 @@ class KeystoneGetToken(Resource):
 
             ret['access']['user'] = dict()
             user = ret['access']['user']
-            user['username'] = "username"
+            user['username'] = req.get('username', "username")
             user['name'] = "tenantName"
             user['roles_links'] = list()
-            user['id'] = token['tenant']['id']
+            user['id'] = token['tenant'].get('id', "fc394f2ab2df4114bde39905f800dc57")
             user['roles'] = [{'name': 'Member'}]
 
             ret['access']['region_name'] = "RegionOne"
@@ -185,16 +222,30 @@ class KeystoneGetToken(Resource):
                 {
                     "endpoints": [
                         {
-                            "adminURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
+                            "adminURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696),
                             "region": "RegionOne",
-                            "internalURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696),
+                            "internalURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696),
                             "id": "2dad48f09e2a447a9bf852bcd93548cf",
-                            "publicURL": "http://%s:%s/" % (self.api.ip, self.api.port + 4696)
+                            "publicURL": "http://%s:%s" % (self.api.ip, self.api.port + 4696)
                         }
                     ],
                     "endpoints_links": [],
                     "type": "network",
                     "name": "neutron"
+                },
+                {
+                    "endpoints": [
+                        {
+                            "adminURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
+                            "region": "RegionOne",
+                            "internalURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242),
+                            "id": "2dad48f09e2a447a9bf852bcd93548cf",
+                            "publicURL": "http://%s:%s" % (self.api.ip, self.api.port + 4242)
+                        }
+                    ],
+                    "endpoints_links": [],
+                    "type": "image",
+                    "name": "glance"
                 },
                 {
                     "endpoints": [

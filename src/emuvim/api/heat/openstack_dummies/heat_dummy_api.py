@@ -28,13 +28,24 @@ class HeatDummyApi(BaseOpenstackDummy):
                               "/v1/<tenant_id>/stacks/<stack_name_or_id>/<stack_id>",
                               resource_class_kwargs={'api': self})
 
+        @self.app.after_request
+        def add_access_control_header(response):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+
     def _start_flask(self):
         logging.info("Starting %s endpoint @ http://%s:%d" % (__name__, self.ip, self.port))
         if self.app is not None:
+            self.app.before_request(self.dump_playbook)
             self.app.run(self.ip, self.port, debug=True, use_reloader=False)
 
 
 class Shutdown(Resource):
+    """
+    A get request to /shutdown will shut down this endpoint.
+    """
+
     def get(self):
         logging.debug(("%s is beeing shut down") % (__name__))
         func = request.environ.get('werkzeug.server.shutdown')
@@ -48,7 +59,7 @@ class HeatListAPIVersions(Resource):
         self.api = api
 
     def get(self):
-        logging.debug("API CALL: Heat - List API Versions")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         resp = dict()
 
         resp['versions'] = dict()
@@ -73,13 +84,14 @@ class HeatCreateStack(Resource):
     def post(self, tenant_id):
         """
         Create and deploy a new stack.
+
         :param tenant_id:
         :return: 409, if the stack name was already used.
-        400, if the heat template could not be parsed properly.
-        500, if any exception occurred while creation.
-        200, if everything worked out.
+            400, if the heat template could not be parsed properly.
+            500, if any exception occurred while creation.
+            201, if everything worked out.
         """
-        logging.debug("HEAT: Create Stack")
+        logging.debug("API CALL: %s POST" % str(self.__class__.__name__))
 
         try:
             stack_dict = json.loads(request.data)
@@ -93,6 +105,7 @@ class HeatCreateStack(Resource):
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
             if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+                self.api.compute.clean_broken_stack(stack)
                 return 'Could not create stack.', 400
 
             stack.creation_time = str(datetime.now())
@@ -108,7 +121,7 @@ class HeatCreateStack(Resource):
 
             self.api.compute.add_stack(stack)
             self.api.compute.deploy_stack(stack.id)
-            return Response(json.dumps(return_dict), status=200, mimetype="application/json")
+            return Response(json.dumps(return_dict), status=201, mimetype="application/json")
 
         except Exception as ex:
             logging.exception("Heat: Create Stack exception.")
@@ -116,13 +129,14 @@ class HeatCreateStack(Resource):
 
     def get(self, tenant_id):
         """
-        Calculates informations about the requested stack.
+        Calculates information about the requested stack.
+
         :param tenant_id:
-        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
-        500, if any exception occurred.
-        200, if everything worked out.
+        :return: Returns a json response which contains information like the stack id, name, status, creation time.
+            500, if any exception occurred.
+            200, if everything worked out.
         """
-        logging.debug("HEAT: Stack List")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             return_stacks = dict()
             return_stacks['stacks'] = list()
@@ -151,15 +165,16 @@ class HeatShowStack(Resource):
 
     def get(self, tenant_id, stack_name_or_id, stack_id=None):
         """
-        Calculates detailed informations about the requested stack.
+        Calculates detailed information about the requested stack.
+
         :param tenant_id:
         :param stack_name_or_id:
         :param stack_id:
-        :return: Returns a json response which contains informations like the stack id, name, status, creation time.
-        500, if any exception occurred.
-        200, if everything worked out.
+        :return: Returns a json response which contains information like the stack id, name, status, creation time.
+            500, if any exception occurred.
+            200, if everything worked out.
         """
-        logging.debug("HEAT: Show Stack")
+        logging.debug("API CALL: %s GET" % str(self.__class__.__name__))
         try:
             stack = None
             if stack_name_or_id in self.api.compute.stacks:
@@ -219,15 +234,16 @@ class HeatUpdateStack(Resource):
     def put(self, tenant_id, stack_name_or_id, stack_id=None):
         """
         Updates an existing stack with a new heat template.
+
         :param tenant_id:
         :param stack_name_or_id: Specifies the stack, which should be updated.
         :param stack_id:
         :return: 404, if the requested stack could not be found.
-        400, if the stack creation (because of errors in the heat template) or the stack update failed.
-        500, if any exception occurred while updating.
-        202, if everything worked out.
+            400, if the stack creation (because of errors in the heat template) or the stack update failed.
+            500, if any exception occurred while updating.
+            202, if everything worked out.
         """
-        logging.debug("Heat: Update Stack")
+        logging.debug("API CALL: %s PUT" % str(self.__class__.__name__))
         try:
             old_stack = None
             if stack_name_or_id in self.api.compute.stacks:
@@ -251,7 +267,7 @@ class HeatUpdateStack(Resource):
             reader = HeatParser(self.api.compute)
             if isinstance(stack_dict['template'], str) or isinstance(stack_dict['template'], unicode):
                 stack_dict['template'] = json.loads(stack_dict['template'])
-            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label):
+            if not reader.parse_input(stack_dict['template'], stack, self.api.compute.dc.label, stack_update=True):
                 return 'Could not create stack.', 400
 
             if not self.api.compute.update_stack(old_stack.id, stack):
@@ -271,13 +287,14 @@ class HeatDeleteStack(Resource):
     def delete(self, tenant_id, stack_name_or_id, stack_id=None):
         """
         Deletes an existing stack.
+
         :param tenant_id:
         :param stack_name_or_id: Specifies the stack, which should be deleted.
         :param stack_id:
         :return: 500, if any exception occurred while deletion.
-        204, if everything worked out.
+            204, if everything worked out.
         """
-        logging.debug("Heat: Delete Stack")
+        logging.debug("API CALL: %s DELETE" % str(self.__class__.__name__))
         try:
             if stack_name_or_id in self.api.compute.stacks:
                 self.api.compute.delete_stack(stack_name_or_id)
