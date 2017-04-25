@@ -58,6 +58,7 @@ class testRestApi(ApiBaseHeat):
         # start Mininet network
         self.startNet()
 
+    @unittest.skip("temporarily disabled")
     def testChainingDummy(self):
         print('->>>>>>> test Chaining Class->>>>>>>>>>>>>>>')
         print('->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
