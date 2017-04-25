@@ -38,7 +38,6 @@ LOG.setLevel(logging.DEBUG)
 
 DCDPID_BASE = 1000  # start of switch dpid's used for data center switches
 
-
 class EmulatorCompute(Docker):
     """
     Emulator specific compute node class.
@@ -61,9 +60,17 @@ class EmulatorCompute(Docker):
         Helper method to receive information about the virtual networks
         this compute instance is connected to.
         """
-        # format list of tuples (name, Ip, MAC, isUp, status)
-        return [{'intf_name':str(i), 'ip':i.IP(), 'mac':i.MAC(), 'up':i.isUp(), 'status':i.status()}
-                for i in self.intfList()]
+        # get all links and find dc switch interface
+        networkStatusList = []
+        for i in self.intfList():
+            vnf_name = self.name
+            vnf_interface = str(i)
+            dc_port_name = self.datacenter.net.find_connected_dc_interface(vnf_name, vnf_interface)
+            # format list of tuples (name, Ip, MAC, isUp, status, dc_portname)
+            intf_dict = {'intf_name': str(i), 'ip': i.IP(), 'mac': i.MAC(), 'up': i.isUp(), 'status': i.status(), 'dc_portname': dc_port_name}
+            networkStatusList.append(intf_dict)
+
+        return networkStatusList
 
     def getStatus(self):
         """
@@ -75,16 +82,19 @@ class EmulatorCompute(Docker):
         status["docker_network"] = self.dcinfo['NetworkSettings']['IPAddress']
         status["image"] = self.dimage
         status["flavor_name"] = self.flavor_name
-        status["cpu_quota"] = self.cpu_quota
-        status["cpu_period"] = self.cpu_period
-        status["cpu_shares"] = self.cpu_shares
-        status["cpuset"] = self.cpuset
-        status["mem_limit"] = self.mem_limit
-        status["memswap_limit"] = self.memswap_limit
+        status["cpu_quota"] = self.resources.get('cpu_quota')
+        status["cpu_period"] = self.resources.get('cpu_period')
+        status["cpu_shares"] = self.resources.get('cpu_shares')
+        status["cpuset"] = self.resources.get('cpuset_cpus')
+        status["mem_limit"] = self.resources.get('mem_limit')
+        status["memswap_limit"] = self.resources.get('memswap_limit')
         status["state"] = self.dcli.inspect_container(self.dc)["State"]
         status["id"] = self.dcli.inspect_container(self.dc)["Id"]
+        status["short_id"] = self.dcli.inspect_container(self.dc)["Id"][:12]
+        status["hostname"] = self.dcli.inspect_container(self.dc)["Config"]['Hostname']
         status["datacenter"] = (None if self.datacenter is None
                                 else self.datacenter.label)
+
         return status
 
 
@@ -105,7 +115,7 @@ class Datacenter(object):
         self.name = "dc%d" % Datacenter.DC_COUNTER
         Datacenter.DC_COUNTER += 1
         # use this for user defined names that can be longer than self.name
-        self.label = label  
+        self.label = label
         # dict to store arbitrary metadata (e.g. latitude and longitude)
         self.metadata = metadata
         # path to which resource information should be logged (e.g. for experiments). None = no logging
@@ -140,7 +150,7 @@ class Datacenter(object):
     def start(self):
         pass
 
-    def startCompute(self, name, image=None, command=None, network=None, flavor_name="tiny"):
+    def startCompute(self, name, image=None, command=None, network=None, flavor_name="tiny", **params):
         """
         Create a new container as compute resource and connect it to this
         data center.
@@ -166,14 +176,24 @@ class Datacenter(object):
             if len(network) < 1:
                 network.append({})
 
+        # apply hard-set resource limits=0
+        cpu_percentage = params.get('cpu_percent')
+        if cpu_percentage:
+            params['cpu_period'] = self.net.cpu_period
+            params['cpu_quota'] = self.net.cpu_period * float(cpu_percentage)
+
         # create the container
         d = self.net.addDocker(
             "%s" % (name),
             dimage=image,
             dcmd=command,
             datacenter=self,
-            flavor_name=flavor_name
+            flavor_name=flavor_name,
+            environment = {'VNF_NAME':name},
+            **params
         )
+
+
 
         # apply resource limits to container if a resource model is defined
         if self._resource_model is not None:
@@ -227,6 +247,24 @@ class Datacenter(object):
         del self.containers[name]
 
         return True
+
+    def attachExternalSAP(self, sap_name, sap_ip):
+        # create SAP as OVS internal interface
+        sap_intf = self.switch.attachInternalIntf(sap_name, sap_ip)
+
+        # add this as a link to the DCnetwork graph, so it is available for routing
+        attr_dict2 = {'src_port_id': sap_name, 'src_port_nr': None,
+                      'src_port_name': sap_name,
+                      'dst_port_id': self.switch.ports[sap_intf], 'dst_port_nr': self.switch.ports[sap_intf],
+                      'dst_port_name': sap_intf.name}
+        self.net.DCNetwork_graph.add_edge(sap_name, self.switch.name, attr_dict=attr_dict2)
+
+        attr_dict2 = {'dst_port_id': sap_name, 'dst_port_nr': None,
+                      'dst_port_name': sap_name,
+                      'src_port_id': self.switch.ports[sap_intf], 'src_port_nr': self.switch.ports[sap_intf],
+                      'src_port_name': sap_intf.name}
+        self.net.DCNetwork_graph.add_edge(self.switch.name, sap_name, attr_dict=attr_dict2)
+
 
     def listCompute(self):
         """

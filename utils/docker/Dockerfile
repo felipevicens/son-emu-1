@@ -24,29 +24,46 @@
 # acknowledge the contributions of their colleagues of the SONATA
 # partner consortium (www.sonata-nfv.eu).
 
-FROM mpeuster/containernet
-MAINTAINER manuel@peuster.de
+FROM ubuntu:trusty
+MAINTAINER steven.vanrossem@intec.ugent.be
 
 ENV SON_EMU_IN_DOCKER 1
 
-WORKDIR /son-emu
-COPY . /son-emu/
-
 RUN apt-get clean
+RUN apt-get update \
+    && apt-get install -y  git aptitude
 
-WORKDIR /son-emu/ansible
-RUN ansible-playbook install.yml
 
-WORKDIR /son-emu
-# we need to reset the __pycache__ for correct test discovery
-RUN rm -rf src/emuvim/test/__pycache__ 
-RUN rm -rf src/emuvim/test/unittests/__pycache__ 
-RUN rm -rf src/emuvim/test/integrationtests/__pycache__ 
-RUN python setup.py install 
+# install containernet
+RUN apt-get install -y curl && \
+    curl https://bootstrap.pypa.io/get-pip.py | python2
+
+# install docker
+RUN curl -fsSL https://get.docker.com/gpg | apt-key add -
+RUN curl -fsSL https://get.docker.com/ | sh
+
+RUN pip install -U urllib3 setuptools pyparsing docker
+WORKDIR /
+RUN git clone https://github.com/containernet/containernet.git
+RUN containernet/util/install.sh
+WORKDIR containernet/
+RUN make develop
+
+# install son-emu
+RUN echo 'install son-emu'
+RUN apt-get install -y  python-dev python-zmq libzmq-dev libffi-dev libssl-dev
+RUN pip install -U zerorpc tabulate argparse networkx six ryu oslo.config pytest Flask flask_restful requests prometheus_client pyaml
+WORKDIR /
+#avoid pulling not the latest git, copy the current dir, to run this from Jenkins
+#RUN git clone https://github.com/sonata-nfv/son-emu.git
+COPY . /son-emu
+WORKDIR son-emu/
+RUN python setup.py develop
+WORKDIR / 
 RUN echo 'Done'
 
 
 ENTRYPOINT ["/son-emu/utils/docker/entrypoint.sh"]
 
-# dummy GK, zerorpc, DCNetwork zerorpc, cAdvisor, restAPI
-EXPOSE 5000 4242 5151 8090 5001
+# dummy GK, cAdvisor, Prometheus Push Gateway, son-emu REST API
+EXPOSE 5000 8081 9091 5001

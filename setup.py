@@ -38,7 +38,8 @@ setup(name='emuvim',
       packages=find_packages('src'),
       include_package_data=True,
       package_data= {
-              'emuvim.api.sonata': ['*.yml']
+              'emuvim.api.sonata': ['*.yml'],
+              'emuvim.dashboard' : ['*.html', 'css/*.css','img/*','js/*.js']
       },
       install_requires=[
           'pyaml',
@@ -52,7 +53,7 @@ setup(name='emuvim',
           'pytest',
           'Flask',
           'flask_restful',
-          'docker-py==1.7.1',
+          'docker==2.0.2',
           'requests',
           'prometheus_client',
           'urllib3',

@@ -1,5 +1,5 @@
 """
-Copyright (c) 2015 SONATA-NFV
+Copyright (c) 2017 SONATA-NFV
 ALL RIGHTS RESERVED.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,33 +25,3 @@ the Horizon 2020 and 5G-PPP programmes. The authors would like to
 acknowledge the contributions of their colleagues of the SONATA
 partner consortium (www.sonata-nfv.eu).
 """
-"""
-Additional setup that installs 'son-emu-cli' in standalone mode.
-"""
-from setuptools import setup, find_packages
-
-setup(name='sonemucli',
-      version='0.9',
-      license='Apache 2.0',
-      description='CLI client for son-emu',
-      url='http://github.com/sonata-emu',
-      author_email='sonata-dev@sonata-nfv.eu',
-      package_dir={'': 'src'},
-      packages=find_packages('src'),
-      install_requires=[
-          'tabulate',
-          'argparse',
-          'pytest',
-          'requests',
-          'prometheus_client',
-          'urllib3'
-      ],
-      zip_safe=False,
-      entry_points={
-          'console_scripts': [
-              'son-emu-cli=emuvim.cli.son_emu_cli:main',
-          ],
-      },
-      setup_requires=['pytest-runner'],
-      tests_require=['pytest'],
-)
